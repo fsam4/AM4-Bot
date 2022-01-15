@@ -242,7 +242,7 @@ const command: SlashCommand = {
                 }
                 case 'quiz': {
                     const users = database.quiz.collection<Quiz.user>("Users");
-                    const nextTounament = lastDayOfMonth(new Date()).setHours(21, 0, 0, 0);
+                    const nextTounament = lastDayOfMonth(interaction.createdAt).setHours(21, 0, 0, 0);
                     const amount = await users.countDocuments(config.tournament?.enabled && { score: { $exists: true } });
                     embeds[0] = new MessageEmbed({
                         color: "RANDOM",

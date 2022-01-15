@@ -115,7 +115,7 @@ const command: Command<Scenes.SceneContext, SceneContext> = {
                                             input: ctx.message.text
                                         },
                                         $set: {
-                                            expireAt: addMonths(new Date(), 1)
+                                            expireAt: addMonths(Date.now(), 1)
                                         }
                                     }
                                 }

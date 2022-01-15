@@ -314,7 +314,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                                             data: Array(growth.length).fill(null).map((_, i) => {
                                                 const value = Math.min(...growth);
                                                 return {
-                                                    x: addDays(new Date(), i + 1),
+                                                    x: addDays(interaction.createdAt, i + 1),
                                                     y: alliance.value + value * (i + 1)
                                                 }
                                             })
@@ -328,7 +328,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                                             data: Array(growth.length).fill(null).map((_, i) => {
                                                 const value = growth.reduce((a, b) => a + b) / growth.length;
                                                 return {
-                                                    x: addDays(new Date(), i + 1),
+                                                    x: addDays(interaction.createdAt, i + 1),
                                                     y: alliance.value + value * (i + 1)
                                                 }
                                             })
@@ -342,7 +342,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                                             data: Array(growth.length).fill(null).map((_, i) => {
                                                 const value = Math.max(...growth);
                                                 return {
-                                                    x: addDays(new Date(), i + 1),
+                                                    x: addDays(interaction.createdAt, i + 1),
                                                     y: alliance.value + value * (i + 1)
                                                 }
                                             })

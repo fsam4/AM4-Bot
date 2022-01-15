@@ -575,8 +575,8 @@ const command: SlashCommand = {
                                                 maxTicksLimit: 12,
                                                 fontFamily: 'Serif',
                                                 fontColor: 'white',
-                                                min: subMonths(oldestDate || new Date(), 1),
-                                                max: addMonths(new Date(), 1)
+                                                min: subMonths(oldestDate || interaction.createdAt, 1),
+                                                max: addMonths(interaction.createdAt, 1)
                                             }
                                         }
                                     ]

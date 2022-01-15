@@ -542,7 +542,7 @@ const command: SlashCommand = {
                                                     const growthValue = Math.min(...growth);
                                                     const yValue = value + growthValue * i;
                                                     return {
-                                                        x: addDays(new Date(), i),
+                                                        x: addDays(interaction.createdAt, i),
                                                         y: yValue < 0 ? 0 : yValue
                                                     }
                                                 })
@@ -556,7 +556,7 @@ const command: SlashCommand = {
                                                 data: Array(growth.length + 1).fill(alliance.value).map((value, i) => {
                                                     const growthValue = growth.reduce((a, b) => a + b) / growth.length;
                                                     return {
-                                                        x: addDays(new Date(), i),
+                                                        x: addDays(interaction.createdAt, i),
                                                         y: value + growthValue * i
                                                     }
                                                 })
@@ -570,7 +570,7 @@ const command: SlashCommand = {
                                                 data: Array(growth.length + 1).fill(alliance.value).map((value, i) => {
                                                     const growthValue = Math.max(...growth);
                                                     return {
-                                                        x: addDays(new Date(), i),
+                                                        x: addDays(interaction.createdAt, i),
                                                         y: value + growthValue * i
                                                     }
                                                 })
@@ -1307,8 +1307,8 @@ const command: SlashCommand = {
                             if (!airline.alliance) throw new DiscordClientError('That airline does not seem to be in an alliance currently...');
                             const { member, status } = await airline.alliance.fetchMember();
                             if (!status.success) throw new DiscordClientError(status.error);
-                            const days = Math.abs(differenceInDays(new Date(), member.joined));
-                            const weeks = Math.abs(differenceInWeeks(new Date(), member.joined));
+                            const days = Math.abs(differenceInDays(interaction.createdAt, member.joined));
+                            const weeks = Math.abs(differenceInWeeks(interaction.createdAt, member.joined));
                             const charts: Array<{ emoji: string, data: any }> = [];
                             const embed = new MessageEmbed({
                                 color: "BLURPLE",

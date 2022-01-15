@@ -61,7 +61,7 @@ const event: Event = {
                 if (!args.length) throw new DiscordClientError("You need to specify the action to execute for this command!");
                 console.log(`Control command "${command}" was used by ${message.author.username}#${message.author.discriminator}`);
                 if (account.admin_level < 5) {
-                    const cooldown = addSeconds(new Date(), 60);
+                    const cooldown = addSeconds(message.createdAt, 60);
                     await cooldowns.set(message.author.id, cooldown, 60 * 1000);
                 }
                 switch(command) {
@@ -139,14 +139,14 @@ const event: Event = {
                             },
                             $push: {
                                 warnings: {
-                                    date: new Date(),
+                                    date: message.createdAt,
                                     reason: reason
                                 }
                             }
                         }, updateOptions);
                         if (!res.ok) throw new DiscordClientError("Failed to warn this user...");
                         if (res.value.warnings.length >= 5) {
-                            const date = addDays(new Date(), 7);
+                            const date = addDays(message.createdAt, 7);
                             await users.updateOne({ id: user.id }, {
                                 $set: {
                                     mute: date,
@@ -184,7 +184,7 @@ const event: Event = {
                             if (account.admin_level < 5 && days > 30) throw new DiscordClientError("You need to be level 5 admin to suspend for over 30 days!");
                             if (account.admin_level === 5 && days > 365) throw new DiscordClientError("The maximum suspension is 365 days!");
                         }
-                        const date = addDays(new Date(), days);
+                        const date = addDays(message.createdAt, days);
                         const res = await users.findOneAndUpdate({ id: user.id }, {
                             $setOnInsert: {
                                 admin_level: 0,
@@ -218,7 +218,7 @@ const event: Event = {
                         }
                         if (isNaN(seconds)) throw new DiscordClientError("That is an invalid number...");
                         if (seconds > 1000) throw new DiscordClientError("A cooldown cannot be longer than 1000 seconds!");
-                        const date = addSeconds(new Date(), seconds);
+                        const date = addSeconds(message.createdAt, seconds);
                         await cooldowns.set(user.id, date, seconds * 1000);
                         await message.reply(`A cooldown of ${Formatters.bold(seconds.toLocaleString("en"))} seconds has been set to ${Formatters.bold(`${user.username}#${user.discriminator}`)}.`);
                         break;
@@ -251,7 +251,7 @@ const event: Event = {
                                 const inserted = await allianceCollection.insertOne({
                                     name: alliance.name,
                                     values: [{
-                                        date: new Date(),
+                                        date: message.createdAt,
                                         value: alliance.value
                                     }]
                                 });
@@ -262,9 +262,9 @@ const event: Event = {
                                     contribution: member.contribution.total,
                                     flights: member.flights,
                                     dailyContribution: [],
-                                    offline: [{ value: 0, date: new Date() }],
-                                    sv: [{ value: member.sv, date: new Date() }],
-                                    expireAt: addMonths(new Date(), 3)
+                                    offline: [{ value: 0, date: message.createdAt }],
+                                    sv: [{ value: member.sv, date: message.createdAt }],
+                                    expireAt: addMonths(message.createdAt, 3)
                                 })));
                                 await message.reply(`Inserted ${Formatters.bold(alliance.name)} and ${Formatters.bold(res.insertedCount.toLocaleString("en"))} members to the database!`);
                                 break;

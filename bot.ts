@@ -75,7 +75,7 @@ if (cluster.isPrimary) {
             }
             let updateAt: number | Date = new Date().setHours(12, 0, 0, 0);
             if (isPast(updateAt)) updateAt = addDays(updateAt, 1);
-            const ms = Math.abs(differenceInMilliseconds(updateAt, new Date()));
+            const ms = Math.abs(differenceInMilliseconds(updateAt, Date.now()));
             setTimeout(events.emit, ms, "dataUpdate", rest, options);
             console.log(chalk.green("Scheduled data update!"));
         });
@@ -258,7 +258,7 @@ if (cluster.isPrimary) {
                                 const msg = await ctx.reply(`Your cooldown ends ${formatDistanceToNowStrict(new Date(cooldown), { addSuffix: true })}`);
                                 return setTimeout(() => ctx.deleteMessage(msg.message_id).catch(err => void err), 10000);
                             } else if (command.cooldown) {
-                                const timeout = addSeconds(new Date(), command.cooldown);
+                                const timeout = addSeconds(ctx.message.date * 1000, command.cooldown);
                                 await cooldowns.set(ctx.from.id.toString(), timeout, command.cooldown * 1000);
                             }
                         }

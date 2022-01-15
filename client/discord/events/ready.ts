@@ -27,13 +27,12 @@ const event: Event = {
                     name: `Used in ${client.guilds.cache.size} servers`
                 }]
             });
-            if (isLastDayOfMonth(new Date()) && config.tournament?.enabled) {
+            if (isLastDayOfMonth(Date.now()) && config.tournament?.enabled) {
                 const endAt = new Date().setHours(21, 0, 0, 0);
                 if (isFuture(endAt)) {
                     console.log(chalk.green("Scheduled tournament rewards for today!"));
-                    const ms = Math.abs(differenceInMilliseconds(endAt, new Date()));
+                    const ms = Math.abs(differenceInMilliseconds(endAt, Date.now()));
                     setTimeout(async () => {
-                        const today = new Date();
                         const users = database.quiz.collection<Quiz.user & { name?: string }>('Users');
                         const winnerAmount = config.tournament?.winners || 1;
                         const winners = await users.find({ score: { $exists: true } }).sort({ score: -1 }).limit(winnerAmount).toArray();
@@ -47,7 +46,7 @@ const event: Event = {
                             .catch(() => console.log(`Failed to send code to ${user.username}#${user.discriminator} (${winner.id})!`));
                         }
                         const [first, second] = winners;
-                        await log.send(`${Formatters.bold(`Tournament results for ${today.toLocaleString('en', { month: 'long' })}`)}\n🥇 ${first.name || "unknown"}\n🥈 ${second.name || "unknown"}`);
+                        await log.send(`${Formatters.bold(`Tournament results for ${client.readyAt.toLocaleString('en', { month: 'long' })}`)}\n🥇 ${first.name || "unknown"}\n🥈 ${second.name || "unknown"}`);
                         await users.updateMany({ score: { $exists: true } }, {
                             $unset: {
                                 score: ""
@@ -130,9 +129,9 @@ const event: Event = {
                 if (isPast(giveaway.expireAt)) {
                     await triggerGiveaway(giveaway);
                 } else {
-                    const hours = Math.abs(differenceInHours(new Date(), giveaway.expireAt));
+                    const hours = Math.abs(differenceInHours(Date.now(), giveaway.expireAt));
                     if (hours < 48) {
-                        const ms = Math.abs(differenceInMilliseconds(new Date(), giveaway.expireAt));
+                        const ms = Math.abs(differenceInMilliseconds(Date.now(), giveaway.expireAt));
                         setTimeout(triggerGiveaway, ms, giveaway);
                     }
                 }

@@ -36,8 +36,8 @@ const command: ContextMenu<UserContextMenuInteraction> = {
             if (!airline.alliance) throw new DiscordClientError(`${Formatters.userMention(interaction.targetId)} does not seem to be in an alliance...`);
             const { member, status } = await airline.alliance.fetchMember();
             if (!status.success) throw new DiscordClientError(status.error);
-            const days = Math.abs(differenceInDays(new Date(), member.joined));
-            const weeks = Math.abs(differenceInWeeks(new Date(), member.joined));
+            const days = Math.abs(differenceInDays(interaction.createdAt, member.joined));
+            const weeks = Math.abs(differenceInWeeks(interaction.createdAt, member.joined));
             const charts: Array<{ emoji: string, data: any }> = [];
             const embed = new MessageEmbed({
                 color: "BLURPLE",
