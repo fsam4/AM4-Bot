@@ -3,11 +3,11 @@ import { Markup, Scenes } from 'telegraf';
 import QuickChart from 'quickchart-js';
 import pug from 'pug';
 
-import format from 'date-fns/format';
-import addMonths from 'date-fns/addMonths';
-import compareAsc from 'date-fns/compareAsc';
-import differenceInDays from 'date-fns/differenceInDays';
 import formatDistanceToNowStrict from 'date-fns/formatDistanceToNowStrict';
+import differenceInDays from 'date-fns/differenceInDays';
+import compareAsc from 'date-fns/compareAsc';
+import addMonths from 'date-fns/addMonths';
+import format from 'date-fns/format';
 
 import type { Message, User, InputMediaPhoto } from 'typegram';
 import type { Telegram, AM4_Data } from '@typings/database';

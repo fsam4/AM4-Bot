@@ -1,4 +1,3 @@
-import type { Context } from 'telegraf';
 import type { Command } from '../types';
 
 const command: Command = {

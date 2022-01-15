@@ -5,9 +5,9 @@ import Airline from '../../../src/classes/airline';
 import Plane from '../../../src/lib/plane';
 import pug from 'pug';
 
-import format from 'date-fns/format';
-import subHours from 'date-fns/subHours';
 import addMonths from 'date-fns/addMonths';
+import subHours from 'date-fns/subHours';
+import format from 'date-fns/format';
 
 import type { Message, User, InputMediaPhoto } from 'typegram';
 import type { Telegram, AM4_Data } from '@typings/database';

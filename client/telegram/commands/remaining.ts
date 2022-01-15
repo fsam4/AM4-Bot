@@ -1,5 +1,5 @@
-import { Markup } from 'telegraf';
 import formatDistanceToNowStrict from 'date-fns/formatDistanceToNowStrict';
+import { Markup } from 'telegraf';
 
 import type { Command } from '../types';
 

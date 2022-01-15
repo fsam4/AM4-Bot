@@ -38,7 +38,7 @@ export interface Command<CommandContext extends Context = Context, SceneContext 
     scenes: Scene<SceneContext>[];
 }
 
-// These types are unused as I never got around to listening to different events on Telegram.
+// These types are unused as I never got around to adding event listeners to the Telegram client.
 // These event types work the same way as in the Discord client.
 
 type UpdateContext<K extends keyof Types.MountMap> = NarrowedContext<Context, Types.MountMap[K]>;

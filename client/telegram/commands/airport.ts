@@ -2,8 +2,8 @@ import TelegramClientError from '../error';
 import { Markup, Scenes } from 'telegraf';
 import pug from 'pug';
 
-import type { AM4_Data } from '@typings/database';
 import type { Message, User } from 'typegram';
+import type { AM4_Data } from '@typings/database';
 import type { Context } from 'telegraf';
 import type { Command } from '../types';
 import type { GeoNear } from 'mongodb';
