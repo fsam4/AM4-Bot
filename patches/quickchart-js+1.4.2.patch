@@ -1,0 +1,40 @@
+diff --git a/node_modules/quickchart-js/index.d.ts b/node_modules/quickchart-js/index.d.ts
+index e420240..850a013 100644
+--- a/node_modules/quickchart-js/index.d.ts
++++ b/node_modules/quickchart-js/index.d.ts
+@@ -1,4 +1,5 @@
+ declare module 'quickchart-js' {
++  // @ts-ignore
+   import * as ChartJS from 'chart.js';
+ 
+   class QuickChart {
+@@ -19,6 +20,14 @@ declare module 'quickchart-js' {
+     public toFile(
+       pathOrDescriptor: string | number | Buffer | URL
+     ): Promise<void>;
++    
++    static getGradientFillHelper(direction: string, colors: string[], dimensions: unknown): string;
++    static getGradientFill(colorOptions: unknown, linearGradient: unknown): string;
++    static getImageFill(url: string): string;
++    static getImage(url: string): string;
++    static pattern: {
++      draw(shapeType: string, backgroundColor: string, patternColor: string, requestedSize: number): string;
++    }
+   }
+ 
+   export = QuickChart;
+diff --git a/node_modules/quickchart-js/index.js b/node_modules/quickchart-js/index.js
+index 987e19f..c51c63f 100644
+--- a/node_modules/quickchart-js/index.js
++++ b/node_modules/quickchart-js/index.js
+@@ -190,6 +190,10 @@ QuickChart.getImageFill = function (url) {
+   return `__BEGINFUNCTION__getImageFill(${JSON.stringify(url)})__ENDFUNCTION__`;
+ };
+ 
++QuickChart.getImage = function (url) {
++  return `__BEGINFUNCTION__getImage(${JSON.stringify(url)})__ENDFUNCTION__`;
++};
++
+ QuickChart.pattern = {};
+ QuickChart.pattern.draw = function (shapeType, backgroundColor, patternColor, requestedSize) {
+   return `__BEGINFUNCTION__pattern.draw(${JSON.stringify(shapeType)}, ${JSON.stringify(

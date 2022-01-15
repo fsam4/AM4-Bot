@@ -1,0 +1,49 @@
+b <u>Airline Information</u>
+|
+| <b>Airline:</b> #{member.airline.name}
+| <b>Alliance:</b> #{member.alliance.name}
+|
+|
+b <u>General statistics</u>
+|
+| <b>Share value:</b> $#{member.sv}
+| <b>Joined:</b> #{formatToString(member.joined, { addSuffix: true })} • #{format(member.joined, 'dd/MM/yyyy')}
+| <b>Last online:</b> #{formatToString(member.online, { addSuffix: true })}
+| <b>Flights:</b> #{member.flights.toLocaleString(locale)}
+- var has_data = Boolean(memberDocument)
+    if has_data && memberDocument.dailyContribution.length
+        - var total = memberDocument.dailyContribution.map(o => o.value).reduce((total, num) => total + num)
+        - var days = Math.abs(differenceInDays(member.joined, new Date()))
+        - var avg = Math.round(total / 7)
+        |
+        | <b>Offline:</b> #{memberDocument.offline.last().value} days
+        |
+        |
+        b <u>Contribution</u>
+        |
+        | <b>Total:</b> $#{member.contribution.total.toLocaleString(locale)}
+        | <b>Today</b> $#{member.contribution.daily.toLocaleString(locale)}
+        | <b>This week:</b> $#{total.toLocaleString(locale)}
+        |
+        |
+        b <u>Averages</u>
+        |
+        | <b>Per day:</b> $#{member.contribution.average.day.toLocaleString(locale)}
+        | <b>Per week:</b> $#{member.contribution.average.week.toLocaleString(locale)}
+        | <b>Per flight:</b> $#{member.contribution.average.flight.toLocaleString(locale)}
+        | <b>This week:</b> $#{avg.toLocaleString(locale)}
+    else 
+        |
+        |
+        |
+        b <u>Contribution</u>
+        |
+        | <b>Total:</b> $#{member.contribution.total.toLocaleString(locale)}
+        | <b>Today</b> $#{member.contribution.daily.toLocaleString(locale)}
+        |
+        |
+        b <u>Averages</u>
+        |
+        | <b>Per day:</b> $#{member.contribution.average.day.toLocaleString(locale)}
+        | <b>Per week:</b> $#{member.contribution.average.week.toLocaleString(locale)}
+        | <b>Per flight:</b> $#{member.contribution.average.flight.toLocaleString(locale)}

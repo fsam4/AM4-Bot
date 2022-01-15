@@ -1,0 +1,12 @@
+# Ignore compiled files, modules and image & document folders
+*.js
+documents
+node_modules
+icons
+
+# Ignore compiler configuration files
+jsconfig.json
+
+# Ignore .env files
+.env.local
+.env

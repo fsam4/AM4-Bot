@@ -1,0 +1,65 @@
+b <u>Airline Information</u>
+|
+| <b>Airline:</b> #{airline.name}
+- var has_alliance = airline.alliance
+   if has_alliance
+        |
+        | <b>Alliance:</b> #{airline.alliance.name}
+
+- var founded = format(subHours(airline.founded, 3), 'dd/MM/yyyy • kk:mm')
+|
+| <b>Founded:</b> #{founded} (UTC)
+|
+- var has_cargo = cargo_size > 0
+   if has_cargo  
+        | <b>Pax reputation:</b> #{airline.reputation.pax}%
+        | <b>Cargo reputation:</b> #{airline.reputation.cargo}%
+   else 
+        | <b>Pax reputation:</b> #{airline.reputation.pax}%     
+
+|
+| <b>Rank:</b> #{airline.rank.toLocaleString(locale)} in #{airline.gameMode}
+|
+- var per = Math.round(airline.achievements / 77 * 100)
+| <b>Achievements:</b> #{airline.achievements} completed (#{per}%)
+|
+- var has_ipo = ipo.has
+    if has_ipo
+        | <b>Share Value:</b> $#{ipo.current.toLocaleString(locale)}
+        | <b>Shares available:</b> #{ipo.shares.available.toLocaleString(locale)}/#{ipo.shares.total.toLocaleString(locale)}
+        | <b>Level:</b> #{airline.level} 
+    else 
+        | <b>Level:</b> #{airline.level}   
+
+|
+|
+|
+b <u>Fleet info</u>
+|
+| <b>Total size:</b> #{fleet.size} planes 
+| <b>Pax fleet:</b> #{paxFleetSize} planes
+| <b>Cargo fleet:</b> #{cargoFleetSize} planes
+| <b>Routes:</b> #{fleet.routes}
+|
+|
+b <u>Airline Staff</u>
+|
+| <b>Pilots:</b> #{staff.pilots.toLocaleString(locale)}
+| <b>Crew:</b> #{staff.crew.toLocaleString(locale)}
+| <b>Engineers:</b> #{staff.engineers.toLocaleString(locale)}
+| <b>Tech:</b> #{staff.tech.toLocaleString(locale)}
+|
+|
+b <u>Profitability</u>
+|
+| <b>Per hour:</b> $#{Math.round(profit / 18).toLocaleString(locale)}
+| <b>Per day:</b> $#{Math.round(profit).toLocaleString(locale)}
+| <b>Per week:</b> $#{Math.round(profit * 7).toLocaleString(locale)}
+|
+|
+- var has_awards = awards.length > 0
+    if has_awards 
+        |
+        b <u>Awards</u>
+        |
+        | <code>#{awards.map(award => `${award.name} • ${format(award.date, 'dd/MM/yyyy')}`).join('\n')}</code>

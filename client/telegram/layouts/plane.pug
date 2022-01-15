@@ -1,0 +1,42 @@
+b <u>General statistics</u>
+|
+| <b>Model:</b> #{plane.name}
+| <b>Speed:</b> #{plane.speed} km/h
+| <b>Fuel:</b> #{plane.fuel} lbs/km 
+| <b>Co2:</b> #{plane.co2} kg/pax/km 
+| <b>Runway:</b> #{plane.runway.toLocaleString(locale)} ft
+| <b>Range:</b> #{plane.range.toLocaleString(locale)} km 
+|
+- var type = plane.type
+    if plane.type === 'pax'
+        | <b>Capacity:</b> #{plane.capacity} pax 
+    else 
+        | <b>Capacity:</b> #{plane.capacity.toLocaleString(locale)} lbs
+
+|
+| <b>Price:</b> $#{plane.price.toLocaleString(locale)}
+| <b>A-check:</b> $#{plane.A_check.price.toLocaleString(locale)}/#{plane.A_check.time}h
+|
+|
+b <u>Plane staff</u>
+|
+| <b>Pilots:</b> #{plane.staff.pilots}
+| <b>Crew:</b> #{plane.staff.crew}
+| <b>Engineers:</b> #{plane.staff.engineers}
+| <b>Tech:</b> #{plane.staff.tech}
+|
+|
+b <u>Profit (realism)</u>
+|
+| <b>Per hour:</b> $#{Math.round(realism.profit / 18).toLocaleString(locale)}
+| <b>Per day:</b> $#{Math.round(realism.profit).toLocaleString(locale)}
+| <b>Per week:</b> $#{Math.round(realism.profit * 7).toLocaleString(locale)}
+| <b>Profitability:</b> in #{Math.round(plane.price / realism.profit)} days
+|
+|
+b <u>Profit (easy)</u>
+|
+| <b>Per hour:</b> $#{Math.round(easy.profit / 18).toLocaleString(locale)}
+| <b>Per day:</b> $#{Math.round(easy.profit).toLocaleString(locale)}
+| <b>Per week:</b> $#{Math.round(easy.profit * 7).toLocaleString(locale)}
+| <b>Profitability:</b> in #{Math.round(plane.price / easy.profit)} days

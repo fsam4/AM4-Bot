@@ -1,0 +1,83 @@
+b <u>Route information</u>
+|
+- var stopover = sb 
+    if stopover 
+        |
+        | <b>Departure:</b> #{departure.city.capitalize()}, #{departure.country.capitalize()} (#{departure.icao.toUpperCase()}/#{departure.iata.toUpperCase()})
+        | <b>Stopover</b> #{stopover.city.capitalize()}, #{stopover.country.capitalize()} (#{stopover.icao.toUpperCase()}/#{stopover.iata.toUpperCase()})
+        | <b>Arrival:</b> #{arrival.city.capitalize()}, #{arrival.country.capitalize()} (#{arrival.icao.toUpperCase()}/#{arrival.iata.toUpperCase()})
+    else
+        |
+        | <b>Departure:</b> #{departure.city.capitalize()}, #{departure.country.capitalize()} (#{departure.icao.toUpperCase()}/#{departure.iata.toUpperCase()})
+        | <b>Arrival:</b> #{arrival.city.capitalize()}, #{arrival.country.capitalize()} (#{arrival.icao.toUpperCase()}/#{arrival.iata.toUpperCase()})
+
+|
+| <b>Distance:</b> #{route.distance.toLocaleString(locale)} km 
+| <b>Market: </b> #{arrival.market}%
+| <b>Runway: </b> #{arrival.runway.toLocaleString(locale)} ft 
+|
+- var has_plane = Boolean(plane)
+    if has_plane
+        case plane.type 
+            when 'pax'
+                | <b>Flights:</b> #{flights}
+                |
+                |
+                b <u>Route demand</u>
+                |
+                | <b>Economy:</b> #{demand.Y.toLocaleString(locale)}
+                | <b>Business:</b> #{demand.J.toLocaleString(locale)}
+                | <b>First:</b> #{demand.F.toLocaleString(locale)}
+                |
+                |
+                b <u>Ticket prices</u>
+                |
+                | <b>Economy:</b> $#{ticket.Y.toLocaleString(locale)}
+                | <b>Business:</b> $#{ticket.J.toLocaleString(locale)}
+                | <b>First:</b> $#{ticket.F.toLocaleString(locale)}
+                |
+                |
+                b <u>Configuration</u>
+                |
+                | <b>Economy:</b> #{config.Y}
+                | <b>Business:</b> #{config.J}
+                | <b>First:</b> #{config.F}
+            when 'cargo'
+                | <b>Flights:</b> #{flights}
+                |
+                |
+                b <u>Route demand</u>
+                |
+                | <b>Large:</b> #{demand.L.toLocaleString(locale)} lbs
+                | <b>Heavy:</b> #{demand.H.toLocaleString(locale)} lbs
+                |
+                |
+                b <u>Ticket prices</u>
+                |
+                | <b>Large:</b> $#{ticket.L}
+                | <b>Heavy:</b> $#{ticket.H}
+                |
+                |
+                b <u>Configuration</u>
+                |
+                | <b>Large:</b> #{Math.round((config.L * (10 / 7)) / plane.capacity * 100)}%
+                | <b>Heavy:</b> #{Math.round(config.H / plane.capacity * 100)}%
+    else 
+        |
+        |
+        b <u>Route demand</u>
+        |
+        | <b>Economy:</b> #{demand.Y}
+        | <b>Business:</b> #{demand.J}
+        | <b>First:</b> #{demand.F}
+        | <b>Large:</b> #{demand.L.toLocaleString(locale)} lbs
+        | <b>Heavy:</b> #{demand.H.toLocaleString(locale)} lbs
+        |
+        |
+        b <u>Ticket prices</u>
+        |
+        | <b>Economy:</b> $#{ticket.Y}
+        | <b>Business:</b> $#{ticket.J}
+        | <b>First:</b> $#{ticket.F}
+        | <b>Large:</b> $#{ticket.L}
+        | <b>Heavy:</b> $#{ticket.H}

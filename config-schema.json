@@ -1,0 +1,37 @@
+{
+    "$schema": "http://json-schema.org/schema",
+    "type": "object",
+    "required": ["prefix", "clientId"],
+    "properties": {
+        "prefix": {
+            "type": "string",
+            "description": "The prefix for message commands.",
+            "minLength": 1,
+            "maxLength": 2,
+            "default": "$"
+        },
+        "clientId": {
+            "type": "string",
+            "description": "The main client ID. This can be used to run certain features only if the ID of the running client matches this ID.",
+            "minLength": 17
+        },
+        "tournament": {
+            "type": "object",
+            "description": "Tournament configurations for the bot.",
+            "required": [],
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Whether tournaments are enabled.",
+                    "default": false
+                },
+                "winners": {
+                    "type": "integer",
+                    "description": "HThe amount of winners each month.",
+                    "minimum": 1,
+                    "default": 1
+                }
+            }
+        }
+    }
+}

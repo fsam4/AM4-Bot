@@ -1,0 +1,51 @@
+b <u>General statistics</u>
+|
+| <b>Rank:</b> #{alliance.rank}
+| <b>Value:</b> $#{alliance.value}
+| <b>Flights:</b> #{alliance.flights.toLocaleString(locale)}
+| <b>Founded:</b> #{format(alliance.founded, 'dd/MM/yyyy')}
+|
+|
+b <u>Member statistics</u>
+|
+| <b>Members:</b> #{alliance.members.amount}/#{alliance.members.max}
+|
+- var IPOrequired = alliance.ipo < 1
+    if IPOrequired
+        | <b>Requirements:</b> No IPO required 
+    else 
+        | <b>Requirements:</b> $#{alliance.requirements} SV
+
+- var averageContribution = Math.round(alliance.contribution.daily / alliance.members.amount)
+| 
+| <b>Average contribution:</b> $#{averageContribution.toLocaleString(locale)}
+|
+|
+- var recentlyJoined = members.sort((a, b) => compareAsc(b.joined, a.joined)).toArray().slice(0, 5);
+    if data
+        - var recentlyLeft = memberDocuments.filter(member => member.left).sort((a, b) => compareAsc(b.left, a.left)).slice(0, 5);
+        b <u>Recently joined</u>
+        |
+        |
+        each member in recentlyJoined
+            code #{member.airline.name} #{formatDistanceToNowStrict(member.joined, { addSuffix: true, unit: 'day' })}
+            |
+            |
+        |
+        |
+        b <u>Recently left</u>
+        |
+        |
+        each member in recentlyLeft 
+            code #{member.name} #{formatDistanceToNowStrict(member.left, { addSuffix: true, unit: 'day' })}
+            |
+            |
+        |
+    else 
+        b <u>Recently joined</u>
+        |
+        |
+        each member in recentlyJoined
+            code #{member.airline.name} #{formatDistanceToNowStrict(member.joined, { addSuffix: true, unit: 'day' })}
+            |
+            |

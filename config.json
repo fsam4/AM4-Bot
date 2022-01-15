@@ -1,0 +1,9 @@
+{
+    "$schema": "config-schema.json",
+    "prefix": "$",
+    "clientId": "735416062035886173",
+    "tournament": {
+        "enabled": false,
+        "winners": 2
+    }
+}
