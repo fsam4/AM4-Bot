@@ -456,17 +456,25 @@ const command: SlashCommand = {
                                 if (option.role.position > highest) throw new DiscordClientError(`${Formatters.bold(`${option.name}:`)} The role needs to be lower in the hierarchy than the bot's highest ranked role!`);
                                 update[`roles.${option.name}`] = option.role.id;
                             }
-                            const res = await servers.updateOne({ id: interaction.guildId }, {
-                                $set: update,
-                                $setOnInsert: {
-                                    update_nickname: false,
-                                    update_roles: false,
-                                    channels: {
-                                        whitelist: [],
-                                        blacklist: []
+                            const res = await servers.updateOne(
+                                { 
+                                    id: interaction.guildId 
+                                }, 
+                                {
+                                    $set: update,
+                                    $setOnInsert: {
+                                        update_nickname: false,
+                                        update_roles: false,
+                                        channels: {
+                                            whitelist: [],
+                                            blacklist: []
+                                        }
                                     }
+                                }, 
+                                { 
+                                    upsert: true 
                                 }
-                            }, { upsert: true });
+                            );
                             ok = res.acknowledged && (res.modifiedCount || res.upsertedCount);
                             break;
                         }
@@ -613,14 +621,20 @@ const command: SlashCommand = {
                         }
                         case "edit": {
                             const webhookId = interaction.options.getString("id", true).trim();
-                            const webhook = await webhookCollection.findOne({ id: webhookId, server: interaction.guild.id }, {
-                                projection: {
-                                    _id: true,
-                                    role: true,
-                                    fuel: true,
-                                    co2: true
+                            const webhook = await webhookCollection.findOne(
+                                { 
+                                    id: webhookId, 
+                                    server: interaction.guild.id 
+                                }, 
+                                {
+                                    projection: {
+                                        _id: true,
+                                        role: true,
+                                        fuel: true,
+                                        co2: true
+                                    }
                                 }
-                            });
+                            );
                             if (!webhook) throw new DiscordClientError("Could not find a notification webhook with that ID...");
                             const role = <Role>interaction.options.getRole("role");
                             if (role) {
@@ -739,30 +753,46 @@ const command: SlashCommand = {
                             const channel = <TextChannel>interaction.options.getChannel("channel", true);
                             const list = <ChannelListType>interaction.options.getString("list", true).trim();
                             if (list === "whitelist") {
-                                await servers.updateOne({ id: interaction.guildId }, {
-                                    $setOnInsert: {
-                                        update_roles: false,
-                                        update_nickname: false,
-                                        'channels.blacklist': [],
-                                        roles: {}
-                                    },
-                                    $addToSet: {
-                                        'channels.whitelist': channel.id
+                                await servers.updateOne(
+                                    { 
+                                        id: interaction.guildId 
+                                    }, 
+                                    {
+                                        $setOnInsert: {
+                                            update_roles: false,
+                                            update_nickname: false,
+                                            'channels.blacklist': [],
+                                            roles: {}
+                                        },
+                                        $addToSet: {
+                                            'channels.whitelist': channel.id
+                                        }
+                                    }, 
+                                    { 
+                                        upsert: true 
                                     }
-                                }, { upsert: true });
+                                );
                                 await interaction.editReply(`${Formatters.channelMention(channel.id)} has been whitelisted for using commands. Having only whitelisted channels will blacklist all other channels. Use \`/settings channels remove\` to remove this command from the whitelist.`);
                             } else {
-                                await servers.updateOne({ id: interaction.guildId }, {
-                                    $setOnInsert: {
-                                        update_roles: false,
-                                        update_nickname: false,
-                                        'channels.whitelist': [],
-                                        roles: {}
-                                    },
-                                    $addToSet: {
-                                        'channels.blacklist': channel.id
+                                await servers.updateOne(
+                                    { 
+                                        id: interaction.guildId 
+                                    }, 
+                                    {
+                                        $setOnInsert: {
+                                            update_roles: false,
+                                            update_nickname: false,
+                                            'channels.whitelist': [],
+                                            roles: {}
+                                        },
+                                        $addToSet: {
+                                            'channels.blacklist': channel.id
+                                        }
+                                    }, 
+                                    { 
+                                        upsert: true 
                                     }
-                                }, { upsert: true });
+                                );
                                 await interaction.editReply(`${Formatters.channelMention(channel.id)} has been blacklisted from using commands. All command responses will be ephemeral in blacklisted channels so that no one else can see them! To remove this command from the blacklist use \`/settings channels remove\`.`);
                             }
                             break;
@@ -814,16 +844,24 @@ const command: SlashCommand = {
                             }
                             const options = interaction.options.data[0].options[0].options.filter(option => option.type === "BOOLEAN");
                             for (const option of options) update[option.name] = option.value;
-                            const res = await servers.updateOne({ id: interaction.guildId }, {
-                                $set: update,
-                                $setOnInsert: {
-                                    roles: {},
-                                    channels: {
-                                        whitelist: [],
-                                        blacklist: []
+                            const res = await servers.updateOne(
+                                { 
+                                    id: interaction.guildId 
+                                }, 
+                                {
+                                    $set: update,
+                                    $setOnInsert: {
+                                        roles: {},
+                                        channels: {
+                                            whitelist: [],
+                                            blacklist: []
+                                        }
                                     }
+                                }, 
+                                { 
+                                    upsert: true 
                                 }
-                            }, { upsert: true });
+                            );
                             ok = res.acknowledged && (res.modifiedCount || res.upsertedCount);
                             break;
                         }

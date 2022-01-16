@@ -275,22 +275,31 @@ const command: SlashCommand = {
                         await message.react(emojiResolvable)
                         .then(async () => {
                             const parsedEmoji = Util.parseEmoji(emojiResolvable);
-                            await panels.updateOne({ message: message.id, type: "message" }, {
-                                $setOnInsert: {
-                                    author: message.author.id,
-                                    server: message.guild.id,
-                                    channel: message.channel.id,
-                                },
-                                $addToSet: {
-                                    reactions: {
-                                        role: role.id,
-                                        emoji: {
-                                            name: parsedEmoji.name,
-                                            id: parsedEmoji.id
+                            await panels.updateOne(
+                                { 
+                                    message: message.id, 
+                                    type: "message" 
+                                }, 
+                                {
+                                    $setOnInsert: {
+                                        author: message.author.id,
+                                        server: message.guild.id,
+                                        channel: message.channel.id,
+                                    },
+                                    $addToSet: {
+                                        reactions: {
+                                            role: role.id,
+                                            emoji: {
+                                                name: parsedEmoji.name,
+                                                id: parsedEmoji.id
+                                            }
                                         }
                                     }
+                                }, 
+                                { 
+                                    upsert: true 
                                 }
-                            }, { upsert: true });
+                            );
                             await interaction.editReply({
                                 content: `Your ${Formatters.hyperlink("message", message.url)} has now been turned in to a reaction role message. Any users reacting to this message will receive ${role} role. Removing the reaction will remove the role. Remove the bot's reaction from the message or delete your message to close this reaction role message.`,
                                 allowedMentions: {

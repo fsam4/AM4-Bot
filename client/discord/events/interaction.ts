@@ -10,7 +10,7 @@ const event: Event = {
     name: "interactionCreate",
     once: false,
     async execute(interaction, options) {
-        if (interaction.user.bot || interaction.type === "PING") return;
+        if (interaction.type === "PING" || interaction.user.bot) return;
         const { database, cooldowns } = options;
         const users = database.discord.collection<Discord.user>('Users');
         let user = await users.findOne({ id: interaction.user.id });
@@ -34,7 +34,8 @@ const event: Event = {
                     if (user.mute && isFuture(user.mute)) return interaction.respond([]);
                     const command = interaction.client.chatCommands.get(interaction.commandName);
                     if (!command.autocomplete) return interaction.respond([]);
-                    await command.autocomplete(interaction, <CommandOptions>options);
+                    type AutoCompleteOptions = Omit<CommandOptions, "ephemeral">;
+                    await command.autocomplete(interaction, <AutoCompleteOptions>options);
                 }
                 break;
             }
@@ -95,7 +96,7 @@ const event: Event = {
                                 } else {
                                     const timeout = addSeconds(interaction.createdAt, command.cooldown);
                                     userCooldowns.set(interaction.commandId, timeout);
-                                    setTimeout(() => userCooldowns.delete(interaction.commandId), command.cooldown * 1000)
+                                    setTimeout(userCooldowns.delete, command.cooldown * 1000, interaction.commandId);
                                 }
                             }
                         }
@@ -106,15 +107,18 @@ const event: Event = {
                         const hasCommand = user.commands.some(({ command: commandName }) => commandName === interaction.commandName);
                         const query = { _id: user._id };
                         if (hasCommand) {
-                            await users.updateOne(query, {
-                                $inc: {
-                                    "commands.$[element].uses": 1
+                            await users.updateOne(query, 
+                                {
+                                    $inc: {
+                                        "commands.$[element].uses": 1
+                                    }
+                                }, 
+                                {
+                                    arrayFilters: [
+                                        { "element.command": interaction.commandName }
+                                    ]
                                 }
-                            }, {
-                                arrayFilters: [
-                                    { "element.command": interaction.commandName }
-                                ]
-                            });
+                            );
                         } else {
                             await users.updateOne(query, {
                                 $push: {
@@ -134,7 +138,7 @@ const event: Event = {
                     if (user?.mute) {
                         if (isFuture(user.mute)) {
                             return interaction.reply({
-                                content: `You have been suspended from using commands until ${Formatters.time(user.mute, "F")}!`,
+                                content: `You have been suspended from using components until ${Formatters.time(user.mute, "F")}!`,
                                 ephemeral: true
                             });
                         } else {

@@ -27,7 +27,7 @@ const event: Event = {
                     name: `Used in ${client.guilds.cache.size} servers`
                 }]
             });
-            if (isLastDayOfMonth(Date.now()) && config.tournament?.enabled) {
+            if (config.tournament?.enabled && isLastDayOfMonth(Date.now())) {
                 const endAt = new Date().setHours(21, 0, 0, 0);
                 if (isFuture(endAt)) {
                     console.log(chalk.green("Scheduled tournament rewards for today!"));
@@ -59,7 +59,7 @@ const event: Event = {
         const query = client.user.id !== config.clientId && { server: process.env.TEST_GUILD };
         const giveaways = await giveawayCollection.find(query).toArray();
         if (giveaways.length) {
-            async function triggerGiveaway(giveaway: Discord.giveaway) {
+            const triggerGiveaway = async (giveaway: Discord.giveaway) => {
                 await client.channels.fetch(giveaway.channel)
                 .then(async (channel: TextChannel) => {
                     await channel.messages.fetch(giveaway.message)

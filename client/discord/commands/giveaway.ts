@@ -382,11 +382,16 @@ const command: SlashCommand = {
                                 components: [row],
                                 embeds: [embed] 
                             }).catch(err => void err);
-                            const updated = await giveaways.findOneAndUpdate({ _id: res.insertedId }, {
-                                $set: {
-                                    finished: true
+                            const updated = await giveaways.findOneAndUpdate(
+                                { 
+                                    _id: res.insertedId 
+                                }, 
+                                {
+                                    $set: {
+                                        finished: true
+                                    }
                                 }
-                            });
+                            );
                             if (updated.ok && updated.value) {
                                 if (updated.value.users.length) {
                                     const winnerId = updated.value.users.random();

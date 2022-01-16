@@ -16,18 +16,23 @@ const event: Event = {
                     $elemMatch: query 
                 } 
             });
-            if (!channel.isThread()) await database.settings.collection<Settings.server>("Servers").updateOne({ 
-                id: channel.guildId, 
-                $or: [
-                    { 'channels.whitelist': channel.id },
-                    { 'channels.blacklist': channel.id }
-                ] 
-            }, {
-                $pull: {
-                    'channels.whitelist': channel.id,
-                    'channels.blacklist': channel.id
-                }
-            });
+            if (!channel.isThread()) {
+                await database.settings.collection<Settings.server>("Servers").updateOne(
+                    { 
+                        id: channel.guildId, 
+                        $or: [
+                            { 'channels.whitelist': channel.id },
+                            { 'channels.blacklist': channel.id }
+                        ] 
+                    }, 
+                    {
+                        $pull: {
+                            'channels.whitelist': channel.id,
+                            'channels.blacklist': channel.id
+                        }
+                    }
+                );
+            }
         }
     }
 }

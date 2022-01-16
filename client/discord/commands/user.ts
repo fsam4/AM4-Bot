@@ -420,38 +420,46 @@ const command: SlashCommand = {
                     });
                     if (!res.acknowledged || !res.modifiedCount) throw new DiscordClientError("Failed to register your account. Please try again...");
                     type GameMode = Lowercase<typeof airline.gameMode>;
-                    await settings.updateOne({ id: interaction.user.id }, {
-                        $setOnInsert: {
-                            training: {
-                                fuel: 0,
-                                co2: 0,
-                                cargo_heavy: 0,
-                                cargo_large: 0
+                    await settings.updateOne(
+                        { 
+                            id: interaction.user.id 
+                        }, 
+                        {
+                            $setOnInsert: {
+                                training: {
+                                    fuel: 0,
+                                    co2: 0,
+                                    cargo_heavy: 0,
+                                    cargo_large: 0
+                                },
+                                salaries: {
+                                    pilot: 200,
+                                    crew: 150,
+                                    engineer: 250,
+                                    tech: 225
+                                },
+                                preference: {
+                                    pax: undefined,
+                                    cargo: undefined
+                                },
+                                options: {
+                                    show_warnings: true,
+                                    show_tips: false,
+                                    cost_index: 200,
+                                    activity: 18,
+                                    code: undefined,
+                                    fuel_price: 500,
+                                    co2_price: 125
+                                }
                             },
-                            salaries: {
-                                pilot: 200,
-                                crew: 150,
-                                engineer: 250,
-                                tech: 225
-                            },
-                            preference: {
-                                pax: undefined,
-                                cargo: undefined
-                            },
-                            options: {
-                                show_warnings: true,
-                                show_tips: false,
-                                cost_index: 200,
-                                activity: 18,
-                                code: undefined,
-                                fuel_price: 500,
-                                co2_price: 125
+                            $set: {
+                                mode: <GameMode>airline.gameMode.toLowerCase()
                             }
-                        },
-                        $set: {
-                            mode: <GameMode>airline.gameMode.toLowerCase()
+                        }, 
+                        { 
+                            upsert: true 
                         }
-                    }, { upsert: true });
+                    );
                     if (interaction.guild) {
                         const server = await servers.findOne({ id: interaction.guildId });
                         const member = <GuildMember>interaction.member;

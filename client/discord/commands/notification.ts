@@ -332,11 +332,18 @@ const command: SlashCommand = {
                     break;
                 }
                 case "leaderboard": {
-                    const cursor = users.find({ notifications_made: { $gt: 0 } }, {
-                        sort: {
-                            notifications_made: -1
+                    const cursor = users.find(
+                        { 
+                            notifications_made: { 
+                                $gt: 0
+                            } 
+                        },
+                        {
+                            sort: {
+                                notifications_made: -1
+                            }
                         }
-                    });
+                    );
                     const amount = await cursor.count();
                     const members = await cursor.limit(10).toArray();
                     const embed = new MessageEmbed({

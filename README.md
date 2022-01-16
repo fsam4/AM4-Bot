@@ -26,11 +26,11 @@ Thank you to the AM4 Bot team and other people who supported me in developing, m
 
 ### AM4 Bot team
 AM4 Bot team was a selected group of players for moderation, error reporting and beta testing. In addition, they have contributed by making some of the quiz games and providing information on different game mechanics.
-- <code>AMBE#6969</code> aka AMBE Airlines
-- <code>Antony#6179</code> aka Prestige Wings
-- <code>Gulf Airways#4655</code> aka Gulf Airways
-- <code>IɴᴛᴇʀGᴀʟᴀᴄᴛɪᴄ#1010</code> aka InterGalactic
-- <code>•_•#1381</code> aka Emeritas
+- `AMBE#6969` aka AMBE Airlines
+- `Antony#6179` aka Prestige Wings
+- `Gulf Airways#4655` aka Gulf Airways
+- `IɴᴛᴇʀGᴀʟᴀᴄᴛɪᴄ#1010` aka InterGalactic
+- `•_•#1381` aka Emeritas
 
 # Discussions
 > ⚠️ This respitory will be archived in some months or a year. Starting new dicussions will not be possible after that.

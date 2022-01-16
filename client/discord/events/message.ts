@@ -8,7 +8,6 @@ import addSeconds from 'date-fns/addSeconds';
 import addMonths from 'date-fns/addMonths';
 import addDays from 'date-fns/addDays';
 
-import type { FindOneAndUpdateOptions } from 'mongodb';
 import type { Discord, AM4_Data } from '@typings/database';
 import type { Event } from '../types';
 
@@ -22,11 +21,6 @@ const requiredLevel = {
     warn: 2,
     cooldown: 2
 };
-
-const updateOptions: FindOneAndUpdateOptions = {
-    returnDocument: "after",
-    upsert: true
-}
 
 const event: Event = {
     name: 'messageCreate',
@@ -131,19 +125,28 @@ const event: Event = {
                             .catch(err => void err);
                         }
                         if (!user) throw new DiscordClientError("Invalid user...");
-                        const res = await users.findOneAndUpdate({ id: user.id }, {
-                            $setOnInsert: {
-                                admin_level: 0,
-                                notifications_made: 0,
-                                commands: []
-                            },
-                            $push: {
-                                warnings: {
-                                    date: message.createdAt,
-                                    reason: reason
+                        const res = await users.findOneAndUpdate(
+                            { 
+                                id: user.id 
+                            }, 
+                            {
+                                $setOnInsert: {
+                                    admin_level: 0,
+                                    notifications_made: 0,
+                                    commands: []
+                                },
+                                $push: {
+                                    warnings: {
+                                        date: message.createdAt,
+                                        reason: reason
+                                    }
                                 }
+                            }, 
+                            {
+                                returnDocument: "after",
+                                upsert: true
                             }
-                        }, updateOptions);
+                        );
                         if (!res.ok) throw new DiscordClientError("Failed to warn this user...");
                         if (res.value.warnings.length >= 5) {
                             const date = addDays(message.createdAt, 7);
@@ -185,17 +188,26 @@ const event: Event = {
                             if (account.admin_level === 5 && days > 365) throw new DiscordClientError("The maximum suspension is 365 days!");
                         }
                         const date = addDays(message.createdAt, days);
-                        const res = await users.findOneAndUpdate({ id: user.id }, {
-                            $setOnInsert: {
-                                admin_level: 0,
-                                notifications_made: 0,
-                                commands: [],
-                                warnings: []
+                        const res = await users.findOneAndUpdate(
+                            { 
+                                id: user.id 
+                            }, 
+                            {
+                                $setOnInsert: {
+                                    admin_level: 0,
+                                    notifications_made: 0,
+                                    commands: [],
+                                    warnings: []
+                                },
+                                $set: {
+                                    mute: date
+                                }
                             },
-                            $set: {
-                                mute: date
+                            {
+                                returnDocument: "after",
+                                upsert: true
                             }
-                        }, updateOptions);
+                        );
                         if (!res.ok) throw new DiscordClientError("Failed to suspend this user...");
                         await user.send(`You have been suspended from using command until ${Formatters.time(date, "F")} for "${reason}".`);
                         await message.reply(`${Formatters.bold(`${user.username}#${user.discriminator}`)} has been suspended until ${Formatters.time(date, "F")}!`);

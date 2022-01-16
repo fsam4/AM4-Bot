@@ -281,14 +281,17 @@ if (cluster.isPrimary) {
                                     }
                                 });
                             } else {
-                                await users.updateOne({ id: ctx.from.id }, {
-                                    $inc: {
-                                        "commands.$[element].uses": 1
+                                await users.updateOne({ id: ctx.from.id }, 
+                                    {
+                                        $inc: {
+                                            "commands.$[element].uses": 1
+                                        }
+                                    }, 
+                                    {
+                                        upsert: true,
+                                        arrayFilters: [{ "element.command": command.name }]
                                     }
-                                }, {
-                                    upsert: true,
-                                    arrayFilters: [{ "element.command": command.name }]
-                                });
+                                );
                             }
                         }
                     });

@@ -1,35 +1,35 @@
 {
-  "compilerOptions": {
-    "moduleResolution": "node",
-    "target": "ES2020",
-    "module": "CommonJS",
-    "lib": ["DOM", "ES2020"],
-    "resolveJsonModule": true,
-    "removeComments": true,
-    "baseUrl": "./",
-    "esModuleInterop": true,
-    "pretty": true,
-    "diagnostics": true,
-    "paths": {
-      "@client/*": ["client/*"],
-      "@discord/*": ["client/discord/*"],
-      "@telegram/*": ["client/telegram/*"],
-      "@typings/*": ["typings/*"],
-      "@source/*": ["src/*"],
-      "@documents/*": ["documents/*"]
-    }
-  },
-  "include": [
-    "client/**/**/*",
-    "typings/**/*",
-    "typings/*",
-    "src/**/*"
-  ],
-  "files": [
-    "bot.ts",
-    "global.ts",
-    "global.d.ts",
-    "updateCommands.ts",
-    "announce.ts"
-  ]
+    "compilerOptions": {
+        "moduleResolution": "node",
+        "target": "ES2020",
+        "module": "CommonJS",
+        "lib": ["DOM", "ES2020"],
+        "resolveJsonModule": true,
+        "removeComments": true,
+        "baseUrl": "./",
+        "esModuleInterop": true,
+        "pretty": true,
+        "diagnostics": true,
+        "paths": {
+            "@client/*": ["client/*"],
+            "@discord/*": ["client/discord/*"],
+            "@telegram/*": ["client/telegram/*"],
+            "@typings/*": ["typings/*"],
+            "@source/*": ["src/*"],
+            "@documents/*": ["documents/*"]
+        }
+    },
+    "include": [
+        "client/**/**/*",
+        "typings/**/*",
+        "typings/*",
+        "src/**/*"
+    ],
+    "files": [
+        "bot.ts",
+        "global.ts",
+        "global.d.ts",
+        "updateCommands.ts",
+        "announce.ts"
+    ]
 }

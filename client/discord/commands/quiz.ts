@@ -1,5 +1,5 @@
 import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, Formatters, Constants, type ButtonInteraction, type Message, type TextChannel, type ThreadChannel } from 'discord.js';
-import { ObjectId, type FindOneAndUpdateOptions, type Binary, type Filter } from 'mongodb';
+import { ObjectId, type Binary, type Filter } from 'mongodb';
 import DiscordClientError from '../error';
 import config from '../../../config.json';
 
@@ -15,11 +15,6 @@ const modes = {
 
 const addScore = (multiplier: number) => parseFloat((Math.random() * multiplier * eventMultiplier).toFixed(2));
 const isLastRound = (index: number, rounds: number) => (index + 1) === rounds;
-
-const options: FindOneAndUpdateOptions = { 
-    upsert: true,
-    returnDocument: "after" 
-};
 
 const command: SlashCommand = {
     get name() {
@@ -290,25 +285,43 @@ const command: SlashCommand = {
                                         const msg = messages.first();
                                         if (config.tournament?.enabled) {
                                             const $score = addScore(modes[mode] * game.reward);
-                                            const user = await users.findOneAndUpdate({ id: msg.author.id }, {
-                                                $setOnInsert: {
-                                                    id: msg.author.id
-                                                },
-                                                $inc: {
-                                                    points: game.reward * modes[mode],
-                                                    score: $score
+                                            const user = await users.findOneAndUpdate(
+                                                { 
+                                                    id: msg.author.id 
+                                                }, 
+                                                {
+                                                    $setOnInsert: {
+                                                        id: msg.author.id
+                                                    },
+                                                    $inc: {
+                                                        points: game.reward * modes[mode],
+                                                        score: $score
+                                                    }
+                                                }, 
+                                                {
+                                                    upsert: true,
+                                                    returnDocument: "after" 
                                                 }
-                                            }, options);
+                                            );
                                             await msg.reply(`That is the correct answer! You now have ${Formatters.bold(user.value.points.toLocaleString(guildLocale))} (+${game.reward * modes[mode]}) points and a score of ${Formatters.bold(user.value.score.toLocaleString(guildLocale))} (+${$score})!`);
                                         } else {
-                                            const user = await users.findOneAndUpdate({ id: msg.author.id }, {
-                                                $setOnInsert: {
-                                                    id: msg.author.id
-                                                },
-                                                $inc: {
-                                                    points: game.reward * modes[mode]
+                                            const user = await users.findOneAndUpdate(
+                                                { 
+                                                    id: msg.author.id 
+                                                }, 
+                                                {
+                                                    $setOnInsert: {
+                                                        id: msg.author.id
+                                                    },
+                                                    $inc: {
+                                                        points: game.reward * modes[mode]
+                                                    }
+                                                }, 
+                                                {
+                                                    upsert: true,
+                                                    returnDocument: "after" 
                                                 }
-                                            }, options);
+                                            );
                                             await msg.reply(`That is the correct answer! You now have ${Formatters.bold(user.value.points.toLocaleString(guildLocale))} (+${game.reward * modes[mode]}) points!`);
                                         }
                                         setTimeout(play, 5000, index + 1);
