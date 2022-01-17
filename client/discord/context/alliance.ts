@@ -1,6 +1,7 @@
 import { MessageEmbed, MessageSelectMenu, Formatters, MessageActionRow, Constants, type Message, type MessageComponentInteraction, type UserContextMenuInteraction } from 'discord.js';
 import DiscordClientError from '../error';
 import QuickChart from 'quickchart-js';
+import { emojis } from '../../../config.json';
 
 import formatDistanceToNowStrict from 'date-fns/formatDistanceToNowStrict';
 import compareAsc from 'date-fns/compareAsc';
@@ -219,7 +220,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                                 }
                             },
                             {
-                                emoji: "836889801801072640",
+                                emoji: emojis.payraise,
                                 data: {
                                     type: 'line',
                                     data: {

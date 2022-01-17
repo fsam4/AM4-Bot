@@ -1,7 +1,8 @@
-import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, MessageSelectMenu, Formatters, Constants, type MessageComponentInteraction, type Message, type ApplicationCommandOptionChoice } from 'discord.js';
+import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, MessageSelectMenu, Formatters, Constants, Team, type MessageComponentInteraction, type Message, type ApplicationCommandOptionChoice } from 'discord.js';
 import { ObjectId, type Filter, type Document } from 'mongodb';
 import DiscordClientError from '../error';
 import QuickChart from 'quickchart-js';
+import { emojis } from '../../../config.json';
 import * as Utils from '../../utils';
 import Plane from '../../../src/lib/plane';
 
@@ -561,7 +562,7 @@ const command: SlashCommand = {
                             },
                             { 
                                 name: '\u200B', 
-                                value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} <:points:836889858545811496>`}\n**A-check:** $${Math.round((user.mode === "easy" || default_stats) ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
+                                value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round((user.mode === "easy" || default_stats) ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
                                 inline: true 
                             },
                             { 
@@ -614,19 +615,19 @@ const command: SlashCommand = {
                             {
                                 label: "Speed Modification",
                                 value: "speed",
-                                emoji: "836889928117256222",
+                                emoji: emojis.status,
                                 default: (modifications.speed && !default_stats)
                             },
                             {
                                 label: "Fuel Modification",
                                 value: "fuel",
-                                emoji: "836889541687115816",
+                                emoji: emojis.fuel,
                                 default: (modifications.fuel && !default_stats)
                             },
                             {
                                 label: "Co2 Modification",
                                 value: "co2",
-                                emoji: "836889394966298635",
+                                emoji: emojis.co2,
                                 default: (modifications.co2 && !default_stats)
                             }
                         ]
@@ -719,7 +720,7 @@ const command: SlashCommand = {
                             },
                             { 
                                 name: '\u200B', 
-                                value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} <:points:836889858545811496>`}\n**A-check:** $${Math.round((user.mode === "easy" || default_stats) ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
+                                value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round((user.mode === "easy" || default_stats) ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
                                 inline: true 
                             },
                             { 
@@ -876,7 +877,7 @@ const command: SlashCommand = {
                                 },
                                 { 
                                     name: '\u200B', 
-                                    value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} <:points:836889858545811496>`}\n**A-check:** $${Math.round(user.mode === "easy" ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
+                                    value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round(user.mode === "easy" ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
                                     inline: true 
                                 },
                                 { 
@@ -1480,7 +1481,9 @@ const command: SlashCommand = {
                 case "settings": {
                     switch(subCommand) {
                         case "create": {
-                            if (!account || account.admin_level < 2) {
+                            const owner = interaction.client.application.owner;
+                            const isDeveloper = owner instanceof Team ? owner.members.some(member => member.id === interaction.user.id) : (interaction.user.id === owner.id);
+                            if (!isDeveloper && (!account || account.admin_level < 2)) {
                                 const existing_settings = await planeSettings.countDocuments({ id: interaction.user.id });
                                 if (existing_settings > 25) throw new DiscordClientError('You can only have 25 existing plane settings at a time!');
                             }

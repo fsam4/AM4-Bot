@@ -1,4 +1,4 @@
-import { Permissions, Formatters, WebhookClient, MessageEmbed, Constants, type MessagePayload, type WebhookMessageOptions } from 'discord.js';
+import { Permissions, Formatters, WebhookClient, MessageEmbed, Constants, Team, type MessagePayload, type WebhookMessageOptions } from 'discord.js';
 import { Discord as Utils } from '../../utils';
 import DiscordClientError from '../error';
 import { ObjectId } from 'bson';
@@ -148,7 +148,9 @@ const command: SlashCommand = {
                             token: decrypted.toString(CryptoJS.enc.Utf8)
                         });
                     });
-                    if (!account || account.admin_level < 1) {
+                    const owner = interaction.client.application.owner;
+                    const isDeveloper = owner instanceof Team ? owner.members.some(member => member.id === interaction.user.id) : (interaction.user.id === owner.id);
+                    if (!isDeveloper && !account?.admin_level) {
                         const timeout = await cooldowns.get("notification");
                         if (timeout) throw new DiscordClientError(`The next notification can be posted ${formatDistanceToNowStrict(new Date(timeout), { addSuffix: true })}`);
                     }
@@ -211,7 +213,9 @@ const command: SlashCommand = {
                     const id = interaction.options.getString("id", true).trim();
                     const notification = await notificationCollection.findOne(ObjectId.isValid(id) ? new ObjectId(id) : { "webhooks.message": id });
                     if (!notification) throw new DiscordClientError("That is not a valid notification ID. Please note that you can only edit notifications from the last 24 hours!");
-                    if (!account || account.admin_level < 1) {
+                    const owner = interaction.client.application.owner;
+                    const isDeveloper = owner instanceof Team ? owner.members.some(member => member.id === interaction.user.id) : (interaction.user.id === owner.id);
+                    if (!isDeveloper && !account?.admin_level) {
                         if (interaction.user.id !== notification.user) throw new DiscordClientError("You can only edit your own notifications!");
                         if (isPast(notification.expireAt)) throw new DiscordClientError("You can only edit notifications during the price period when they were posted!");
                         if (notification.edited) {
@@ -261,7 +265,9 @@ const command: SlashCommand = {
                     const id = interaction.options.getString("id", true).trim();
                     const notification = await notificationCollection.findOne(ObjectId.isValid(id) ? new ObjectId(id) : { "webhooks.message": id });
                     if (!notification) throw new DiscordClientError("That is not a valid notification ID. Please note that you can only delete notifications from the last 24 hours!");
-                    if (!account || account.admin_level < 1) {
+                    const owner = interaction.client.application.owner;
+                    const isDeveloper = owner instanceof Team ? owner.members.some(member => member.id === interaction.user.id) : (interaction.user.id === owner.id);
+                    if (!isDeveloper && !account?.admin_level) {
                         if (interaction.user.id !== notification.user) throw new DiscordClientError("You can only delete your own notifications!");
                         const cooldown = addMinutes(interaction.createdAt, 5);
                         await cooldowns.set(interaction.user.id, cooldown, 5 * 60 * 1000);

@@ -46,7 +46,7 @@ for (const file of menuCommandFiles) {
 
 const rest = new REST({ version: '9' }).setToken(process.env.BOT_TOKEN);
 
-(async () => {
+void async function () {
 	try {
 		console.log('Started refreshing application commands.');
 		const fullRoute = isDev 
@@ -62,4 +62,4 @@ const rest = new REST({ version: '9' }).setToken(process.env.BOT_TOKEN);
 	} catch (error) {
 		console.error(chalk.red("Failed to reload application commands:"), error);
 	}
-})();
+}();

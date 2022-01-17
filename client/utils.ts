@@ -1,4 +1,6 @@
 import { ObjectId, type Filter } from 'mongodb';
+import { Formatters } from 'discord.js';
+import { emojis } from '../config.json';
 
 import type { Settings, AM4_Data } from '@typings/database';
 
@@ -94,7 +96,7 @@ export class User implements Settings.user {
 }
 
 /**
- * A namespace containing utility functions for Discord client
+ * A namespace containing utility functions for the Discord client
  */
 
 export namespace Discord {
@@ -130,11 +132,11 @@ export namespace Discord {
     export function formatSeats(string: string) {
         const formattedString = string;
         return formattedString
-        .replace(/Y/g, '<:economy_seat:836890782606557185>')
-        .replace(/J/g, '<:business_seat:836890763664818207>')
-        .replace(/F/g, '<:first_seat:836890797495812117>')
-        .replace(/L/g, '<:cargo_small:836889344844365844>')
-        .replace(/H/g, '<:cargo_big:836889319939244043>');
+        .replace(/Y/g, Formatters.formatEmoji(emojis.economy_seat))
+        .replace(/J/g, Formatters.formatEmoji(emojis.business_seat))
+        .replace(/F/g, Formatters.formatEmoji(emojis.first_seat))
+        .replace(/L/g, Formatters.formatEmoji(emojis.cargo_small))
+        .replace(/H/g, Formatters.formatEmoji(emojis.cargo_big));
     }
 
     /**

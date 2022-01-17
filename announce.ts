@@ -10,7 +10,7 @@ dotenv.config({ path: isTest ? ".env.local" : ".env" });
 
 const rest = new REST({ version: '9' }).setToken(process.env.BOT_TOKEN);
 
-(async () => {
+void async function () {
     try {
         console.log("Sending announcement...");
         const fullRoute = isTest 
@@ -23,4 +23,4 @@ const rest = new REST({ version: '9' }).setToken(process.env.BOT_TOKEN);
     catch (error) {
         console.error(chalk.red("Failed to send announcement:"), error);
     }
-})();
+}();

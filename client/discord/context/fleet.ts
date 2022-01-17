@@ -1,5 +1,6 @@
 import { MessageEmbed, MessageActionRow, MessageSelectMenu, Formatters, MessageAttachment, Constants, type Message, type MessageComponentInteraction, type UserContextMenuInteraction } from 'discord.js';
 import DiscordClientError from '../error';
+import { emojis } from '../../../config.json';
 import { User } from '../../utils';
 import Plane from '../../../src/lib/plane';
 
@@ -94,12 +95,11 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                 customId: "plane",
                 placeholder: "Select an aircraft...",
                 options: planes.map(plane => {
-                    const optionEmoji = plane.type === "cargo" ? "875394412363022396" : (plane.type === "pax" ? "875394515006005309" : "875394473172033546");
                     return {
                         label: plane.name,
                         value: plane._id.toHexString(),
                         description: `${plane.amount} planes`,
-                        emoji: optionEmoji
+                        emoji: emojis[plane.type]
                     }
                 })
             });
@@ -134,7 +134,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                     },
                     { 
                         name: '\u200B', 
-                        value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} <:points:836889858545811496>`}\n**A-check:** $${Math.round(airline.gameMode === "Easy" ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time}h\n**Pilots:** ${plane.staff.pilots} persons\n**Crew:** ${plane.staff.crew} persons\n**Engineers:** ${plane.staff.engineers} persons\n**Tech:** ${plane.staff.tech} persons`, 
+                        value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round(airline.gameMode === "Easy" ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time}h\n**Pilots:** ${plane.staff.pilots} persons\n**Crew:** ${plane.staff.crew} persons\n**Engineers:** ${plane.staff.engineers} persons\n**Tech:** ${plane.staff.tech} persons`, 
                         inline: true 
                     },
                     { 
@@ -181,7 +181,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                         },
                         { 
                             name: '\u200B', 
-                            value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} <:points:836889858545811496>`}\n**A-check:** $${Math.round(airline.gameMode === "Realism" ? plane.A_check.price * 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
+                            value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round(airline.gameMode === "Realism" ? plane.A_check.price * 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
                             inline: true 
                         },
                         { 

@@ -1,6 +1,7 @@
 import { Permissions, MessageEmbed, Formatters, Constants, MessageActionRow, MessageButton, type GuildMember, type RoleResolvable, type TextChannel } from 'discord.js';
 import { Discord as Utils, User } from '../../utils';
 import DiscordClientError from '../error';
+import { emojis } from '../../../config.json';
 import format from 'date-fns/format';
 
 import type { Discord, Settings } from '@typings/database';
@@ -311,12 +312,12 @@ const command: SlashCommand = {
                                 fields: [
                                     { 
                                         name: Formatters.bold(Formatters.underscore("Salaries")), 
-                                        value: `<:pilots:836889820806643763> $${salaries.pilot.toLocaleString(locale)}\n<:crew:836889420584976395> $${salaries.crew.toLocaleString(locale)}\n<:engineer:836889468320481290> $${salaries.tech.toLocaleString(locale)}\n<:tech:836889959519617054> $${salaries.tech.toLocaleString(locale)}`, 
+                                        value: `${Formatters.formatEmoji(emojis.pilots)} $${salaries.pilot.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.crew)} $${salaries.crew.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.engineer)} $${salaries.tech.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.tech)} $${salaries.tech.toLocaleString(locale)}`, 
                                         inline: true 
                                     },
                                     { 
                                         name: Formatters.bold(Formatters.underscore("Training")), 
-                                        value: `<:co2_reduce:836889406596972544> -${training.co2}%\n<:fuel_reduce:836889558595272754> -${training.fuel}%\n<:cargo_big:836889319939244043> +${training.cargo_heavy}%\n<:cargo_small:836889344844365844> +${training.cargo_large}%`, 
+                                        value: `${Formatters.formatEmoji(emojis.co2_reduce)} -${training.co2}%\n${Formatters.formatEmoji(emojis.fuel_reduce)} -${training.fuel}%\n${Formatters.formatEmoji(emojis.cargo_big)} +${training.cargo_heavy}%\n${Formatters.formatEmoji(emojis.cargo_small)} +${training.cargo_large}%`, 
                                         inline: true 
                                     },
                                     { 

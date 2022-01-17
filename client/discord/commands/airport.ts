@@ -3,6 +3,7 @@ import { ObjectId, type GeoNear, type Filter, type Document } from 'mongodb';
 import { MongoDB as Utils } from '../../utils';
 import DiscordClientError from '../error';
 import QuickChart from 'quickchart-js';
+import { emojis } from '../../../config.json';
 import Plane from '../../../src/lib/plane';
 
 import type { AM4_Data, Settings } from '@typings/database';
@@ -344,7 +345,7 @@ const command: SlashCommand = {
                             },
                             { 
                                 name: Formatters.bold(Formatters.underscore("Average demand")), 
-                                value: `<:first_seat:836890797495812117> ${average.F.toLocaleString(locale)}\n<:business_seat:836890763664818207> ${average.J.toLocaleString(locale)}\n<:economy_seat:836890782606557185> ${average.Y.toLocaleString(locale)}\n<:large_load:836889662806556683> ${average.L.toLocaleString(locale)} lbs\n<:heavy_load:836889609916645388> ${average.H.toLocaleString(locale)} lbs` 
+                                value: `${Formatters.formatEmoji(emojis.first_seat)} ${average.F.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.business_seat)} ${average.J.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.economy_seat)} ${average.Y.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.large_load)} ${average.L.toLocaleString(locale)} lbs\n${Formatters.formatEmoji(emojis.heavy_load)} ${average.H.toLocaleString(locale)} lbs` 
                             }
                         ]
                     });

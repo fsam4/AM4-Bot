@@ -115,7 +115,9 @@ const event: Event = {
                                 }, 
                                 {
                                     arrayFilters: [
-                                        { "element.command": interaction.commandName }
+                                        { 
+                                            "element.command": interaction.commandName 
+                                        }
                                     ]
                                 }
                             );
@@ -150,7 +152,7 @@ const event: Event = {
                     if (!interaction.client.components.has(componentName)) return;
                     const component = interaction.client.components.get(componentName);
                     if (!component.customId.test(interaction.customId)) return;
-                    if (!user || user.admin_level < 1) {
+                    if (!user?.admin_level) {
                         const cooldown = await cooldowns.get(interaction.user.id);
                         if (cooldown) {
                             return interaction.reply({

@@ -1,6 +1,7 @@
 import { MessageEmbed, MessageActionRow, MessageSelectMenu, Formatters, Constants, type Message, type MessageComponentInteraction, type UserContextMenuInteraction } from 'discord.js';
 import DiscordClientError from '../error';
 import QuickChart from 'quickchart-js';
+import { emojis } from '../../../config.json';
 import { User } from '../../utils';
 import Airline from '../../../src/classes/airline';
 
@@ -112,14 +113,14 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                     {
                         label: "Airline",
                         value: "airline",
-                        emoji: "836889841517330442",
+                        emoji: emojis.plane,
                         description: "General airline statistics",
                         default: true
                     },
                     {
                         label: "Fleet",
                         value: "fleet",
-                        emoji: "836889498884374548",
+                        emoji: emojis.fleet,
                         description: "General fleet statistics",
                         default: false
                     }
@@ -194,7 +195,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                         },
                         {
                             name: Formatters.bold(Formatters.underscore("Airline staff")),
-                            value: `<:pilots:836889820806643763> ${staff.pilots.toLocaleString(locale)}\n<:crew:836889420584976395> ${staff.crew.toLocaleString(locale)}\n<:engineer:836889468320481290> ${staff.engineers.toLocaleString(locale)}\n<:tech:836889959519617054> ${staff.tech.toLocaleString(locale)}`,
+                            value: `${Formatters.formatEmoji(emojis.pilots)} ${staff.pilots.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.crew)} ${staff.crew.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.engineer)} ${staff.engineers.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.tech)} ${staff.tech.toLocaleString(locale)}`,
                             inline: true
                         },
                         {

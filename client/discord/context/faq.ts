@@ -1,5 +1,6 @@
 import { Constants, Formatters, Message, MessageSelectMenu, MessageButton, MessageActionRow, type MessageContextMenuInteraction } from 'discord.js';
 import DiscordClientError from '../error';
+import { emojis } from '../../../config.json';
 
 import type { ContextMenu } from '../types';
 import type { Discord } from '@typings/database';
@@ -50,7 +51,7 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
                                 label: doc.question,
                                 value: doc._id.toHexString(),
                                 description: doc.answer.slice(0, 97) + (doc.answer.length > 97 ? "..." : ""),
-                                emoji: "836889629369171971",
+                                emoji: emojis.help,
                                 default: !index
                             }))
                         })
@@ -103,7 +104,7 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
                         collector.stop("selectedValue");
                         if (componentInteraction.customId === "confirm") {
                             await interaction.followUp({
-                                content: `${Formatters.italic(`FAQ suggestion for ${Formatters.memberNicknameMention(interaction.targetMessage.author.id)}:`)}\n${Formatters.formatEmoji("836889629369171971")} ${Formatters.bold(currentDocument.question + ":")}\n${Formatters.blockQuote(currentDocument.answer)}`,
+                                content: `${Formatters.italic(`FAQ suggestion for ${Formatters.memberNicknameMention(interaction.targetMessage.author.id)}:`)}\n${Formatters.formatEmoji(emojis.help)} ${Formatters.bold(currentDocument.question + ":")}\n${Formatters.blockQuote(currentDocument.answer)}`,
                                 allowedMentions: {
                                     users: [interaction.targetMessage.author.id]
                                 }
@@ -126,7 +127,7 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
                 const doc = await cursor.tryNext();
                 if (!doc) throw new DiscordClientError("No FAQ results could be found with this message...");
                 await interaction.editReply({
-                    content: `${Formatters.italic(`FAQ suggestion for ${Formatters.memberNicknameMention(interaction.targetMessage.author.id)}:`)}\n${Formatters.formatEmoji("836889629369171971")} ${Formatters.bold(doc.question + ":")}\n${Formatters.blockQuote(doc.answer)}`,
+                    content: `${Formatters.italic(`FAQ suggestion for ${Formatters.memberNicknameMention(interaction.targetMessage.author.id)}:`)}\n${Formatters.formatEmoji(emojis.help)} ${Formatters.bold(doc.question + ":")}\n${Formatters.blockQuote(doc.answer)}`,
                     allowedMentions: {
                         users: [interaction.targetMessage.author.id]
                     }

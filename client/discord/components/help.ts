@@ -237,7 +237,7 @@ const component: Component<SelectMenuInteraction> = {
                             },
                             {
                                 name: 'Getting Started...',
-                                value: `Most of the AM4 Bot commands are slash commands. Type \`/\` in the chat to see them all or click <:chat:836889383135215646> for a list of commands. You can also use AM4 Bot's context menu commands by right clicking a message or a user. If you require support join ${Formatters.hyperlink("the Air France KLM server", "https://discord.gg/f8WHuRX")}.`
+                                value: `Most of the AM4 Bot commands are slash commands. Type \`/\` in the chat to see them all or click ${Formatters.formatEmoji(config.emojis.chat)} for a list of commands. You can also use AM4 Bot's context menu commands by right clicking a message or a user. If you require support join ${Formatters.hyperlink("the Air France KLM server", "https://discord.gg/f8WHuRX")}.`
                             },
                             {
                                 name: 'Logging in with AM4 Bot...',

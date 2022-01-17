@@ -1,6 +1,7 @@
 import { MessageEmbed, MessageSelectMenu, Formatters, MessageActionRow, Constants, type Message, type MessageComponentInteraction, type UserContextMenuInteraction } from 'discord.js';
 import DiscordClientError from '../error';
 import QuickChart from 'quickchart-js';
+import { emojis } from '../../../config.json';
 
 import differenceInWeeks from 'date-fns/differenceInWeeks';
 import differenceInDays from 'date-fns/differenceInDays';
@@ -80,7 +81,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                         embed.fields[1].value += `\n**This week:** $${thisWeek.toLocaleString(locale)}`;
                         embed.fields[2].value += `\n**This week:** $${average.toLocaleString(locale)}/day`;
                         charts.push({
-                            emoji: '836889801801072640',
+                            emoji: emojis.payraise,
                             data: {
                                 type: "line",
                                 data: {
@@ -191,8 +192,8 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                         });
                     }
                     if (memberDocument.sv.length) {
-                        charts.push(                    {
-                            emoji: '836889943501570058',
+                        charts.push({
+                            emoji: emojis.stock,
                             data: {
                                 type: "line",
                                 data: {

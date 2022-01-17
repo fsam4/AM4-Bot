@@ -2,6 +2,7 @@ import { MessageEmbed, Permissions, MessageAttachment, MessageSelectMenu, Messag
 import { ObjectId, type Document, type Filter } from 'mongodb';
 import DiscordClientError from '../error';
 import QuickChart from 'quickchart-js';
+import { emojis } from '../../../config.json';
 import * as Utils from '../../utils';
 import Route from '../../../src/classes/route';
 import Plane from '../../../src/lib/plane';
@@ -273,7 +274,7 @@ const command: SlashCommand = {
                         fields: [
                             { 
                                 name: Formatters.bold(Formatters.underscore("Route demand")), 
-                                value: `<:first_seat:836890797495812117> ${demand.F.toLocaleString(locale)}\n<:business_seat:836890763664818207> ${demand.J.toLocaleString(locale)}\n<:economy_seat:836890782606557185> ${demand.Y.toLocaleString(locale)}\n<:cargo_small:836889344844365844> ${demand.L.toLocaleString(locale)} lbs\n<:cargo_big:836889319939244043> ${demand.H.toLocaleString(locale)} lbs`, 
+                                value: `${Formatters.formatEmoji(emojis.first_seat)} ${demand.F.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.business_seat)} ${demand.J.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.economy_seat)} ${demand.Y.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.large_load)} ${demand.L.toLocaleString(locale)} lbs\n${Formatters.formatEmoji(emojis.heavy_load)} ${demand.H.toLocaleString(locale)} lbs`, 
                                 inline: true 
                             } 
                         ]
@@ -402,12 +403,12 @@ const command: SlashCommand = {
                                 },
                                 { 
                                     name: Formatters.bold(Formatters.underscore("Ticket prices")), 
-                                    value: `<:first_seat:836890797495812117> $${ticket[user.mode][ticketType].F}\n<:business_seat:836890763664818207> $${ticket[user.mode][ticketType].J}\n<:economy_seat:836890782606557185> $${ticket[user.mode][ticketType].Y}\n<:cargo_small:836889344844365844> $${ticket[user.mode].default.L}\n<:cargo_big:836889319939244043> $${ticket[user.mode].default.H}`, 
+                                    value: `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[user.mode][ticketType].F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[user.mode][ticketType].J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[user.mode][ticketType].Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[user.mode].default.L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[user.mode].default.H}`, 
                                     inline: true 
                                 },
                                 { 
                                     name: Formatters.bold(Formatters.underscore("Configuration")), 
-                                    value: `<:first_seat:836890797495812117> ${configuration.F}\n<:business_seat:836890763664818207> ${configuration.J}\n<:economy_seat:836890782606557185> ${configuration.Y}\n<:cargo_small:836889344844365844> ${cargoConfig.L}%\n<:cargo_big:836889319939244043> ${cargoConfig.H}%`, 
+                                    value: `${Formatters.formatEmoji(emojis.first_seat)} ${configuration.F}\n${Formatters.formatEmoji(emojis.business_seat)} ${configuration.J}\n${Formatters.formatEmoji(emojis.economy_seat)} ${configuration.Y}\n${Formatters.formatEmoji(emojis.cargo_small)} ${cargoConfig.L}%\n${Formatters.formatEmoji(emojis.cargo_big)} ${cargoConfig.H}%`, 
                                     inline: true 
                                 },
                                 { 
@@ -482,12 +483,12 @@ const command: SlashCommand = {
                             embed.addFields([
                                 { 
                                     name: Formatters.bold(Formatters.underscore("Ticket prices")), 
-                                    value: `<:first_seat:836890797495812117> $${ticket[user.mode][ticketType].F}\n<:business_seat:836890763664818207> $${ticket[user.mode][ticketType].J}\n<:economy_seat:836890782606557185> $${ticket[user.mode][ticketType].Y}\n<:cargo_small:836889344844365844> $${ticket[user.mode].default.L}\n<:cargo_big:836889319939244043> $${ticket[user.mode].default.H}`, 
+                                    value: `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[user.mode][ticketType].F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[user.mode][ticketType].J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[user.mode][ticketType].Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[user.mode].default.L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[user.mode].default.H}`, 
                                     inline: true 
                                 },
                                 { 
                                     name: Formatters.bold(Formatters.underscore("Configuration")), 
-                                    value: `<:first_seat:836890797495812117> ${configuration.F}\n<:business_seat:836890763664818207> ${configuration.J}\n<:economy_seat:836890782606557185> ${configuration.Y}\n<:cargo_small:836889344844365844> ${cargoConfig.L}%\n<:cargo_big:836889319939244043> ${cargoConfig.H}%`, 
+                                    value: `${Formatters.formatEmoji(emojis.first_seat)} ${configuration.F}\n${Formatters.formatEmoji(emojis.business_seat)} ${configuration.J}\n${Formatters.formatEmoji(emojis.economy_seat)} ${configuration.Y}\n${Formatters.formatEmoji(emojis.cargo_small)} ${cargoConfig.L}%\n${Formatters.formatEmoji(emojis.cargo_big)} ${cargoConfig.H}%`, 
                                     inline: true 
                                 },
                                 { 
@@ -527,7 +528,7 @@ const command: SlashCommand = {
                                 customId: "plane",
                                 label: "View plane",
                                 style: "SECONDARY",
-                                emoji: "836889841517330442"
+                                emoji: emojis.plane
                             })
                         ]);
                     } else {
@@ -552,7 +553,7 @@ const command: SlashCommand = {
                         }
                         embed.addFields({ 
                             name: Formatters.bold(Formatters.underscore("Ticket prices")), 
-                            value: `<:first_seat:836890797495812117> $${ticket[user.mode].default.F}\n<:business_seat:836890763664818207> $${ticket[user.mode].default.J}\n<:economy_seat:836890782606557185> $${ticket[user.mode].default.Y}\n<:cargo_small:836889344844365844> $${ticket[user.mode].default.L}\n<:cargo_big:836889319939244043> $${ticket[user.mode].default.H}`, 
+                            value: `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[user.mode].default.F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[user.mode].default.J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[user.mode].default.Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[user.mode].default.L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[user.mode].default.H}`, 
                             inline: true 
                         });
                         row.addComponents([
@@ -560,7 +561,7 @@ const command: SlashCommand = {
                                 customId: "vip",
                                 label: "Use VIP ticket prices",
                                 style: "PRIMARY",
-                                emoji: "875394473172033546"
+                                emoji: emojis.vip
                             })
                         ]);
                     }
@@ -604,7 +605,7 @@ const command: SlashCommand = {
                                         },
                                         { 
                                             name: '\u200B', 
-                                            value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} <:points:836889858545811496>`}\n**A-check:** $${Math.round(plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
+                                            value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round(plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
                                             inline: true 
                                         }
                                     ]
@@ -619,10 +620,10 @@ const command: SlashCommand = {
                                     files: files
                                 });
                             } else {
-                                embed.fields.last().value = `<:first_seat:836890797495812117> $${ticket[user.mode][interaction.customId].F}\n<:business_seat:836890763664818207> $${ticket[user.mode][interaction.customId].J}\n<:economy_seat:836890782606557185> $${ticket[user.mode][interaction.customId].Y}\n<:cargo_small:836889344844365844> $${ticket[user.mode][interaction.customId].L}\n<:cargo_big:836889319939244043> $${ticket[user.mode].default.H}`;
+                                embed.fields.last().value = `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[user.mode][interaction.customId].F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[user.mode][interaction.customId].J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[user.mode][interaction.customId].Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[user.mode][interaction.customId].L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[user.mode].default.H}`;
                                 button.setCustomId(interaction.customId === "vip" ? "default" : "vip");
                                 button.setLabel(interaction.customId === "vip" ? "Use default ticket prices" : "Use VIP ticket prices");
-                                button.setEmoji(interaction.customId === "vip" ? "875394515006005309" : "875394473172033546");
+                                button.setEmoji(interaction.customId === "vip" ? emojis.pax : emojis.vip);
                                 row.components[0] = button;
                                 await interaction.update({
                                     embeds: [embed],
@@ -670,12 +671,12 @@ const command: SlashCommand = {
                             },
                             { 
                                 name: Formatters.bold(Formatters.underscore("Route demand")), 
-                                value: `<:first_seat:836890797495812117> ${demand.F.toLocaleString(locale)}\n<:business_seat:836890763664818207> ${demand.J.toLocaleString(locale)}\n<:economy_seat:836890782606557185> ${demand.Y.toLocaleString(locale)}\n<:cargo_small:836889344844365844> ${demand.L.toLocaleString(locale)} lbs\n<:cargo_big:836889319939244043> ${demand.H.toLocaleString(locale)} lbs`, 
+                                value: `${Formatters.formatEmoji(emojis.first_seat)} ${demand.F.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.business_seat)} ${demand.J.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.economy_seat)} ${demand.Y.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.large_load)} ${demand.L.toLocaleString(locale)} lbs\n${Formatters.formatEmoji(emojis.heavy_load)} ${demand.H.toLocaleString(locale)} lbs`, 
                                 inline: true 
                             },
                             { 
                                 name: Formatters.bold(Formatters.underscore("Ticket prices")), 
-                                value: `<:first_seat:836890797495812117> $${ticket[user.mode].default.F}\n<:business_seat:836890763664818207> $${ticket[user.mode].default.J}\n<:economy_seat:836890782606557185> $${ticket[user.mode].default.Y}\n<:cargo_small:836889344844365844> $${ticket[user.mode].default.L}\n<:cargo_big:836889319939244043> $${ticket[user.mode].default.H}`, 
+                                value: `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[user.mode].default.F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[user.mode].default.J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[user.mode].default.Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[user.mode].default.L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[user.mode].default.H}`, 
                                 inline: true 
                             }
                         ]

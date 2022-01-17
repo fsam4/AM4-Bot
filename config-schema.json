@@ -13,7 +13,18 @@
         "clientId": {
             "type": "string",
             "description": "The main client ID. This can be used to run certain features only if the ID of the running client matches this ID.",
-            "minLength": 17
+            "pattern": "\\d{17,19}"
+        },
+        "emojis": {
+            "type": "object",
+            "description": "An object of emoji IDs used in the bot. Each key being the name of the emoji and each value being the ID.",
+            "patternProperties": {
+                "\\w+$": {
+                    "type": "string",
+                    "description": "The ID of the emoji",
+                    "pattern": "\\d{17,19}"
+                }
+            }
         },
         "tournament": {
             "type": "object",

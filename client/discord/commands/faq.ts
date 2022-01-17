@@ -1,6 +1,7 @@
-import { Constants, Permissions, Formatters, type ApplicationCommandOptionChoice } from 'discord.js';
+import { Constants, Permissions, Formatters, Team, type ApplicationCommandOptionChoice } from 'discord.js';
 import { ObjectId, type Filter } from 'mongodb';
 import DiscordClientError from '../error';
+import { emojis } from '../../../config.json';
 
 import type { SlashCommand } from '../types';
 import type { Discord } from '@typings/database';
@@ -167,7 +168,7 @@ const command: SlashCommand = {
                     }
                     const doc = await faqCollection.findOne(filter);
                     if (!doc) throw new DiscordClientError("No question could be found with that query...");
-                    let content = `${Formatters.formatEmoji("836889629369171971")} ${Formatters.bold(doc.question + ":")}\n${Formatters.blockQuote(doc.answer)}`;
+                    let content = `${Formatters.formatEmoji(emojis.help)} ${Formatters.bold(doc.question + ":")}\n${Formatters.blockQuote(doc.answer)}`;
                     const target = interaction.options.getUser("target");
                     if (target) content = `${Formatters.italic(`FAQ suggestion for ${Formatters.memberNicknameMention(target.id)}:`)}\n${content}`;
                     await interaction.editReply({
@@ -179,7 +180,9 @@ const command: SlashCommand = {
                     break;
                 }
                 case "create": {
-                    if (account.admin_level < 2) {
+                    const owner = interaction.client.application.owner;
+                    const isDeveloper = owner instanceof Team ? owner.members.some(member => member.id === interaction.user.id) : (interaction.user.id === owner.id);
+                    if (!isDeveloper && account.admin_level < 2) {
                         const authorQuestions = await faqCollection.countDocuments({ author: interaction.user.id });
                         if (authorQuestions >= 15) throw new DiscordClientError("You cannot create more than 15 personal questions...");
                     }
@@ -205,7 +208,9 @@ const command: SlashCommand = {
                     const questionID = interaction.options.getString("id");
                     if (!ObjectId.isValid(questionID)) throw new DiscordClientError("That is not a valid FAQ ID!");
                     const filter: Filter<Discord.faq> = { _id: new ObjectId(questionID), $and: [{ author: { $exists: true } }] };
-                    if (account.admin_level < 2) filter.$and.push({ author: interaction.user.id });
+                    const owner = interaction.client.application.owner;
+                    const isDeveloper = owner instanceof Team ? owner.members.some(member => member.id === interaction.user.id) : (interaction.user.id === owner.id);
+                    if (!isDeveloper && account.admin_level < 2) filter.$and.push({ author: interaction.user.id });
                     const doc = await faqCollection.findOneAndDelete(filter);
                     if (!doc.ok) throw new DiscordClientError("No question of yours could be deleted with that ID...");
                     await interaction.editReply(`${Formatters.italic(doc.value.question)} has been deleted...`);

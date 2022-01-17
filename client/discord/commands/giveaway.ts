@@ -1,4 +1,4 @@
-import { Permissions, MessageButton, MessageEmbed, Formatters, MessageActionRow, Constants, GuildMember, type TextChannel, type Message } from 'discord.js';
+import { Permissions, MessageButton, MessageEmbed, Formatters, MessageActionRow, Constants, GuildMember, Team, type TextChannel, type Message } from 'discord.js';
 import DiscordClientError from '../error';
 import { ObjectId } from 'bson';
 import CryptoJS from 'crypto-js';
@@ -252,7 +252,9 @@ const command: SlashCommand = {
                     break;
                 }
                 case "create": {
-                    if (!account || account.admin_level < 2) {
+                    const owner = interaction.client.application.owner;
+                    const isDeveloper = owner instanceof Team ? owner.members.some(member => member.id === interaction.user.id) : (interaction.user.id === owner.id);
+                    if (!isDeveloper && (!account || account.admin_level < 2)) {
                         const guild_giveaways = await giveaways.countDocuments({ server: interaction.guildId });
                         if (guild_giveaways > 10) throw new DiscordClientError("A server cannot have more than 10 active giveaways at a time!");
                         const user_giveaways = await giveaways.countDocuments({ author: interaction.user.id });

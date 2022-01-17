@@ -22,8 +22,8 @@ import addDays from 'date-fns/addDays';
 import isPast from 'date-fns/isPast';
 
 // * Importing types
-import type * as TelegramTypes from './client/telegram/types';
-import type * as DiscordTypes from './client/discord/types';
+import type * as TelegramClientTypes from './client/telegram/types';
+import type * as DiscordClientTypes from './client/discord/types';
 import type * as ClientTypes from './client/types';
 import type { BotCommand } from 'typegram';
 import type * as Database from '@typings/database';
@@ -48,15 +48,23 @@ if (cluster.isPrimary) {
     const discordWorker = cluster.fork(env.parsed);
     const telegramWorker = cluster.fork(env.parsed);
 
-    const closeProcess = () => {
-        discordWorker.send("disconnect");
-        telegramWorker.send("disconnect");
-        cluster.disconnect();
+    let discordDisconnectTimeout: NodeJS.Timeout, telegramDisconnectTimeout: NodeJS.Timeout;
+
+    const disconnectWorkers = () => {
+        discordWorker.send("shutdown");
+        discordWorker.disconnect();
+        discordDisconnectTimeout = setTimeout(discordWorker.kill, 2500);
+        telegramWorker.send("shutdown");
+        telegramWorker.disconnect();
+        telegramDisconnectTimeout = setTimeout(telegramWorker.kill, 2500);
     };
 
-    process.once("disconnect", closeProcess);
-    process.once("SIGTERM", closeProcess);
-    process.once("exit", closeProcess);
+    discordWorker.on("disconnect", () => clearTimeout(discordDisconnectTimeout));
+    telegramWorker.on("disconnect", () => clearTimeout(telegramDisconnectTimeout));
+
+    process.once("disconnect", disconnectWorkers);
+    process.once("SIGTERM", disconnectWorkers);
+    process.once("exit", disconnectWorkers);
 
     const events = new EventEmitter({ captureRejections: true });
     if (!isDev) {
@@ -76,13 +84,16 @@ if (cluster.isPrimary) {
             let updateAt: number | Date = new Date().setHours(12, 0, 0, 0);
             if (isPast(updateAt)) updateAt = addDays(updateAt, 1);
             const ms = Math.abs(differenceInMilliseconds(updateAt, Date.now()));
-            setTimeout(events.emit, ms, "dataUpdate", rest, options);
+            setTimeout(() => events.emit("dataUpdate", rest, options), ms);
             console.log(chalk.green("Scheduled data update!"));
         });
 
         process.on("message", message => {
             if (typeof message !== "string") return;
-            events.emit(message, rest, options);
+            const eventNames = events.eventNames();
+            if (eventNames.includes(message)) {
+                events.emit(message, rest, options);
+            }
         });
 
     }
@@ -124,7 +135,7 @@ if (cluster.isPrimary) {
 
                 if (err) throw err;
 
-                const options: DiscordTypes.BaseOptions = {
+                const options: DiscordClientTypes.BaseOptions = {
                     client, rest, cooldowns,
                     telegramWorker: cluster.workers[2],
                     webhook: new Discord.WebhookClient({
@@ -145,22 +156,22 @@ if (cluster.isPrimary) {
                 };
 
                 for (const file of chatCommandFiles) {
-                    const command: DiscordTypes.SlashCommand = await import(`./client/discord/commands/${file}`);
+                    const command: DiscordClientTypes.SlashCommand = await import(`./client/discord/commands/${file}`);
                     client.chatCommands.set(command.name, command);
                 }
 
                 for (const file of menuCommandFiles) {
-                    const command: DiscordTypes.ContextMenu = await import(`./client/discord/context/${file}`);
+                    const command: DiscordClientTypes.ContextMenu = await import(`./client/discord/context/${file}`);
                     client.menuCommands.set(command.name, command);
                 }
 
                 for (const file of componentFiles) {
-                    const component: DiscordTypes.Component = await import(`./client/discord/components/${file}`);
+                    const component: DiscordClientTypes.Component = await import(`./client/discord/components/${file}`);
                     client.components.set(component.name, component);
                 }
 
                 for (const file of eventFiles) {
-                    type DiscordEvent = DiscordTypes.EventHandler<keyof ClientEvents>;
+                    type DiscordEvent = DiscordClientTypes.EventHandler<keyof ClientEvents>;
                     const event: DiscordEvent = await import(`./client/discord/events/${file}`);
                     if (event.once) {
                         client.once(event.name, async (...args) => event.execute(...args, options));
@@ -173,28 +184,16 @@ if (cluster.isPrimary) {
 
             });
 
-            process.on("message", async message => {
+            process.on("message", message => {
                 if (typeof message !== "string") return;
                 switch (message) {
-                    case "disconnect": {
+                    case "shutdown": {
                         console.log(chalk.red("Disconnected from Discord cluster..."));
                         if (client.isReady()) client.destroy();
                         db.close(true);
                         break;
                     }
                 }
-            });
-
-            cluster.worker.once('disconnect', () => {
-                console.log(chalk.red("Disconnected from Discord cluster..."));
-                if (client.isReady()) client.destroy();
-                db.close(true);
-            });
-
-            cluster.worker.once('exit', () => {
-                console.log(chalk.red("Exited from Discord cluster..."));
-                if (client.isReady()) client.destroy();
-                db.close(true);
             });
 
             break;
@@ -215,7 +214,7 @@ if (cluster.isPrimary) {
                 if (err) throw err;
 
                 const commands: BotCommand[] = [];
-                const options: TelegramTypes.BaseOptions = {
+                const options: TelegramClientTypes.BaseOptions = {
                     cooldowns, bot, rest, keyv,
                     discordWorker: cluster.workers[1],
                     database: {
@@ -229,10 +228,10 @@ if (cluster.isPrimary) {
 
                 const stage = new Scenes.Stage([], { ttl: 600000 });
                 for (const file of commandFiles) {
-                    const command: TelegramTypes.Command = await import(`./client/telegram/commands/${file}`);
+                    const command: TelegramClientTypes.Command = await import(`./client/telegram/commands/${file}`);
                     for (const scene of command.scenes) {
                         await scene.register(options);
-                        // @ts-ignore: the scene type is valid
+                        // @ts-expect-error: custom scene context type
                         stage.register(scene.scene);
                     }
                 }
@@ -244,7 +243,7 @@ if (cluster.isPrimary) {
                 bot.catch(err => console.error("Telegram Error:", err));
 
                 for await (const file of commandFiles) {
-                    const command: TelegramTypes.Command = await import(`./client/telegram/commands/${file}`);
+                    const command: TelegramClientTypes.Command = await import(`./client/telegram/commands/${file}`);
                     commands.push({
                         command: command.name,
                         description: command.description
@@ -308,23 +307,14 @@ if (cluster.isPrimary) {
 
             process.on("message", message => {
                 if (typeof message !== "string") return;
-                if (message === "disconnect") {
-                    console.log(chalk.red("Disconnected from Discord cluster..."));
-                    db.close(true);
-                    bot.stop();
+                switch(message) {
+                    case "shutdown": {
+                        console.log(chalk.red("Disconnected from Discord cluster..."));
+                        db.close(true);
+                        bot.stop();
+                        break;
+                    }
                 }
-            });
-
-            cluster.worker.once('disconnect', () => {
-                console.log(chalk.red("Disconnected from Telegram cluster..."));
-                db.close(true);
-                bot.stop();
-            });
-
-            cluster.worker.once('exit', () => {
-                console.log(chalk.red("Exited from Telegram cluster..."));
-                db.close(true);
-                bot.stop();
             });
 
             break;

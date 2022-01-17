@@ -1,4 +1,4 @@
-import { MessageActionRow, MessageButton, Formatters, type MessageComponentInteraction, type User } from 'discord.js';
+import { MessageActionRow, MessageButton, Formatters, User, type MessageComponentInteraction } from 'discord.js';
 import DiscordClientError from '../error';
 import config from '../../../config.json';
 import { ObjectId } from 'bson';
@@ -6,6 +6,7 @@ import { ObjectId } from 'bson';
 import formatDistanceToNowStrict from 'date-fns/formatDistanceToNowStrict';
 import addSeconds from 'date-fns/addSeconds';
 import addMonths from 'date-fns/addMonths';
+import isFuture from 'date-fns/isFuture';
 import addDays from 'date-fns/addDays';
 
 import type { Discord, AM4_Data } from '@typings/database';
@@ -46,7 +47,9 @@ const event: Event = {
                 command = args.shift();
                 const users = database.discord.collection<Discord.user>('Users');
                 const account = await users.findOne({ id: message.author.id });
-                if (account?.mute || !account?.admin_level || requiredLevel[command] > account?.admin_level) return;
+                const owner = client.application.owner;
+                const isDeveloper = owner instanceof User ? (message.author.id === owner.id) : owner.members.some(member => member.id === message.author.id);
+                if (!isDeveloper && (!account?.admin_level || (account?.mute && isFuture(account.mute)) || requiredLevel[command] > account?.admin_level)) return;
                 const globalCooldown = await cooldowns.get(message.author.id);
                 if (globalCooldown) {
                     await message.reply(`You currently have a global cooldown. The cooldown ends ${formatDistanceToNowStrict(new Date(globalCooldown), { addSuffix: true })}`);
@@ -54,7 +57,7 @@ const event: Event = {
                 }
                 if (!args.length) throw new DiscordClientError("You need to specify the action to execute for this command!");
                 console.log(`Control command "${command}" was used by ${message.author.username}#${message.author.discriminator}`);
-                if (account.admin_level < 5) {
+                if (!isDeveloper) {
                     const cooldown = addSeconds(message.createdAt, 60);
                     await cooldowns.set(message.author.id, cooldown, 60 * 1000);
                 }
@@ -182,7 +185,7 @@ const event: Event = {
                             .catch(err => void err);
                         }
                         if (isNaN(days)) throw new DiscordClientError("That is an invalid number...");
-                        if (message.author.id !== process.env.DEVELOPER_ID) {
+                        if (!isDeveloper) {
                             if (account.admin_level < 4 && days > 7) throw new DiscordClientError("You need to be level 4 admin to suspend for over 7 days!");
                             if (account.admin_level < 5 && days > 30) throw new DiscordClientError("You need to be level 5 admin to suspend for over 30 days!");
                             if (account.admin_level === 5 && days > 365) throw new DiscordClientError("The maximum suspension is 365 days!");

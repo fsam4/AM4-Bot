@@ -1,4 +1,4 @@
-import { MessageEmbed, Permissions, MessageActionRow, MessageButton, Util, Formatters, Constants, type TextChannel, type Role, type MessageButtonStyleResolvable, type GuildMember } from 'discord.js';
+import { MessageEmbed, Permissions, MessageActionRow, MessageButton, Util, Formatters, Constants, Team, type TextChannel, type Role, type MessageButtonStyleResolvable, type GuildMember } from 'discord.js';
 import DiscordClientError from '../error';
 import { ObjectId } from 'bson';
 
@@ -258,7 +258,9 @@ const command: SlashCommand = {
                     break;
                 }
                 case "reaction": {
-                    if (!account || account.admin_level < 2) {
+                    const owner = interaction.client.application.owner;
+                    const isDeveloper = owner instanceof Team ? owner.members.some(member => member.id === interaction.user.id) : (interaction.user.id === owner.id);
+                    if (!isDeveloper && (!account || account.admin_level < 2)) {
                         const amount = await panels.countDocuments({ type: "message", author: interaction.user.id });
                         if (amount > 5) throw new DiscordClientError("A single user can at maximum have 5 reaction role messages at a time!");
                     }
@@ -321,7 +323,9 @@ const command: SlashCommand = {
                 case "panel": {
                     switch(subCommand) {
                         case "create": {
-                            if (!account || account.admin_level < 2) {
+                            const owner = interaction.client.application.owner;
+                            const isDeveloper = owner instanceof Team ? owner.members.some(member => member.id === interaction.user.id) : (interaction.user.id === owner.id);
+                            if (!isDeveloper && (!account || account.admin_level < 2)) {
                                 const amount = await panels.countDocuments({ type: "panel", server: interaction.guildId });
                                 if (amount > 10) throw new DiscordClientError("A server cannot have more than 10 active role panels at a time!");
                             }

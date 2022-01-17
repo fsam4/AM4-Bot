@@ -1,6 +1,7 @@
 import { MessageEmbed, Permissions, MessageAttachment, Formatters, MessageButton, MessageActionRow, Constants, type Message, type ApplicationCommandOptionChoice } from 'discord.js';
 import DiscordClientError from '../error';
 import * as Utils from '../../utils';
+import { emojis } from '../../../config.json';
 import Route from '../../../src/classes/route';
 
 import type { AM4_Data, Settings } from '@typings/database';
@@ -92,7 +93,7 @@ const command: SlashCommand = {
                 embed.addFields([
                     {
                         name: Formatters.bold(Formatters.underscore("Achievement info")),
-                        value: `**Reward:** ${achievement.bonus_points.toLocaleString(locale)} <:points:836889858545811496>\n**Hint:** ${achievement.hint}`
+                        value: `**Reward:** ${achievement.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}\n**Hint:** ${achievement.hint}`
                     },
                     {
                         name: Formatters.bold(Formatters.underscore("Route")),

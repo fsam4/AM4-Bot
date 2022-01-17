@@ -1,6 +1,7 @@
 import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, Formatters, Constants } from 'discord.js';
 import DiscordClientError from '../error';
 import * as Utils from '../../utils';
+import { emojis } from '../../../config.json';
 import Route from '../../../src/classes/route';
 import Plane from '../../../src/lib/plane';
 
@@ -455,17 +456,17 @@ const command: SlashCommand = {
                         },
                         { 
                             name: Formatters.bold(Formatters.underscore("Route demand")), 
-                            value: `<:first_seat:836890797495812117> ${demand.F.toLocaleString(locale)}\n<:business_seat:836890763664818207> ${demand.J.toLocaleString(locale)}\n<:economy_seat:836890782606557185> ${demand.Y.toLocaleString(locale)}\n<:cargo_small:836889344844365844> ${demand.L.toLocaleString(locale)} lbs\n<:cargo_big:836889319939244043> ${(demand.H).toLocaleString(locale)} lbs`, 
+                            value: `${Formatters.formatEmoji(emojis.first_seat)} ${demand.F.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.business_seat)} ${demand.J.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.economy_seat)} ${demand.Y.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.large_load)} ${demand.L.toLocaleString(locale)} lbs\n${Formatters.formatEmoji(emojis.heavy_load)} ${demand.H.toLocaleString(locale)} lbs`, 
                             inline: true 
                         },
                         { 
                             name: Formatters.bold(Formatters.underscore("Ticket prices")), 
-                            value: `<:first_seat:836890797495812117> $${ticket[user.mode].F}\n<:business_seat:836890763664818207> $${ticket[user.mode].J}\n<:economy_seat:836890782606557185> $${ticket[user.mode].Y}\n<:cargo_small:836889344844365844> $${ticket[user.mode].L}\n<:cargo_big:836889319939244043> $${ticket[user.mode].H}`, 
+                            value: `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[user.mode].F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[user.mode].J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[user.mode].Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[user.mode].L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[user.mode].H}`, 
                             inline: true 
                         },
                         { 
                             name: Formatters.bold(Formatters.underscore("Configuration")), 
-                            value: `<:first_seat:836890797495812117> ${configuration.F}\n<:business_seat:836890763664818207> ${configuration.J}\n<:economy_seat:836890782606557185> ${configuration.Y}\n<:cargo_small:836889344844365844> ${per.L}%\n<:cargo_big:836889319939244043> ${per.H}%`, 
+                            value: `${Formatters.formatEmoji(emojis.first_seat)} ${configuration.F}\n${Formatters.formatEmoji(emojis.business_seat)} ${configuration.J}\n${Formatters.formatEmoji(emojis.economy_seat)} ${configuration.Y}\n${Formatters.formatEmoji(emojis.cargo_small)} ${per.L}%\n${Formatters.formatEmoji(emojis.cargo_big)} ${per.H}%`, 
                             inline: true 
                         },
                         { 
@@ -513,13 +514,13 @@ const command: SlashCommand = {
                             label: "Search for a stopover",
                             style: "SECONDARY",
                             customId: "stopover",
-                            emoji: "836889895427375104"
+                            emoji: emojis.routeMarker
                         }),
                         new MessageButton({
                             customId: "plane",
                             label: "View plane",
                             style: "SECONDARY",
-                            emoji: "836889841517330442"
+                            emoji: emojis.plane
                         })
                     ]
                 })
@@ -609,7 +610,7 @@ const command: SlashCommand = {
                                     },
                                     { 
                                         name: '\u200B', 
-                                        value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} <:points:836889858545811496>`}\n**A-check:** $${Math.round(plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
+                                        value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round(plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
                                         inline: true 
                                     }
                                 ]

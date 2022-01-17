@@ -101,34 +101,34 @@ const command: SlashCommand = {
                     {
                         label: "General",
                         description: "The main menu",
-                        emoji: "836889647275180072",
+                        emoji: config.emojis.hq,
                         value: "general"
                     },
                     {
                         label: "Commands",
                         description: "A list of all commands and their IDs",
-                        emoji: "836889383135215646",
+                        emoji: config.emojis.chat,
                         value: "commands",
                         default: category === "commands"
                     },
                     {
                         label: "Webhooks",
                         description: "Help with AM4 Bot webhooks",
-                        emoji: "836889541687115816",
+                        emoji: config.emojis.fuel,
                         value: "webhooks",
                         default: category === "webhooks"
                     },
                     {
                         label: "Quiz Games",
                         description: "Help with AM4 Bot quiz games & tournaments",
-                        emoji: "836889858545811496",
+                        emoji: config.emojis.points,
                         value: "quiz",
                         default: category === "quiz"
                     },
                     {
                         label: "Settings",
                         description: "Help with personal, server & plane settings",
-                        emoji: "836889680820961281",
+                        emoji: config.emojis.maint,
                         value: "settings",
                         default: category === "settings"
                     },
@@ -353,7 +353,7 @@ const command: SlashCommand = {
                             },
                             {
                                 name: 'Getting Started...',
-                                value: `Most of the AM4 Bot commands are slash commands. Type \`/\` in the chat to see them all or click <:chat:836889383135215646> for a list of commands. You can also use AM4 Bot's context menu commands by right clicking a message or a user. If you require support join ${Formatters.hyperlink("the Air France KLM server", "https://discord.gg/f8WHuRX")}.`
+                                value: `Most of the AM4 Bot commands are slash commands. Type \`/\` in the chat to see them all or click ${Formatters.formatEmoji(config.emojis.chat)} for a list of commands. You can also use AM4 Bot's context menu commands by right clicking a message or a user. If you require support join ${Formatters.hyperlink("the Air France KLM server", "https://discord.gg/f8WHuRX")}.`
                             },
                             {
                                 name: 'Logging in with AM4 Bot...',

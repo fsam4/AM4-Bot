@@ -2,6 +2,7 @@ import { MessageEmbed, Permissions, MessageSelectMenu, Formatters, MessageAction
 import DiscordClientError from '../error';
 import { ObjectId } from 'bson';
 import QuickChart from 'quickchart-js';
+import { emojis } from '../../../config.json';
 
 import formatDistanceToNowStrict from 'date-fns/formatDistanceToNowStrict';
 import differenceInWeeks from 'date-fns/differenceInWeeks';
@@ -445,7 +446,7 @@ const command: SlashCommand = {
                                 }
                             },
                             {
-                                emoji: "836889801801072640",
+                                emoji: emojis.payraise,
                                 data: {
                                     type: 'line',
                                     data: {
@@ -1353,7 +1354,7 @@ const command: SlashCommand = {
                                         embed.fields[1].value += `\n**This week:** $${thisWeek.toLocaleString(locale)}`;
                                         embed.fields[2].value += `\n**This week:** $${average.toLocaleString(locale)}/day`;
                                         charts.push({
-                                            emoji: '836889801801072640',
+                                            emoji: emojis.payraise,
                                             data: {
                                                 type: "line",
                                                 data: {
@@ -1464,8 +1465,8 @@ const command: SlashCommand = {
                                         });
                                     }
                                     if (memberDocument.sv.length) {
-                                        charts.push(                    {
-                                            emoji: '836889943501570058',
+                                        charts.push({
+                                            emoji: emojis.stock,
                                             data: {
                                                 type: "line",
                                                 data: {
