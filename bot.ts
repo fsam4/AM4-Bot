@@ -93,6 +93,8 @@ if (cluster.isPrimary) {
             const eventNames = events.eventNames();
             if (eventNames.includes(message)) {
                 events.emit(message, rest, options);
+            } else {
+                console.log(`Primary received unknown message: ${message}`);
             }
         });
 
@@ -191,6 +193,10 @@ if (cluster.isPrimary) {
                         console.log(chalk.red("Disconnected from Discord cluster..."));
                         if (client.isReady()) client.destroy();
                         db.close(true);
+                        break;
+                    }
+                    default: {
+                        console.log(`Discord worker received unknown message: ${message}`);
                         break;
                     }
                 }
@@ -326,6 +332,10 @@ if (cluster.isPrimary) {
                         console.log(chalk.red("Disconnected from Discord cluster..."));
                         db.close(true);
                         bot.stop();
+                        break;
+                    }
+                    default: {
+                        console.log(`Telegram worker received unknown message: ${message}`);
                         break;
                     }
                 }
