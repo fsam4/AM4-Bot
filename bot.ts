@@ -53,10 +53,10 @@ if (cluster.isPrimary) {
     const disconnectWorkers = () => {
         discordWorker.send("shutdown");
         discordWorker.disconnect();
-        discordDisconnectTimeout = setTimeout(discordWorker.kill, 2500);
+        discordDisconnectTimeout = setTimeout(() => discordWorker.kill(), 2500);
         telegramWorker.send("shutdown");
         telegramWorker.disconnect();
-        telegramDisconnectTimeout = setTimeout(telegramWorker.kill, 2500);
+        telegramDisconnectTimeout = setTimeout(() => telegramWorker.kill(), 2500);
     };
 
     discordWorker.on("disconnect", () => clearTimeout(discordDisconnectTimeout));
@@ -196,6 +196,20 @@ if (cluster.isPrimary) {
                 }
             });
 
+            cluster.worker.on("exit", (code, signal) => {
+                let message: string;
+                if (signal) {
+                    message = chalk.red(`Discord worker was killed by signal: ${signal}`);
+                } else if (code != 0) {
+                    message = chalk.red(`Discord worker exited with error code: ${code}`);
+                } else {
+                    message = chalk.green("Discord worker success");
+                }
+                console.log(message);
+                if (client.isReady()) client.destroy();
+                db.close(true);
+            });
+
             break;
         }
         case 2: {
@@ -315,6 +329,20 @@ if (cluster.isPrimary) {
                         break;
                     }
                 }
+            });
+
+            cluster.worker.on("exit", (code, signal) => {
+                let message: string;
+                if (signal) {
+                    message = chalk.red(`Telegram worker was killed by signal: ${signal}`);
+                } else if (code != 0) {
+                    message = chalk.red(`Telegram worker exited with error code: ${code}`);
+                } else {
+                    message = chalk.green("Telegram worker success");
+                }
+                console.log(message);
+                db.close(true);
+                bot.stop();
             });
 
             break;
