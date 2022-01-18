@@ -29,7 +29,7 @@ const command: Command<Context, SceneContext> = {
     cooldown: 20,
     description: 'Search for airports',
     help: "With this command you can search for airports. The command has 4 options which are: filter, search, sell plane and hubs. With filter you can filter for airports and the bot will return all airports that match your criteria. The option has 3 required arguments which are `<min_market>`, `<min_runway>` and `city/country`. `<min_market>` is the minimum market % of the airports, `<min_runway>` is the minimum runway length and ``city/country` is the city or country where the airports should be. The search option only has one required argument which is `<icao|iata>`. This is the ICAO or IATA code of the airport to search for. The sell plane option has two required arguments which are `<icao|iata>` and `<plane>`. This option can be used to search for the best airport to sell your plane. `<icao|iata>` is the ICAO or IATA code of the departure airport and `<plane>` is the name of the plane to sell. The last option is hubs which can be used to search for best hubs based on criteria. It has two required and two optional arguments: `<country>`, `<cargo|pax>`, `(market)`, `(runway)`. `<country>` is the country where the hubs are searched from, `<cargo|pax>` is for what plane type should the hubs mainly be for, `(market)` is the minimum market % of the airport and `(runway)` is the minimum runway length.",
-    async execute(ctx) {
+    async execute(ctx, { timeouts }) {
         const keyboard = Markup.inlineKeyboard([
             Markup.button.callback('🔍 Filter', 'filter:airport'),
             Markup.button.callback('📍 Search', 'search:airport'),
@@ -40,14 +40,25 @@ const command: Command<Context, SceneContext> = {
             "📍: Search for a specific airport",
             "💲: Search for the best airport to sell a plane"
         ];
-        await ctx.replyWithMarkdown(reply_text.join('\n'), keyboard).then(message => {
-            setTimeout(() => ctx.telegram.deleteMessage(message.chat.id, message.message_id).catch(err => void err), 120000)
+        await ctx.replyWithMarkdown(reply_text.join('\n'), keyboard)
+        .then(message => {
+            const timeout = setTimeout(async () => {
+                timeouts.delete(message.message_id);
+                await ctx.telegram.deleteMessage(message.chat.id, message.message_id)
+                .catch(() => undefined);
+            }, 120000);
+            timeouts.set(message.message_id, timeout);
         });
     },
     actions: [
         {
             value: /(filter|search|sell)(?=:airport)/,
-            async execute(ctx) {
+            async execute(ctx, { timeouts }) {
+                if (timeouts.has(ctx.message.message_id)) {
+                    const timeout = timeouts.get(ctx.message.message_id);
+                    clearTimeout(timeout);
+                    timeouts.delete(ctx.message.message_id);
+                }
                 const option: string = ctx.callbackQuery['data'];
                 await ctx.scene.enter(option);
             }
@@ -60,7 +71,7 @@ const command: Command<Context, SceneContext> = {
                 const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
                 this.scene.use(data);
                 this.scene.enter(async (ctx) => {
-                    await ctx.deleteMessage().catch(err => void err);
+                    await ctx.deleteMessage().catch(() => undefined);
                     const action_keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'delete')]);
                     await ctx.replyWithMarkdown('Type the market, runway and region sepearted by commas!\nFormat: `<min_market>, <min_runway>, <city/country>`\nExample: `90, 5000, brazil`', action_keyboard);
                 });
@@ -135,7 +146,7 @@ const command: Command<Context, SceneContext> = {
                     .catch(() => ctx.scene.leave());
                 });
                 this.scene.action('delete', async (ctx) => {
-                    await ctx.deleteMessage().catch(err => void err);
+                    await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
                 });
             }
@@ -146,7 +157,7 @@ const command: Command<Context, SceneContext> = {
                 const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
                 this.scene.use(data);
                 this.scene.enter(async (ctx) => {
-                    await ctx.deleteMessage().catch(err => void err);
+                    await ctx.deleteMessage().catch(() => undefined);
                     const action_keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'exit')]);
                     await ctx.replyWithMarkdown('Type the ICAO, IATA or id of the airport...\nFormat: `<icao|iata|id>`\nExample: `efhk`', action_keyboard);
                 });
@@ -175,7 +186,7 @@ const command: Command<Context, SceneContext> = {
                     }
                 });
                 this.scene.action('exit', async (ctx) => {
-                    await ctx.deleteMessage().catch(err => void err);
+                    await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
                 });
             }
@@ -207,7 +218,7 @@ const command: Command<Context, SceneContext> = {
                 });
                 this.scene.action(/realism|easy/, async (ctx) => {
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
-                    await ctx.deleteMessage().catch(err => void err);
+                    await ctx.deleteMessage().catch(() => undefined);
                     const mode = ctx.callbackQuery['data'] as 'realism' | 'easy';
                     const locale = ctx.from.language_code || 'en';
                     await ctx.scene.leave();
@@ -263,7 +274,7 @@ const command: Command<Context, SceneContext> = {
                     }
                 });
                 this.scene.action('exit', async (ctx) => {
-                    await ctx.deleteMessage().catch(err => void err);
+                    await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
                 })
             }

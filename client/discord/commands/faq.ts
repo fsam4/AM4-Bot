@@ -259,7 +259,7 @@ const command: SlashCommand = {
                         filter.server = interaction.guildId;
                     } else {
                         await interaction.respond([])
-                        .catch(err => void err);
+                        .catch(() => undefined);
                         return;
                     }
                     break;
@@ -306,13 +306,13 @@ const command: SlashCommand = {
             const cursor = faqCollection.aggregate<ApplicationCommandOptionChoice>(pipeline, { maxTimeMS: 2800 });
             const choices = await cursor.toArray();
             await interaction.respond(choices ?? [])
-            .catch(err => void err);
+            .catch(() => undefined);
         }
         catch(error) {
             console.error("Error while autocompleting:", error);
             if (!interaction.responded) {
                 interaction.respond([])
-                .catch(err => void err);
+                .catch(() => undefined);
             };
         }
     }

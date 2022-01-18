@@ -94,7 +94,7 @@ const command: Command<Context, SceneContext> = {
                     this.scene.command(command.name, async (ctx) => {
                         if (ctx.scene.session.user.id !== ctx.from.id) return;
                         if (!command.help) return await ctx.reply('Could not find any help for this command...');
-                        await ctx.deleteMessage().catch(err => void err);
+                        await ctx.deleteMessage().catch(() => undefined);
                         const message = ctx.scene.session.message;
                         await ctx.tg.editMessageText(message.chat.id, message.message_id, message.forward_signature, `/${command.name}\n${command.help}`, {
                             reply_markup: markup.reply_markup,

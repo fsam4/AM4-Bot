@@ -63,7 +63,7 @@ const command: SlashCommand = {
                 }
             });
             if (achievement.route.length) {
-                const pipeline: Document[] = [
+                const airports = await airportCollection.aggregate<AM4_Data.airport>([
                     {
                         $match: { 
                             _id: { $in: achievement.route } 
@@ -86,8 +86,7 @@ const command: SlashCommand = {
                             index: false
                         }
                     }
-                ];
-                const airports = await airportCollection.aggregate<AM4_Data.airport>(pipeline).toArray();
+                ]).toArray();
                 const locations = airports.map(airport => ({ longitude: airport.location.coordinates[0], latitude: airport.location.coordinates[1] }));
                 const { distance, distances } = Route.distance(...locations);
                 embed.addFields([
@@ -155,7 +154,7 @@ const command: SlashCommand = {
             })
             .catch(async () => {
                 row.components[0].setDisabled(true);
-                await interaction.editReply({ components: [row] }).catch(err => void err);
+                await interaction.editReply({ components: [row] }).catch(() => undefined);
             });
         }
         catch(error) {
@@ -210,13 +209,13 @@ const command: SlashCommand = {
             const cursor = achievements.aggregate<ApplicationCommandOptionChoice>(pipeline, { maxTimeMS: 2800 });
             const choices = await cursor.toArray();
             await interaction.respond(choices ?? [])
-            .catch(err => void err);
+            .catch(() => undefined);
         }
         catch(error) {
             console.error("Error while autocompleting:", error);
             if (!interaction.responded) {
                 interaction.respond([])
-                .catch(err => void err);
+                .catch(() => undefined);
             };
         }
     }

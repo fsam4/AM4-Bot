@@ -27,12 +27,10 @@ const event: Event = {
     name: 'messageCreate',
     once: false,
     async execute(message, { cooldowns, webhook, log, rest, database, client }) {
-        if (message.webhookId) {
-            const webhooks = [webhook.id, log.id];
-            if (webhooks.includes(message.webhookId)) {
-                await message.crosspost().catch(err => void err);
-                console.log(`Crossposted message by ${message.webhookId}`);
-            }
+        if (message.webhookId && [webhook.id, log.id].includes(message.webhookId)) {
+            await message.crosspost()
+            .then(msg => console.log(`Crossposted webhook announcement: ${msg.webhookId}`))
+            .catch(err => console.error("Failed to crosspost webhook announcement:", err));
         } else {
             try {
                 if (message.author.bot) return;
@@ -124,8 +122,7 @@ const event: Event = {
                             if (args.length < 2) throw new DiscordClientError("You need to specify the user ID and reason for this warning!");
                             const [userId, ...content] = args;
                             reason = content.join(" ");
-                            user = await client.users.fetch(userId)
-                            .catch(err => void err);
+                            user = await client.users.fetch(userId).catch(() => undefined);
                         }
                         if (!user) throw new DiscordClientError("Invalid user...");
                         const res = await users.findOneAndUpdate(
@@ -181,9 +178,9 @@ const event: Event = {
                             const [userId, value, ...content] = args;
                             days = parseInt(value);
                             reason = content.join(" ");
-                            user = await client.users.fetch(userId)
-                            .catch(err => void err);
+                            user = await client.users.fetch(userId).catch(() => undefined);
                         }
+                        if (!user) throw new DiscordClientError("Invalid user...");
                         if (isNaN(days)) throw new DiscordClientError("That is an invalid number...");
                         if (!isDeveloper) {
                             if (account.admin_level < 4 && days > 7) throw new DiscordClientError("You need to be level 4 admin to suspend for over 7 days!");
@@ -228,9 +225,9 @@ const event: Event = {
                             if (args.length < 2) throw new DiscordClientError("You need to specify the user ID and time in seconds for this cooldown!");
                             const [userId, value] = args;
                             seconds = parseInt(value);
-                            user = await client.users.fetch(userId)
-                            .catch(err => void err);
+                            user = await client.users.fetch(userId).catch(() => undefined);
                         }
+                        if (!user) throw new DiscordClientError("Invalid user...");
                         if (isNaN(seconds)) throw new DiscordClientError("That is an invalid number...");
                         if (seconds > 1000) throw new DiscordClientError("A cooldown cannot be longer than 1000 seconds!");
                         const date = addSeconds(message.createdAt, seconds);

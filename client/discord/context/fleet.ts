@@ -208,7 +208,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                 select.setDisabled(true);
                 row.components[0] = select;
                 const reply = collected.last() || interaction;
-                await reply.editReply({ components: [row] }).catch(err => void err);
+                await reply.editReply({ components: [row] }).catch(() => undefined);
             });
             if (fleet.planes.length > 25) await interaction.followUp({
                 content: `Due to the amount of different plane models of this airline's fleet the bot will only display 25 out of ${fleet.size} planes.`,

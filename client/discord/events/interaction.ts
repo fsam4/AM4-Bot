@@ -31,7 +31,11 @@ const event: Event = {
         switch(interaction.type) {
             case "APPLICATION_COMMAND_AUTOCOMPLETE": {
                 if (interaction.isAutocomplete()) {
-                    if (user.mute && isFuture(user.mute)) return interaction.respond([]);
+                    if (user.mute && isFuture(user.mute)) {
+                        await interaction.respond([])
+                        .catch(() => undefined);
+                        return;
+                    };
                     const command = interaction.client.chatCommands.get(interaction.commandName);
                     if (!command.autocomplete) return interaction.respond([]);
                     type AutoCompleteOptions = Omit<CommandOptions, "ephemeral">;
@@ -43,10 +47,11 @@ const event: Event = {
                 if (interaction.isApplicationCommand()) {
                     if (user?.mute) {
                         if (isFuture(user.mute)) {
-                            return interaction.reply({
+                            await interaction.reply({
                                 content: `You have been suspended from using commands until ${Formatters.time(user.mute, "F")}!`,
                                 ephemeral: true
                             });
+                            return;
                         } else {
                             await users.updateOne({ _id: user._id }, { $unset: { mute: "" } });
                         }
@@ -76,19 +81,21 @@ const event: Event = {
                         const globalCooldown = await cooldowns.get(interaction.user.id);
                         if (globalCooldown) {
                             const date = new Date(globalCooldown);
-                            return interaction.reply({
+                            await interaction.reply({
                                 content: `You currently have a global cooldown. The cooldown ends ${formatDistanceToNowStrict(date, { addSuffix: true })}...`,
                                 ephemeral: true
                             });
+                            return;
                         } else {
                             if (!interaction.client.cooldowns.has(interaction.user.id)) interaction.client.cooldowns.set(interaction.user.id, new Collection());
                             const userCooldowns = interaction.client.cooldowns.get(interaction.user.id);
                             if (userCooldowns.has(interaction.commandId)) {
                                 const cooldown = userCooldowns.get(interaction.commandId);
-                                return interaction.reply({
+                                await interaction.reply({
                                     content: `You currently have a cooldown for this command. The cooldown ends ${formatDistanceToNowStrict(cooldown, { addSuffix: true })}...`,
                                     ephemeral: true
                                 });
+                                return;
                             } else {
                                 if (userCooldowns.size > 3) {
                                     const timeout = addSeconds(interaction.createdAt, 60);
@@ -139,10 +146,11 @@ const event: Event = {
                 if (interaction.isMessageComponent()) {
                     if (user?.mute) {
                         if (isFuture(user.mute)) {
-                            return interaction.reply({
+                            await interaction.reply({
                                 content: `You have been suspended from using components until ${Formatters.time(user.mute, "F")}!`,
                                 ephemeral: true
                             });
+                            return;
                         } else {
                             await users.updateOne({ _id: user._id }, { $unset: { mute: "" } });
                         }
@@ -155,10 +163,11 @@ const event: Event = {
                     if (!user?.admin_level) {
                         const cooldown = await cooldowns.get(interaction.user.id);
                         if (cooldown) {
-                            return interaction.reply({
+                            await interaction.reply({
                                 content: `You currently have a global cooldown. The cooldown ends ${formatDistanceToNowStrict(new Date(cooldown), { addSuffix: true })}`,
                                 ephemeral: true
                             });
+                            return;
                         } else if (component.cooldown) {
                             const timeout = addSeconds(interaction.createdAt, component.cooldown);
                             await cooldowns.set(interaction.user.id, timeout, component.cooldown * 1000);

@@ -18,14 +18,14 @@ const event: Event = {
         await database.discord.collection<Discord.panel>("Panels").deleteMany(query);
         await database.discord.collection<Discord.notification>("Notifications").deleteMany(query);
         await database.discord.collection<Discord.giveaway>("Giveaways").deleteMany(query);
-        await guild.commands.permissions.set({ fullPermissions: [] }).catch(err => void err);
+        await guild.commands.permissions.set({ fullPermissions: [] }).catch(() => undefined);
         await guild.commands.fetch()
         .then(async commands => {
             if (commands.size) {
                 await guild.commands.set([]);
             }
         })
-        .catch(err => void err);
+        .catch(() => undefined);
         client.user.setPresence({
             activities: [{
                 type: "WATCHING",

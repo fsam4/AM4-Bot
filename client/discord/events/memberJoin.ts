@@ -37,7 +37,10 @@ const event: Event = {
                                 break;
                             }
                         }
-                        if (roles.size) await member.roles.add([...roles], `Logged in as ${airline.name}`).catch(err => void err);
+                        if (roles.size) {
+                            await member.roles.add([...roles], `Logged in as ${airline.name}`)
+                            .catch(() => undefined);
+                        }
                     }
                     if (server.log_channel) {
                         await member.guild.channels.fetch(server.log_channel)

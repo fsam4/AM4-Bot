@@ -7,6 +7,7 @@ import type Keyv from 'keyv';
 
 interface BaseOptions {
     discordWorker: Worker;
+    timeouts: Map<number, NodeJS.Timeout>;
     database: Readonly<Record<"am4" | "discord" | "settings" | "telegram" | "quiz", Db>>;
     cooldowns: Keyv<Date>;
     rest: AM4RestClient;

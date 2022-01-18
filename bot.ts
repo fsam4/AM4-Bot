@@ -85,7 +85,7 @@ if (cluster.isPrimary) {
             if (isPast(updateAt)) updateAt = addDays(updateAt, 1);
             const ms = Math.abs(differenceInMilliseconds(updateAt, Date.now()));
             setTimeout(() => events.emit("dataUpdate", rest, options), ms);
-            console.log(chalk.green("Scheduled data update!"));
+            console.log(chalk.green(`Scheduled next data update to ${new Date(updateAt)}`));
         });
 
         process.on("message", message => {
@@ -109,7 +109,8 @@ if (cluster.isPrimary) {
     switch (cluster.worker.id) {
         case 1: {
 
-            console.log(chalk.blue('Starting Discord client...'));
+            const label = chalk.blue('Starting Discord client');
+            console.time(label);
 
             const menuCommandFiles = fs.readdirSync("./client/discord/context").filter(isJavaScript);
             const chatCommandFiles = fs.readdirSync("./client/discord/commands").filter(isJavaScript);
@@ -139,6 +140,7 @@ if (cluster.isPrimary) {
 
                 const options: DiscordClientTypes.BaseOptions = {
                     client, rest, cooldowns,
+                    timeouts: new Map(),
                     telegramWorker: cluster.workers[2],
                     webhook: new Discord.WebhookClient({
                         id: process.env.ANNOUNCEMENT_WEBHOOK_ID,
@@ -182,7 +184,9 @@ if (cluster.isPrimary) {
                     }
                 }
 
-                client.login(process.env.BOT_TOKEN);
+                console.timeLog(label);
+                await client.login(process.env.BOT_TOKEN);
+                console.timeEnd(label);
 
             });
 
@@ -220,7 +224,8 @@ if (cluster.isPrimary) {
         }
         case 2: {
 
-            console.log(chalk.blue('Starting Telegram client...'));
+            const label = chalk.blue('Starting Telegram client');
+            console.time(label);
 
             const commandFiles = fs.readdirSync("./client/telegram/commands").filter(isJavaScript);
             const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
@@ -237,6 +242,7 @@ if (cluster.isPrimary) {
                 const options: TelegramClientTypes.BaseOptions = {
                     cooldowns, bot, rest, keyv,
                     discordWorker: cluster.workers[1],
+                    timeouts: new Map(),
                     database: {
                         am4: database.db("AM4-Data"),
                         quiz: database.db("Quiz"),
@@ -274,8 +280,14 @@ if (cluster.isPrimary) {
                         if (user && !user.admin_level) {
                             const cooldown = await cooldowns.get(ctx.from.id.toString());
                             if (cooldown) {
-                                const msg = await ctx.reply(`Your cooldown ends ${formatDistanceToNowStrict(new Date(cooldown), { addSuffix: true })}`);
-                                return setTimeout(() => ctx.deleteMessage(msg.message_id).catch(err => void err), 10000);
+                                await ctx.reply(`Your cooldown ends ${formatDistanceToNowStrict(new Date(cooldown), { addSuffix: true })}`)
+                                .then(msg => {
+                                    setTimeout(() => {
+                                        ctx.deleteMessage(msg.message_id)
+                                        .catch(() => undefined);
+                                    }, 10000);
+                                });
+                                return;
                             } else if (command.cooldown) {
                                 const timeout = addSeconds(ctx.message.date * 1000, command.cooldown);
                                 await cooldowns.set(ctx.from.id.toString(), timeout, command.cooldown * 1000);
@@ -318,10 +330,10 @@ if (cluster.isPrimary) {
                     for (const action of command.actions) bot.action(action.value, ctx => action.execute(ctx, options));
                 }
 
+                console.timeLog(label);
                 await bot.launch();
                 await bot.telegram.setMyCommands(commands);
-
-                console.log(chalk.green("Telegram client ready!"));
+                console.timeEnd(label);
 
             });
 

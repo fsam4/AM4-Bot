@@ -442,7 +442,7 @@ const command: SlashCommand = {
                         collector.once('end', async collected => {
                             const reply = collected.last() || interaction;
                             for (const row of components) row.components.forEach(component => component.setDisabled(true));
-                            await reply.editReply({ components }).catch(err => void err);
+                            await reply.editReply({ components }).catch(() => undefined);
                         });
                     }
                     break;
@@ -462,7 +462,7 @@ const command: SlashCommand = {
                     if (!plane) throw new DiscordClientError(`No plane could be found with ${Formatters.bold(plane_input)}...`);
                     const hub = await airportCollection.findOne(createAirportFilter(code));
                     if (!hub) throw new DiscordClientError('That is not a valid airport...');
-                    const airports = airportCollection.aggregate<GeoNear<AM4_Data.airport>>([
+                    const cursor = airportCollection.aggregate<GeoNear<AM4_Data.airport>>([
                         {
                             $geoNear: {
                                 near: hub.location,
@@ -482,9 +482,9 @@ const command: SlashCommand = {
                             $limit: 1
                         }
                     ]);
-                    const hasAirport = await airports.hasNext();
+                    const hasAirport = await cursor.hasNext();
                     if (!hasAirport) throw new DiscordClientError(`No suitable airport could be found to sell this plane with a market of at least ${market}%...`);
-                    const airport = await airports.next();
+                    const airport = await cursor.next();
                     const image = new MessageAttachment(plane.image.buffer, "plane.jpg");
                     const embed = new MessageEmbed({
                         color: "BLUE",
@@ -966,7 +966,7 @@ const command: SlashCommand = {
                     collector.once("end", async collected => {
                         row.setComponents(select.setDisabled(true));
                         const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(err => void err);
+                        await reply.editReply({ components: [row] }).catch(() => undefined);
                     });
                     break;
                 }
@@ -1056,13 +1056,13 @@ const command: SlashCommand = {
                 }));
             }
             await interaction.respond(choices ?? [])
-            .catch(err => void err);
+            .catch(() => undefined);
         }
         catch(error) {
             console.error("Error while autocompleting:", error);
             if (!interaction.responded) {
                 interaction.respond([])
-                .catch(err => void err);
+                .catch(() => undefined);
             };
         }
     }

@@ -254,7 +254,7 @@ const command: SlashCommand = {
                                 content += `co2 is ${Formatters.bold(`$${co2.toLocaleString(locale)}`)}`;
                             }
                             await webhookClient.editMessage(channel.message, content)
-                            .catch(err => void err);
+                            .catch(() => undefined);
                         }
                     }
                     console.log(`Notification edited by ${interaction.user.id}`);
@@ -286,7 +286,7 @@ const command: SlashCommand = {
                             token: decrypted.toString(CryptoJS.enc.Utf8)
                         });
                         await webhookClient.deleteMessage(channel.message)
-                        .catch(err => void err);
+                        .catch(() => undefined);
                     }
                     console.log(`Notification deleted by ${interaction.user.id}`);
                     await interaction.editReply("The notification has been deleted!");

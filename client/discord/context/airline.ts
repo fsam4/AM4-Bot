@@ -348,8 +348,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                 },
             }).setBackgroundColor('transparent');
             embeds[1].setImage(await chart.getShortUrl());
-
-            const pipeline = [
+            const alliances = await memberCollection.aggregate<AllianceMember>([
                 {
                     $match: {
                         name: airline.name
@@ -387,8 +386,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                         }
                     }
                 }
-            ];
-            const alliances = await memberCollection.aggregate<AllianceMember>(pipeline).toArray();
+            ]).toArray();
             if (alliances.length) {
                 select.addOptions({
                     label: "Alliance log",
@@ -521,7 +519,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
             collector.once("end", async collected => {
                 row.setComponents(select.setDisabled(true));
                 const reply = collected.last() || interaction;
-                await reply.editReply({ components: [row] }).catch(err => void err);
+                await reply.editReply({ components: [row] }).catch(() => undefined);
             });
         }
         catch(error) {

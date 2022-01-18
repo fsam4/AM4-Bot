@@ -5,7 +5,6 @@ import pug from 'pug';
 
 import type { Telegram, AM4_Data } from '@typings/database';
 import type { Message, User } from 'typegram';
-import type { Document } from 'mongodb';
 import type { Command } from '../types';
 
 interface SceneSession extends Scenes.SceneSessionData {
@@ -57,7 +56,7 @@ const command: Command<Scenes.SceneContext, SceneContext> = {
                         const achievement = await achievements.findOne({ $text: { $search: `"${ctx.message.text}"` } });
                         if (!achievement) throw new TelegramClientError(`No achievement *${ctx.message.text}* was found...`);
                         if (achievement.route.length) {
-                            const pipeline: Document[] = [
+                            const airports = await airportCollection.aggregate<AM4_Data.airport>([
                                 {
                                     $match: { 
                                         _id: { $in: achievement.route } 
@@ -80,8 +79,7 @@ const command: Command<Scenes.SceneContext, SceneContext> = {
                                         index: false
                                     }
                                 }
-                            ];
-                            const airports = await airportCollection.aggregate<AM4_Data.airport>(pipeline).toArray();
+                            ]).toArray();
                             // @ts-expect-error: overwriting route to string for the pug compiler
                             achievement.route = airports.map(airport => `${airport.city} (${airport.icao}/${airport.iata})`);
                         }

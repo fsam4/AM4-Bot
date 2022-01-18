@@ -1,4 +1,4 @@
-import { Permissions, MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, Formatters, Constants } from 'discord.js';
+import { Permissions, MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, Formatters, Constants, type PermissionResolvable } from 'discord.js';
 import DiscordClientError from '../error';
 import lastDayOfMonth from 'date-fns/lastDayOfMonth';
 import updateEmbed from '../../../documents/json/update.json';
@@ -6,28 +6,6 @@ import config from '../../../config.json';
 
 import type { Quiz, Settings } from '@typings/database';
 import type { SlashCommand } from '../types';
-
-const permissions = [
-    Permissions.FLAGS.MANAGE_EVENTS,
-    Permissions.FLAGS.MODERATE_MEMBERS,
-    Permissions.FLAGS.MANAGE_ROLES,
-    Permissions.FLAGS.KICK_MEMBERS,
-    Permissions.FLAGS.BAN_MEMBERS,
-    Permissions.FLAGS.MANAGE_NICKNAMES,
-    Permissions.FLAGS.MANAGE_EMOJIS_AND_STICKERS,
-    Permissions.FLAGS.MANAGE_WEBHOOKS,
-    Permissions.FLAGS.VIEW_CHANNEL,
-    Permissions.FLAGS.SEND_MESSAGES,
-    Permissions.FLAGS.EMBED_LINKS,
-    Permissions.FLAGS.ATTACH_FILES,
-    Permissions.FLAGS.MANAGE_MESSAGES,
-    Permissions.FLAGS.READ_MESSAGE_HISTORY,
-    Permissions.FLAGS.USE_EXTERNAL_EMOJIS,
-    Permissions.FLAGS.USE_APPLICATION_COMMANDS,
-    Permissions.FLAGS.ADD_REACTIONS,
-    Permissions.FLAGS.USE_PUBLIC_THREADS,
-    Permissions.FLAGS.MANAGE_THREADS
-];
 
 const command: SlashCommand = {
     get name() {
@@ -148,7 +126,10 @@ const command: SlashCommand = {
                     }
                 ]
             });
-            const inviteURL = interaction.client.generateInvite({ scopes: ["applications.commands", "bot"], permissions });
+            const inviteURL = interaction.client.generateInvite({ 
+                scopes: ["applications.commands", "bot"], 
+                permissions: <PermissionResolvable>config.permissions
+            });
             const components = [
                 new MessageActionRow({ components: [select] }),
                 new MessageActionRow({

@@ -41,7 +41,7 @@ const command: Command<Context, SceneContext> = {
     cooldown: 20,
     description: 'Search or compare planes',
     help: 'This command can be used to search planes or compare planes. When searching planes the only required parameter is the plane name or shortcut. For a list of shortcuts use this command and choose shortcuts. When comparing planes you need to define 2-5 planes seperated by a comma.',
-    async execute(ctx) {
+    async execute(ctx, { timeouts }) {
         const keyboard = Markup.inlineKeyboard([
             Markup.button.callback('🔍 Search', 'search:plane'),
             Markup.button.callback('📊 Compare', 'compare:plane'),
@@ -51,14 +51,25 @@ const command: Command<Context, SceneContext> = {
             "🔍: Search for a certain plane",
             "📊: Compare planes with charts"
         ];
-        await ctx.replyWithMarkdown(reply_text.join('\n'), keyboard).then(message => {
-            setTimeout(() => ctx.telegram.deleteMessage(message.chat.id, message.message_id).catch(err => void err), 120000)
+        await ctx.replyWithMarkdown(reply_text.join('\n'), keyboard)
+        .then(message => {
+            const timeout = setTimeout(async () => {
+                timeouts.delete(message.message_id);
+                await ctx.telegram.deleteMessage(message.chat.id, message.message_id)
+                .catch(() => undefined);
+            }, 120000);
+            timeouts.set(message.message_id, timeout);
         });
     },
     actions: [
         {
             value: /(search|compare)(?=:plane)/,
-            async execute(ctx) {
+            async execute(ctx, { timeouts }) {
+                if (timeouts.has(ctx.message.message_id)) {
+                    const timeout = timeouts.get(ctx.message.message_id);
+                    clearTimeout(timeout);
+                    timeouts.delete(ctx.message.message_id);
+                }
                 const option: string = ctx.callbackQuery['data'];
                 await ctx.scene.enter(option)
             }
@@ -72,7 +83,7 @@ const command: Command<Context, SceneContext> = {
                 const keyboards = database.telegram.collection<Telegram.keyboard>('Keyboards');
                 this.scene.use(data);
                 this.scene.enter(async (ctx) => {
-                    await ctx.deleteMessage().catch(err => void err);
+                    await ctx.deleteMessage().catch(() => undefined);
                     const keyboard = await keyboards.findOne({ id: ctx.from.id, command: 'plane' });
                     const content: Parameters<typeof ctx.replyWithMarkdown> = ['Type the plane shortcut or name...\nFormat: `<plane>`\nExample: `cessna 172`'];
                     if (keyboard) {
@@ -182,7 +193,7 @@ const command: Command<Context, SceneContext> = {
                 const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
                 this.scene.use(data);
                 this.scene.enter(async ctx => {
-                    await ctx.deleteMessage().catch(err => void err);
+                    await ctx.deleteMessage().catch(() => undefined);
                     const keyboard = Markup.inlineKeyboard([
                         Markup.button.callback("Realism", "realism"),
                         Markup.button.callback("Easy", "easy"),

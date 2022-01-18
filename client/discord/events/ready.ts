@@ -15,9 +15,8 @@ import type { Event } from '../types';
 const event: Event = {
     name: 'ready',
     once: true,
-    async execute(client, { log, database }) {
+    async execute(client, { log, database, timeouts }) {
         const giveawayCollection = database.discord.collection<Discord.giveaway>("Giveaways");
-        console.log(chalk.green('Discord client ready!'));
         client.application ||= await client.application.fetch();
         client.user.setStatus("online");
         if (client.user.id === config.clientId) {
@@ -60,6 +59,7 @@ const event: Event = {
         const giveaways = await giveawayCollection.find(query).toArray();
         if (giveaways.length) {
             const triggerGiveaway = async (giveaway: Discord.giveaway) => {
+                timeouts.delete(giveaway._id);
                 await client.channels.fetch(giveaway.channel)
                 .then(async (channel: TextChannel) => {
                     await channel.messages.fetch(giveaway.message)
@@ -106,13 +106,15 @@ const event: Event = {
                                         .catch(async err => {
                                             console.error("Failed to DM giveaway reward", err);
                                             const author = await client.users.fetch(updated.value.author);
-                                            await author.send(`Failed to DM ${Formatters.bold(`${user.username}#${user.discriminator}`)} the reward for winning ${Formatters.hyperlink("this", message.url)} giveaway. Please DM the reward to the user manually: ${Formatters.spoiler(decrypted.toString(CryptoJS.enc.Utf8))}`).catch(err => void err);
+                                            await author.send(`Failed to DM ${Formatters.bold(`${user.username}#${user.discriminator}`)} the reward for winning ${Formatters.hyperlink("this", message.url)} giveaway. Please DM the reward to the user manually: ${Formatters.spoiler(decrypted.toString(CryptoJS.enc.Utf8))}`)
+                                            .catch(() => undefined);
                                         });
                                     })
                                     .catch(async err => {
                                         console.error("Failed to DM giveaway reward", err);
                                         const author = await client.users.fetch(updated.value.author);
-                                        await author.send(`Failed to DM the winner of ${Formatters.hyperlink("this", message.url)} giveaway the reward. Please DM the reward to the user manually: ${Formatters.spoiler(decrypted.toString(CryptoJS.enc.Utf8))}`).catch(err => void err);
+                                        await author.send(`Failed to DM the winner of ${Formatters.hyperlink("this", message.url)} giveaway the reward. Please DM the reward to the user manually: ${Formatters.spoiler(decrypted.toString(CryptoJS.enc.Utf8))}`)
+                                        .catch(() => undefined);
                                     });
                                 }
                             } else {
@@ -132,7 +134,8 @@ const event: Event = {
                     const hours = Math.abs(differenceInHours(Date.now(), giveaway.expireAt));
                     if (hours < 48) {
                         const ms = Math.abs(differenceInMilliseconds(Date.now(), giveaway.expireAt));
-                        setTimeout(triggerGiveaway, ms, giveaway);
+                        const timeout = setTimeout(triggerGiveaway, ms, giveaway);
+                        timeouts.set(giveaway._id, timeout);
                     }
                 }
             }

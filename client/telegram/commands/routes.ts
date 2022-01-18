@@ -369,10 +369,11 @@ const command: Command<Scenes.SceneContext, SceneContext> = {
                     await ctx.editMessageText(ctx.scene.session.pages.list[ctx.scene.session.pages.current], { 
                         parse_mode: 'HTML', 
                         reply_markup: markup.reply_markup
-                    }).catch(err => void err);
+                    })
+                    .catch(() => undefined);
                 });
                 this.scene.action('delete', async (ctx) => {
-                    await ctx.deleteMessage().catch(err => void err);
+                    await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
                 });
             }

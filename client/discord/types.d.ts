@@ -1,11 +1,12 @@
 import type AM4RestClient from '@source/index';
 import type * as Database from '@typings/database';
+import type { Db, ObjectId } from 'mongodb';
 import type { Worker } from 'cluster';
 import type Discord from 'discord.js';
-import type { Db } from 'mongodb';
 import type Keyv from 'keyv';
 
 interface BaseOptions {
+    timeouts: Map<ObjectId, NodeJS.Timeout>;
     telegramWorker: Worker;
     database: Readonly<Record<"am4" | "discord" | "settings" | "telegram" | "quiz", Db>>;
     cooldowns: Keyv<Date>;

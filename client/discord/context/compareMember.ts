@@ -557,7 +557,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                 select.setDisabled(true);
                 row.components[0] = select;
                 const reply = collected.last() || interaction;
-                await reply.editReply({ components: [row] }).catch(err => void err);
+                await reply.editReply({ components: [row] }).catch(() => undefined);
             });
         }
         catch(error) {

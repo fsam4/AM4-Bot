@@ -1,4 +1,4 @@
-import { MessageEmbed, Formatters, Permissions, MessageActionRow, type MessageSelectMenu, type MessageButton, type SelectMenuInteraction } from 'discord.js';
+import { MessageEmbed, Formatters, Permissions, MessageActionRow, type MessageSelectMenu, type MessageButton, type SelectMenuInteraction, type PermissionResolvable } from 'discord.js';
 import DiscordClientError from '../error';
 import lastDayOfMonth from 'date-fns/lastDayOfMonth';
 import updateEmbed from '../../../documents/json/update.json';
@@ -30,27 +30,7 @@ const component: Component<SelectMenuInteraction> = {
             let embeds: MessageEmbed[] = [];
             const inviteURL = interaction.client.generateInvite({
                 scopes: ["applications.commands", "bot"],
-                permissions: [
-                    Permissions.FLAGS.MANAGE_EVENTS,
-                    Permissions.FLAGS.MODERATE_MEMBERS,
-                    Permissions.FLAGS.MANAGE_ROLES,
-                    Permissions.FLAGS.KICK_MEMBERS,
-                    Permissions.FLAGS.BAN_MEMBERS,
-                    Permissions.FLAGS.MANAGE_NICKNAMES,
-                    Permissions.FLAGS.MANAGE_EMOJIS_AND_STICKERS,
-                    Permissions.FLAGS.MANAGE_WEBHOOKS,
-                    Permissions.FLAGS.VIEW_CHANNEL,
-                    Permissions.FLAGS.SEND_MESSAGES,
-                    Permissions.FLAGS.EMBED_LINKS,
-                    Permissions.FLAGS.ATTACH_FILES,
-                    Permissions.FLAGS.MANAGE_MESSAGES,
-                    Permissions.FLAGS.READ_MESSAGE_HISTORY,
-                    Permissions.FLAGS.USE_EXTERNAL_EMOJIS,
-                    Permissions.FLAGS.USE_APPLICATION_COMMANDS,
-                    Permissions.FLAGS.ADD_REACTIONS,
-                    Permissions.FLAGS.USE_PUBLIC_THREADS,
-                    Permissions.FLAGS.MANAGE_THREADS
-                ]
+                permissions: <PermissionResolvable>config.permissions
             });
             switch(category) {
                 case 'commands': {

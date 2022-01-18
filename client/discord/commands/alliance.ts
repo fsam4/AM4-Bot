@@ -682,7 +682,7 @@ const command: SlashCommand = {
                         collector.once("end", async collected => {
                             row.setComponents(select.setDisabled(true));
                             const reply = collected.last() || interaction;
-                            await reply.editReply({ components: [row] }).catch(err => void err);;
+                            await reply.editReply({ components: [row] }).catch(() => undefined);;
                         });
                     } else {
                         await interaction.editReply({ embeds: [embed] });
@@ -1103,7 +1103,7 @@ const command: SlashCommand = {
                     collector.once("end", async collected => {
                         row.setComponents(select.setDisabled(true));
                         const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(err => void err);
+                        await reply.editReply({ components: [row] }).catch(() => undefined);
                     });
                     break;
                 }
@@ -1296,7 +1296,7 @@ const command: SlashCommand = {
                                 sortRow.setComponents(sortSelect.setDisabled(true));
                                 orderRow.setComponents(orderSelect.setDisabled(true));
                                 await reply.editReply({ components: [sortRow, orderRow] })
-                                .catch(err => void err);
+                                .catch(() => undefined);
                             });
                             break;
                         }
@@ -1604,7 +1604,7 @@ const command: SlashCommand = {
                                 collector.once("end", async collected => {
                                     row.setComponents(select.setDisabled(true));
                                     const reply = collected.last() || interaction;
-                                    await reply.editReply({ components: [row] }).catch(err => void err);
+                                    await reply.editReply({ components: [row] }).catch(() => undefined);
                                 });
                             } else {
                                 await interaction.editReply({ embeds: [embed] });
@@ -2132,7 +2132,7 @@ const command: SlashCommand = {
                             collector.once("end", async collected => {
                                 row.setComponents(select.setDisabled(true));
                                 const reply = collected.last() || interaction;
-                                await reply.editReply({ components: [row] }).catch(err => void err);
+                                await reply.editReply({ components: [row] }).catch(() => undefined);
                             });
                             break;
                         }

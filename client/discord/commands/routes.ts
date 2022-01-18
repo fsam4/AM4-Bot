@@ -532,7 +532,7 @@ const command: SlashCommand = {
             }) as Message;
             for (const options of followups) {
                 await interaction.followUp(options)
-                .catch(err => void err);
+                .catch(() => undefined);
             }
             const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
             const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000, componentType: "BUTTON" });
@@ -644,7 +644,7 @@ const command: SlashCommand = {
             collector.once('end', async collected => {
                 const reply = collected.last() || interaction;
                 for (const row of components) row.components.forEach(component => component.setDisabled(true));
-                await reply.editReply({ components }).catch(err => void err);
+                await reply.editReply({ components }).catch(() => undefined);
             });
         }
         catch(error) {
@@ -731,13 +731,13 @@ const command: SlashCommand = {
                 }));
             }
             await interaction.respond(choices ?? [])
-            .catch(err => void err);
+            .catch(() => undefined);
         }
         catch(error) {
             console.error("Error while autocompleting:", error);
             if (!interaction.responded) {
                 interaction.respond([])
-                .catch(err => void err);
+                .catch(() => undefined);
             };
         }
     }

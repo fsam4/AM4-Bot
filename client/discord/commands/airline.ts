@@ -438,8 +438,8 @@ const command: SlashCommand = {
                         }
                     }).setBackgroundColor('transparent');
                     embeds[1].setImage(await chart.getShortUrl());
-        
-                    const pipeline = [
+
+                    const alliances = await memberCollection.aggregate<AllianceMember>([
                         {
                             $match: {
                                 name: airline.name
@@ -477,8 +477,7 @@ const command: SlashCommand = {
                                 }
                             }
                         }
-                    ];
-                    const alliances = await memberCollection.aggregate<AllianceMember>(pipeline).toArray();
+                    ]).toArray();
                     if (alliances.length) {
                         select.addOptions({
                             label: "Alliance log",
@@ -615,7 +614,7 @@ const command: SlashCommand = {
                         select.setDisabled(true);
                         row.components[0] = select;
                         const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(err => void err);
+                        await reply.editReply({ components: [row] }).catch(() => undefined);
                     });
                     break;
                 }
@@ -797,7 +796,7 @@ const command: SlashCommand = {
                     collector.on("end", async collected => {
                         row.setComponents(select.setDisabled(true));
                         const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(err => void err);
+                        await reply.editReply({ components: [row] }).catch(() => undefined);
                     });
                     if (fleet.planes.length > 25) await interaction.followUp({
                         content: `Due to the amount of different plane models of this airline's fleet the bot will only display 25 out of ${fleet.size} planes.`,
@@ -1229,7 +1228,7 @@ const command: SlashCommand = {
                     collector.once("end", async collected => {
                         row.setComponents(select.setDisabled(true));
                         const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(err => void err);
+                        await reply.editReply({ components: [row] }).catch(() => undefined);
                     });
                     break;
                 }

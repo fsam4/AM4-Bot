@@ -32,7 +32,7 @@ const command: Command<Context, SceneContext> = {
     cooldown: 10,
     description: 'Search or compare alliance members',
     help: 'This command can be used to search for a specific alliance member and their contribution statistics. You can also compare several members and their statistics. The only required argument is the usernmae/ID. If you cannot find the user by username and you are sure that the user is in an alliance use the ID.',
-    async execute(ctx) {
+    async execute(ctx, { timeouts }) {
         const keyboard = Markup.inlineKeyboard([
             Markup.button.callback('🔍 Search', 'search:member'),
             Markup.button.callback('📊 Compare', 'compare:member'),
@@ -42,14 +42,25 @@ const command: Command<Context, SceneContext> = {
             "🔍: Search for a certain member",
             "📊: Compare members with charts"
         ]
-        await ctx.replyWithMarkdown(reply_text.join('\n'), keyboard).then(message => {
-            setTimeout(() => ctx.telegram.deleteMessage(message.chat.id, message.message_id).catch(error => void error), 120000)
+        await ctx.replyWithMarkdown(reply_text.join('\n'), keyboard)
+        .then(message => {
+            const timeout = setTimeout(async () => {
+                timeouts.delete(message.message_id);
+                await ctx.telegram.deleteMessage(message.chat.id, message.message_id)
+                .catch(() => undefined);
+            }, 120000);
+            timeouts.set(message.message_id, timeout);
         });
     },
     actions: [
         {
             value: /(search|compare)(?=:member)/,
-            async execute(ctx) {
+            async execute(ctx, { timeouts }) {
+                if (timeouts.has(ctx.message.message_id)) {
+                    const timeout = timeouts.get(ctx.message.message_id);
+                    clearTimeout(timeout);
+                    timeouts.delete(ctx.message.message_id);
+                }
                 const option: string = ctx.callbackQuery['data'];
                 await ctx.scene.enter(option)
             }
@@ -64,7 +75,7 @@ const command: Command<Context, SceneContext> = {
                 const allianceCollection = database.am4.collection<AM4_Data.alliance>("Alliances");
                 this.scene.use(data);
                 this.scene.enter(async (ctx) => {
-                    await ctx.deleteMessage().catch(err => void err);
+                    await ctx.deleteMessage().catch(() => undefined);
                     const keyboard = await keyboards.findOne({ id: ctx.from.id, command: 'member' });
                     const content: Parameters<typeof ctx.replyWithMarkdown> = ['Type the name or the ID of the member...\nFormat: `<name|id>`\nExample: `prestige wings`'];
                     if (keyboard) {
@@ -237,7 +248,7 @@ const command: Command<Context, SceneContext> = {
                 const allianceCollection = database.am4.collection<AM4_Data.alliance>("Alliances");
                 this.scene.use(data);
                 this.scene.enter(async (ctx) => {
-                    ctx.deleteMessage().catch(err => void err);
+                    ctx.deleteMessage().catch(() => undefined);
                     const action_keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'exit')]);
                     await ctx.replyWithMarkdown('Type the names or IDs of the members seperated by commas...\nFormat: `<name|id>,...`\nExample: `prestige wings, ambe airlines, world express airlines`', action_keyboard)
                 });

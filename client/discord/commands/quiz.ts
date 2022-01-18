@@ -14,7 +14,6 @@ const modes = {
 };
 
 const addScore = (multiplier: number) => parseFloat((Math.random() * multiplier * eventMultiplier).toFixed(2));
-const isLastRound = (index: number, rounds: number) => (index + 1) === rounds;
 
 const command: SlashCommand = {
     get name() {
@@ -157,7 +156,7 @@ const command: SlashCommand = {
         });
         await interaction.deferReply();
         const games = database.quiz.collection<Quiz.game>('Games');
-        const users = database.quiz.collection<Quiz.user>('Users');
+        const quizUserCollection = database.quiz.collection<Quiz.user>('Users');
         const questionCollection = database.quiz.collection<Quiz.question>('Questions');
         const userCollection = database.discord.collection<Discord.user>("Users");
         try {
@@ -177,7 +176,7 @@ const command: SlashCommand = {
                         tags: { $in: [game.tag] }
                     };
                     const poolSize = await questionCollection.countDocuments(filterQuery);
-                    const questions = await questionCollection.aggregate<Quiz.question>([
+                    const cursor = questionCollection.aggregate<Quiz.question>([
                         {
                             $match: filterQuery
                         },
@@ -186,7 +185,7 @@ const command: SlashCommand = {
                                 size: rounds
                             }
                         }
-                    ]).toArray();
+                    ]);
                     console.log(`${game.name} was started in ${interaction.guild.name}!`);
                     const embed = new MessageEmbed({
                         title: game.name,
@@ -256,8 +255,9 @@ const command: SlashCommand = {
                                 await thread.members.add(interaction.user, "Started a quiz game");
                             }
                             const play = async (index: number) => {
-                                if (index < questions.length) {
-                                    const question = questions[index];
+                                const playing = await cursor.hasNext();
+                                if (playing) {
+                                    const question = await cursor.next();
                                     const filter = (res: Message) => question.answers.some(answer => answer.toLowerCase() === res.content.toLowerCase());
                                     const display = new MessageEmbed({ 
                                         color: 0x00AE86,
@@ -285,7 +285,7 @@ const command: SlashCommand = {
                                         const msg = messages.first();
                                         if (config.tournament?.enabled) {
                                             const $score = addScore(modes[mode] * game.reward);
-                                            const user = await users.findOneAndUpdate(
+                                            const user = await quizUserCollection.findOneAndUpdate(
                                                 { 
                                                     id: msg.author.id 
                                                 }, 
@@ -305,7 +305,7 @@ const command: SlashCommand = {
                                             );
                                             await msg.reply(`That is the correct answer! You now have ${Formatters.bold(user.value.points.toLocaleString(guildLocale))} (+${game.reward * modes[mode]}) points and a score of ${Formatters.bold(user.value.score.toLocaleString(guildLocale))} (+${$score})!`);
                                         } else {
-                                            const user = await users.findOneAndUpdate(
+                                            const user = await quizUserCollection.findOneAndUpdate(
                                                 { 
                                                     id: msg.author.id 
                                                 }, 
@@ -327,7 +327,8 @@ const command: SlashCommand = {
                                         setTimeout(play, 5000, index + 1);
                                     } else {
                                         let error_message = "Looks like nobody got the right answer this time...";
-                                        if (!isLastRound(index, rounds)) error_message += " Next round starts in 5 seconds!";
+                                        const next = await cursor.hasNext();
+                                        if (next) error_message += " Next round starts in 5 seconds!";
                                         await questionMessage.reply(error_message);
                                         setTimeout(play, 5000, index + 1);
                                     }
@@ -356,7 +357,7 @@ const command: SlashCommand = {
                 }
                 case "points": {
                     const userId = interaction.options.getUser("user")?.id || interaction.user.id;
-                    const user = await users.findOne({ id: userId });
+                    const user = await quizUserCollection.findOne({ id: userId });
                     if (!user) throw new DiscordClientError(`${Formatters.userMention(userId)}, does not have any points...`);
                     let content = `**Quiz points:** \`${user.points.toLocaleString(locale)}\``;
                     if (config.tournament?.enabled) content += `\n**Monthly score:** \`${(user.score ?? 0).toLocaleString(locale)}\``;
@@ -367,14 +368,18 @@ const command: SlashCommand = {
                     type ScoreType = "points" | "score";
                     const type = <ScoreType>interaction.options.getString("type", true).trim();
                     if (type === "score" && !config.tournament?.enabled) throw new DiscordClientError("There are no ongoing tournaments...");
-                    const found_users = users.find(type === "score" ? { score: { $exists: true } } : {});
-                    const amount = await found_users.count();
-                    const quiz_users = await found_users.sort(type === "score" ? { score: -1 } : { points: - 1 }).limit(10).toArray();
-                    const quiz_user_data = await userCollection.aggregate<Discord.user>([
+                    const cursor = quizUserCollection.find(type === "score" && { score: { $exists: true } }, {
+                        sort: type === "score" 
+                            ? { score: -1 } 
+                            : { points: - 1 }
+                    });
+                    const amount = await cursor.count();
+                    const users = await cursor.limit(10).toArray();
+                    const accounts = await userCollection.aggregate<Discord.user>([
                         {
                             $match: {
                                 id: { 
-                                    $in: quiz_users.map(user => user.id)
+                                    $in: users.map(user => user.id)
                                 } 
                             }
                         },
@@ -389,8 +394,8 @@ const command: SlashCommand = {
                     const embed = new MessageEmbed({
                         color: "ORANGE",
                         title: `Leaderboard • ${type === 'score' ? 'Monthly Score' : 'Quiz Points'}`,
-                        description: quiz_users.map((user, i) => {
-                            const username = quiz_user_data.find(u => u.id === user.id)?.name || "unknown";
+                        description: users.map((user, i) => {
+                            const username = accounts.find(u => u.id === user.id)?.name || "unknown";
                             return `**${i + 1}.** ${username} • ${Formatters.bold(user[type].toLocaleString(guildLocale))} pts`;
                         }).join('\n'),
                         footer: {

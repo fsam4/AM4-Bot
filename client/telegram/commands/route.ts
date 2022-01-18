@@ -131,7 +131,7 @@ const command: Command<Scenes.SceneContext, SceneContext> = {
                     }
                 });
                 this.scene.action('exit', async (ctx) => {
-                    await ctx.deleteMessage().catch(err => void err);
+                    await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
                 });
             }

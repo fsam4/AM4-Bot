@@ -28,7 +28,7 @@ const event: Event = {
             await reaction.message.guild.members.fetch(user.id)
             .then(async member => {
                 const reason = `Removed via reaction role by ${reaction.message.author.username}#${reaction.message.author.discriminator}`;
-                await member.roles.remove(role, reason).catch(err => void err);
+                await member.roles.remove(role, reason).catch(() => undefined);
             })
             .catch(console.error)
         }

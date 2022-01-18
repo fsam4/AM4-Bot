@@ -453,7 +453,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                         collector.once("end", async collected => {
                             row.setComponents(select.setDisabled(true));
                             const reply = collected.last() || interaction;
-                            await reply.editReply({ components: [row] }).catch(err => void err);;
+                            await reply.editReply({ components: [row] }).catch(() => undefined);;
                         });
                     } else {
                         await interaction.editReply({ embeds: [embed] });

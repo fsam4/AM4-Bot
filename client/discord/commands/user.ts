@@ -489,7 +489,7 @@ const command: SlashCommand = {
                                         break;
                                     }
                                 }
-                                if (roles.size) await member.roles.add([...roles], `Logged in as ${airline.name}`).catch(err => void err);
+                                if (roles.size) await member.roles.add([...roles], `Logged in as ${airline.name}`).catch(() => undefined);
                             }
                             if (server.log_channel) {
                                 await interaction.guild.channels.fetch(server.log_channel)
@@ -556,7 +556,7 @@ const command: SlashCommand = {
                                     const roleId = server.roles[role];
                                     if (roleId) roles.add(roleId);
                                 }
-                                if (roles.size) await member.roles.remove([...roles], `Logged out from ${account.name}`).catch(err => void err);
+                                if (roles.size) await member.roles.remove([...roles], `Logged out from ${account.name}`).catch(() => undefined);
                             }
                             if (server.log_channel) {
                                 await interaction.guild.channels.fetch(server.log_channel)
@@ -649,8 +649,8 @@ const command: SlashCommand = {
                                         break;
                                     }
                                 }
-                                if (addRoles.size) await member.roles.add([...addRoles], `Updating the roles of ${airline.name}`).catch(err => void err);
-                                if (removeRoles.size) await member.roles.remove([...removeRoles], `Updating the roles of ${airline.name}`).catch(err => void err);
+                                if (addRoles.size) await member.roles.add([...addRoles], `Updating the roles of ${airline.name}`).catch(() => undefined);
+                                if (removeRoles.size) await member.roles.remove([...removeRoles], `Updating the roles of ${airline.name}`).catch(() => undefined);
                             }
                         }
                     }

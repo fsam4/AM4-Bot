@@ -28,7 +28,7 @@ const event: Event = {
             await reaction.message.guild.members.fetch(user.id)
             .then(async member => {
                 const reason = `Obtained via reaction role by ${reaction.message.author.username}#${reaction.message.author.discriminator}`;
-                await member.roles.add(role, reason).catch(err => void err);
+                await member.roles.add(role, reason).catch(() => undefined);
             })
             .catch(console.error)
         }

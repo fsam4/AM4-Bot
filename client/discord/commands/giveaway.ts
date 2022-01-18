@@ -8,7 +8,6 @@ import type { SlashCommand } from '../types';
 import type { Discord } from '@typings/database';
 
 const fullDateFormat = /\d{2}\/\d{2}\/\d{4} \d{2}.\d{2}/;
-const dateFormat = /\d{2}\/\d{2}\/\d{4}/;
 const timeFormat = /\d{2}.\d{2}/;
 
 const command: SlashCommand = {
@@ -122,7 +121,7 @@ const command: SlashCommand = {
             }
         ]
     },
-    async execute(interaction, { database, account }) {
+    async execute(interaction, { database, account, timeouts }) {
         if (!interaction.guild) return interaction.reply("This command requires the bot to be in this server...");
         await interaction.deferReply({ ephemeral: true });
         const giveaways = database.discord.collection<Discord.giveaway>("Giveaways");
@@ -238,15 +237,17 @@ const command: SlashCommand = {
                     const query = ObjectId.isValid(giveaway_id) ? { _id: new ObjectId(giveaway_id) } : { message: giveaway_id };
                     const res = await giveaways.findOneAndDelete({ ...query, server: interaction.guildId });
                     if (!res.ok) throw new DiscordClientError("No giveaway could be found with that ID in this server...");
+                    if (timeouts.has(res.value._id)) {
+                        const timeout = timeouts.get(res.value._id);
+                        clearTimeout(timeout);
+                        timeouts.delete(res.value._id);
+                    }
                     await interaction.guild.channels.fetch(res.value.channel)
-                    .then(async (channel: TextChannel) => {
-                        await channel.messages.delete(res.value.message)
-                        .catch(err => void err);
-                    })
-                    .catch(err => void err);
+                    .then((channel: TextChannel) => channel.messages.delete(res.value.message))
+                    .catch(() => undefined);
                     if (res.value.event) {
                         await interaction.guild.scheduledEvents.edit(res.value.event, { status: "CANCELED" })
-                        .catch(err => void err);
+                        .catch(() => undefined);
                     }
                     await interaction.editReply("Your giveaway has been deleted! This means that the giveaway does not exist anymore and will not trigger.");
                     break;
@@ -376,19 +377,17 @@ const command: SlashCommand = {
                     const hours = Math.abs(dateFNS.differenceInHours(interaction.createdAt, date));
                     if (hours < 48) {
                         const ms = Math.abs(dateFNS.differenceInMilliseconds(interaction.createdAt, date));
-                        setTimeout(async () => {
+                        const timeout = setTimeout(async () => {
+                            timeouts.delete(res.insertedId);
                             button.setDisabled(true);
                             row.components[0] = button;
                             delete embed.description;
                             await message.edit({ 
                                 components: [row],
                                 embeds: [embed] 
-                            }).catch(err => void err);
-                            const updated = await giveaways.findOneAndUpdate(
-                                { 
-                                    _id: res.insertedId 
-                                }, 
-                                {
+                            })
+                            .catch(() => undefined);
+                            const updated = await giveaways.findOneAndUpdate({ _id: res.insertedId }, {
                                     $set: {
                                         finished: true
                                     }
@@ -414,13 +413,15 @@ const command: SlashCommand = {
                                             .catch(async err => {
                                                 console.error("Failed to DM giveaway reward", err);
                                                 const author = await interaction.client.users.fetch(updated.value.author);
-                                                await author.send(`Failed to DM ${Formatters.bold(`${user.username}#${user.discriminator}`)} the reward for winning ${Formatters.hyperlink("this", message.url)} giveaway. Please DM the reward to the user manually: ${Formatters.spoiler(decrypted.toString(CryptoJS.enc.Utf8))}`).catch(err => void err);
+                                                await author.send(`Failed to DM ${Formatters.bold(`${user.username}#${user.discriminator}`)} the reward for winning ${Formatters.hyperlink("this", message.url)} giveaway. Please DM the reward to the user manually: ${Formatters.spoiler(decrypted.toString(CryptoJS.enc.Utf8))}`)
+                                                .catch(() => undefined);
                                             });
                                         })
                                         .catch(async err => {
                                             console.error("Failed to DM giveaway reward", err);
                                             const author = await interaction.client.users.fetch(updated.value.author);
-                                            await author.send(`Failed to DM the winner of ${Formatters.hyperlink("this", message.url)} the reward. Please DM the reward to the user manually: ${Formatters.spoiler(decrypted.toString(CryptoJS.enc.Utf8))}`).catch(err => void err);
+                                            await author.send(`Failed to DM the winner of ${Formatters.hyperlink("this", message.url)} the reward. Please DM the reward to the user manually: ${Formatters.spoiler(decrypted.toString(CryptoJS.enc.Utf8))}`)
+                                            .catch(() => undefined);
                                         });
                                     }
                                 } else {
@@ -428,6 +429,7 @@ const command: SlashCommand = {
                                 }
                             }
                         }, ms);
+                        timeouts.set(res.insertedId, timeout);
                     }
                     break;
                 }

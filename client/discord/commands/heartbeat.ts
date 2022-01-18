@@ -1,27 +1,8 @@
-import { Permissions, MessageButton, MessageActionRow, Formatters, Constants, type TextChannel } from 'discord.js';
+import { Permissions, MessageButton, MessageActionRow, Formatters, Constants, type TextChannel, type PermissionResolvable } from 'discord.js';
+import config from '../../../config.json';
 
 import type { SlashCommand } from '../types';
 import type { Settings } from '@typings/database';
-
-const requiredPermissions = [
-    Permissions.FLAGS.MANAGE_ROLES,
-    Permissions.FLAGS.KICK_MEMBERS,
-    Permissions.FLAGS.BAN_MEMBERS,
-    Permissions.FLAGS.MANAGE_NICKNAMES,
-    Permissions.FLAGS.MANAGE_EMOJIS_AND_STICKERS,
-    Permissions.FLAGS.MANAGE_WEBHOOKS,
-    Permissions.FLAGS.VIEW_CHANNEL,
-    Permissions.FLAGS.SEND_MESSAGES,
-    Permissions.FLAGS.EMBED_LINKS,
-    Permissions.FLAGS.ATTACH_FILES,
-    Permissions.FLAGS.MANAGE_MESSAGES,
-    Permissions.FLAGS.READ_MESSAGE_HISTORY,
-    Permissions.FLAGS.USE_EXTERNAL_EMOJIS,
-    Permissions.FLAGS.USE_APPLICATION_COMMANDS,
-    Permissions.FLAGS.ADD_REACTIONS,
-    Permissions.FLAGS.USE_PUBLIC_THREADS,
-    Permissions.FLAGS.MANAGE_THREADS
-];
 
 const command: SlashCommand = {
     get name() {
@@ -52,7 +33,7 @@ const command: SlashCommand = {
         if (!interaction.guild) {
             const invite = interaction.client.generateInvite({
                 disableGuildSelect: true,
-                permissions: requiredPermissions,
+                permissions: <PermissionResolvable>config.permissions,
                 guild: interaction.guildId,
                 scopes: ["bot"]
             });
@@ -79,7 +60,7 @@ const command: SlashCommand = {
             });
             return;
         }
-        const missingPermissions = interaction.guild.me.permissions.missing(requiredPermissions);
+        const missingPermissions = interaction.guild.me.permissions.missing(<PermissionResolvable>config.permissions);
         if (missingPermissions.length) {
             const perms = missingPermissions.map(permission => permission.replace(/_/g, " ").replace(/(^\w{1})|(\s{1}\w{1})/g, match => match.toUpperCase()));
             await interaction.editReply(`AM4 Bot has ${Formatters.bold(missingPermissions.length.toLocaleString(guildLocale))} missing permissions in this server that it requires. Having some permissions disabled can limit the features of AM4 Bot and cause issues. The missing permissions are:\n${Formatters.blockQuote(perms.join("\n"))}`);
@@ -95,7 +76,8 @@ const command: SlashCommand = {
                     return;
                 }
             } else if (server.log_channel) {
-                const channel: TextChannel = await interaction.guild.channels.fetch(server.log_channel, { force: true }).catch(err => void err);
+                const channel: TextChannel = await interaction.guild.channels.fetch(server.log_channel, { force: true })
+                .catch(() => undefined);
                 if (!channel) {
                     await interaction.editReply(`Your log channel does not seem to exist anymore. Please update it or reset it via \`/settings login\`.`);
                     return;

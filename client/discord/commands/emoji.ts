@@ -280,13 +280,13 @@ const command: SlashCommand = {
                 choices = await cursor.toArray();
             }
             await interaction.respond(choices ?? [])
-            .catch(err => void err);
+            .catch(() => undefined);
         }
         catch(error) {
             console.error("Error while autocompleting:", error);
             if (!interaction.responded) {
                 interaction.respond([])
-                .catch(err => void err);
+                .catch(() => undefined);
             };
         }
     }

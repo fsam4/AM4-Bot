@@ -572,7 +572,7 @@ const command: SlashCommand = {
                     }) as Message;
                     for (const options of followups) {
                         await interaction.followUp(options)
-                        .catch(err => void err);
+                        .catch(() => undefined);
                     }
                     const filter = ({ user, customId }: MessageComponentInteraction) => customId === "plane" || user.id === interaction.user.id;
                     const collector = reply.createMessageComponentCollector({ filter, time: 10 * 60 * 1000 });
@@ -639,7 +639,7 @@ const command: SlashCommand = {
                     collector.once("end", async collected => {
                         row.components.forEach(component => component.setDisabled(true));
                         const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(err => void err);
+                        await reply.editReply({ components: [row] }).catch(() => undefined);
                     });
                     break;
                 }
@@ -712,7 +712,7 @@ const command: SlashCommand = {
                     collector.once('end', async collected => {
                         row.setComponents(select.setDisabled(true));
                         const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(err => void err);
+                        await reply.editReply({ components: [row] }).catch(() => undefined);
                     });
                     break;
                 }
@@ -1052,7 +1052,7 @@ const command: SlashCommand = {
                         collector.once("end", async collected => {
                             row.setComponents(select.setDisabled(true));
                             const reply = collected.last() || interaction;
-                            await reply.editReply({ components: [row] }).catch(err => void err);
+                            await reply.editReply({ components: [row] }).catch(() => undefined);
                         });
                         break;
                     }
@@ -1144,13 +1144,13 @@ const command: SlashCommand = {
                 }));
             }
             await interaction.respond(choices ?? [])
-            .catch(err => void err);
+            .catch(() => undefined);
         }
         catch(error) {
             console.error("Error while autocompleting:", error);
             if (!interaction.responded) {
                 interaction.respond([])
-                .catch(err => void err);
+                .catch(() => undefined);
             };
         }
     }

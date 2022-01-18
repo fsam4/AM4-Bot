@@ -33,7 +33,7 @@ const command: Command<Context, SceneContext> = {
     cooldown: 10,
     description: 'Search or compare airlines',
     help: "With this command you can search or compare airlines. When searcing for an airline there is one required argument which is `<name|id>`. This mean you need to either type the name or the ID of that airline. If you cannot find the right airline by username then try ID as that gives more accurate results. When comparing airlines you need to type 2-5 airlines seperated by commas. So for example if you want to compare Prestige Wings and AMBE Airlines use `prestige wings, ambe airlines`.",
-    async execute(ctx) {
+    async execute(ctx, { timeouts }) {
         const keyboard = Markup.inlineKeyboard([
             Markup.button.callback('🔍 Search', 'search:airline'),
             Markup.button.callback('📊 Compare', 'compare:airline'),
@@ -43,16 +43,27 @@ const command: Command<Context, SceneContext> = {
             "🔍: Search for a specific airline",
             "📊: Compare airlines with charts"
         ];
-        await ctx.replyWithMarkdown(reply_text.join('\n'), keyboard).then(message => {
-            setTimeout(() => ctx.telegram.deleteMessage(message.chat.id, message.message_id).catch(error => void error), 120000)
-        })
+        await ctx.replyWithMarkdown(reply_text.join('\n'), keyboard)
+        .then(message => {
+            const timeout = setTimeout(async () => {
+                timeouts.delete(message.message_id);
+                await ctx.telegram.deleteMessage(message.chat.id, message.message_id)
+                .catch(() => undefined);
+            }, 120000);
+            timeouts.set(message.message_id, timeout);
+        });
     },
     actions: [
         {
             value: /(search|compare)(?=:airline)/,
-            async execute(ctx) {
+            async execute(ctx, { timeouts }) {
+                if (timeouts.has(ctx.message.message_id)) {
+                    const timeout = timeouts.get(ctx.message.message_id);
+                    clearTimeout(timeout);
+                    timeouts.delete(ctx.message.message_id);
+                }
                 const option: string = ctx.callbackQuery['data'];
-                await ctx.scene.enter(option)
+                await ctx.scene.enter(option);
             }
         }
     ],
@@ -64,7 +75,7 @@ const command: Command<Context, SceneContext> = {
                 const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
                 this.scene.use(data);
                 this.scene.enter(async (ctx) => {
-                    await ctx.deleteMessage().catch(err => void err);
+                    await ctx.deleteMessage().catch(() => undefined);
                     const keyboard = await keyboards.findOne({ id: ctx.from.id, command: 'airline' });
                     const content: Parameters<typeof ctx.replyWithMarkdown> = ['Type the name or the ID of the airline...\nFormat: `<name|id>`\nExample: `prestige wings`'];
                     if (keyboard) {
@@ -315,7 +326,7 @@ const command: Command<Context, SceneContext> = {
                     }
                 });
                 this.scene.action('exit', async (ctx) => {
-                    await ctx.deleteMessage().catch(err => void err);
+                    await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
                 });
             }
@@ -326,7 +337,7 @@ const command: Command<Context, SceneContext> = {
                 const aircrafts = database.am4.collection<AM4_Data.plane>('Planes');
                 this.scene.use(data);
                 this.scene.enter(async (ctx) => {
-                    await ctx.deleteMessage().catch(err => void err);
+                    await ctx.deleteMessage().catch(() => undefined);
                     const action_keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'exit')]);
                     await ctx.replyWithMarkdown('Type the names or IDs of the airlines seperated by commas...\nFormat: `<name|id>,...`\nExample: `prestige wings, ambe airlines, world express airlines`', action_keyboard)
                 });
@@ -817,7 +828,7 @@ const command: Command<Context, SceneContext> = {
                     }
                 });
                 this.scene.action('exit', async (ctx) => {
-                    await ctx.deleteMessage().catch(err => void err);
+                    await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
                 });
             }
