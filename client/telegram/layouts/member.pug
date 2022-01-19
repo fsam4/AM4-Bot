@@ -10,8 +10,8 @@ b <u>General statistics</u>
 | <b>Joined:</b> #{formatToString(member.joined, { addSuffix: true })} • #{format(member.joined, 'dd/MM/yyyy')}
 | <b>Last online:</b> #{formatToString(member.online, { addSuffix: true })}
 | <b>Flights:</b> #{member.flights.toLocaleString(locale)}
-- var has_data = Boolean(memberDocument)
-    if has_data && memberDocument.dailyContribution.length
+- var hasDocument = Boolean(memberDocument)
+    if hasDocument && memberDocument.dailyContribution.length
         - var total = memberDocument.dailyContribution.map(o => o.value).reduce((total, num) => total + num)
         - var days = Math.abs(differenceInDays(member.joined, new Date()))
         - var avg = Math.round(total / 7)

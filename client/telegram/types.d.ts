@@ -1,6 +1,7 @@
 import type { Telegraf, Scenes, NarrowedContext, Types, Context } from 'telegraf';
-import type { Telegram } from '@typings/database';
+import type { CallbackQuery } from 'typegram';
 import type AM4RestClient from '@source/index';
+import type { Telegram } from '@typings/database';
 import type { Worker } from 'cluster';
 import type { Db } from 'mongodb';
 import type Keyv from 'keyv';
@@ -19,9 +20,11 @@ interface CommandOptions extends BaseOptions {
     account: Telegram.user;
 }
 
+type DataCallbackQuery = Extract<CallbackQuery, { data: string }>;
+
 interface Action<ActionContext extends Context = Context> {
     value: string | RegExp;
-    execute: (this: this, ctx: ActionContext, options: CommandOptions) => Promise<void>;
+    execute: (this: this, ctx: ActionContext & { callbackQuery: DataCallbackQuery }, options: CommandOptions) => Promise<void>;
 }
 
 interface Scene<SceneContext extends Context = Context> {

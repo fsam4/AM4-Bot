@@ -22,7 +22,7 @@ b <u>Member statistics</u>
 |
 |
 - var recentlyJoined = members.sort((a, b) => compareAsc(b.joined, a.joined)).toArray().slice(0, 5);
-    if data
+    if hasDocument
         - var recentlyLeft = memberDocuments.filter(member => member.left).sort((a, b) => compareAsc(b.left, a.left)).slice(0, 5);
         b <u>Recently joined</u>
         |

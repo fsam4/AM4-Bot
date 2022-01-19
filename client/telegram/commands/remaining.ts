@@ -21,6 +21,7 @@ const command: Command = {
             async execute(ctx, { rest }) {
                 const locale = ctx.from.language_code || "en";
                 const content = rest.am4.lastRequest ? `${rest.am4.requestsRemaining.toLocaleString(locale)} requests remaining. Last updated ${formatDistanceToNowStrict(rest.am4.lastRequest, { addSuffix: true })}` : "No requests have been made since last restart...";
+                await ctx.answerCbQuery();
                 await ctx.editMessageText(content, {
                     parse_mode: "Markdown",
                     reply_markup: keyboard.reply_markup

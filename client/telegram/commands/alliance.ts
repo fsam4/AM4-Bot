@@ -10,10 +10,10 @@ import addMonths from 'date-fns/addMonths';
 import format from 'date-fns/format';
 
 import type { Message, User, InputMediaPhoto } from 'typegram';
+import type { Command, DataCallbackQuery } from '../types';
 import type { Telegram, AM4_Data } from '@typings/database';
 import type { Member } from '@source/classes/alliance';
 import type { Context } from 'telegraf';
-import type { Command } from '../types';
 import type Alliance from '@source/classes/alliance';
 
 interface AllianceMember extends AM4_Data.member {
@@ -37,7 +37,7 @@ interface SceneSession extends Scenes.SceneSessionData {
 type BaseSceneOptions = ConstructorParameters<typeof Scenes.BaseScene>[1];
 type SceneContext = Scenes.SceneContext<SceneSession>;
 
-const data = (ctx: SceneContext, next: () => void) => {
+const sessionHandler = (ctx: SceneContext, next: () => void) => {
     ctx.scene.session.user ||= ctx.from;
     ctx.scene.session.alliances ||= [];
     ctx.scene.session.sorting ||= {
@@ -82,8 +82,8 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     clearTimeout(timeout);
                     timeouts.delete(ctx.message.message_id);
                 }
-                const option: string = ctx.callbackQuery['data'];
-                await ctx.scene.enter(option);
+                await ctx.scene.enter(ctx.callbackQuery.data);
+                await ctx.answerCbQuery();
             }
         }
     ],
@@ -94,7 +94,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 const keyboards = database.telegram.collection<Telegram.keyboard>('Keyboards');
                 const allianceCollection = database.am4.collection<AM4_Data.alliance>('Alliances');
                 const memberCollection = database.am4.collection<AM4_Data.member>("Members");
-                this.scene.use(data);
+                this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => undefined);
                     const keyboard = await keyboards.findOne({ id: ctx.from.id, command: 'alliance' });
@@ -255,7 +255,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                             const keyboard = Markup.inlineKeyboard([Markup.button.url('Growth chart', url)]);
                             const reply = compile({
                                 format, formatDistanceToNowStrict, compareAsc,
-                                locale, memberDocuments, data, alliance, members
+                                locale, memberDocuments, alliance, members, hasDocument: true
                             });
                             await ctx.replyWithHTML(reply, keyboard);
                         } else {
@@ -348,7 +348,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                         value: 'flights'
                     }
                 ];
-                this.scene.use(data);
+                this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => undefined);
                     const keyboard = await keyboards.findOne({ id: ctx.from.id, command: 'alliance' });
@@ -379,7 +379,8 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 this.scene.action(choice, async (ctx) => {
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
                     if (ctx.scene.session.sorting.path) return;
-                    ctx.scene.session.sorting.path = ctx.callbackQuery['data'];
+                    ctx.scene.session.sorting.path = (<DataCallbackQuery>ctx.callbackQuery).data;
+                    await ctx.answerCbQuery();
                     const keyboard = Markup.inlineKeyboard([
                         Markup.button.callback('Ascending', 'asc'),
                         Markup.button.callback('Descending', 'desc'),
@@ -391,7 +392,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
                     if (ctx.scene.session.sorting.order) return;
                     const locale = ctx.from.language_code || 'en';
-                    ctx.scene.session.sorting.order = ctx.callbackQuery['data'];
+                    ctx.scene.session.sorting.order = (<DataCallbackQuery>ctx.callbackQuery).data as "asc" | "desc";
                     const { order, path: sort } = ctx.scene.session.sorting;
                     const [{ alliance, members: m }] = ctx.scene.session.alliances;
                     type MemberData = { data: AM4_Data.member & { thisWeek: number, daysOffline: number } };
@@ -448,6 +449,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                         Markup.button.callback('▶️', 'next'),
                         Markup.button.callback('🗑️', 'delete')
                     ]);
+                    await ctx.answerCbQuery();
                     const msg = await ctx.editMessageText(pages[0], {
                         reply_markup: pages.length > 1 ? markup.reply_markup: undefined,
                         parse_mode: 'HTML'
@@ -459,7 +461,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 this.scene.action(/next|prev/, async (ctx) => {
                     const message = ctx.update.callback_query.message;
                     if (message.message_id !== ctx.scene.session.message.message_id || ctx.from.id !== ctx.scene.session.user.id) return;
-                    const option: string = ctx.callbackQuery['data'];
+                    const option = (<DataCallbackQuery>ctx.callbackQuery).data;
                     const page = option === "next" ? ctx.scene.session.pages.next(1) : ctx.scene.session.pages.next(-1);
                     const pages = [...ctx.scene.session.pages];
                     const currentPage = pages.findIndex(text => text === page.value);
@@ -473,9 +475,10 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                         parse_mode: 'HTML', 
                         reply_markup: markup.reply_markup
                     })
-                    .catch(() => ctx.scene.leave());
+                    .catch(ctx.scene.leave);
                 });
                 this.scene.action('delete', async (ctx) => {
+                    await ctx.answerCbQuery();
                     await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
                 });
@@ -485,7 +488,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
             scene: new Scenes.BaseScene<SceneContext>('compare:alliance', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database, rest }) {
                 const allianceCollection = database.am4.collection<AM4_Data.alliance>('Alliances');
-                this.scene.use(data);
+                this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => undefined);
                     const action_keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'exit')]);
@@ -890,9 +893,10 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     }
                 });
                 this.scene.action('leave', async (ctx) => {
+                    await ctx.answerCbQuery();
                     await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
-                })
+                });
             }
         }
     ]

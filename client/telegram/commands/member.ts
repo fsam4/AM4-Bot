@@ -22,7 +22,7 @@ interface SceneSession extends Scenes.SceneSessionData {
 type BaseSceneOptions = ConstructorParameters<typeof Scenes.BaseScene>[1];
 type SceneContext = Scenes.SceneContext<SceneSession>;
 
-const data = (ctx: SceneContext, next: () => void) => {
+const sessionHandler = (ctx: SceneContext, next: () => void) => {
     ctx.scene.session.user ||= ctx.from;
     return next()
 }
@@ -61,8 +61,8 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     clearTimeout(timeout);
                     timeouts.delete(ctx.message.message_id);
                 }
-                const option: string = ctx.callbackQuery['data'];
-                await ctx.scene.enter(option)
+                await ctx.scene.enter(ctx.callbackQuery.data);
+                await ctx.answerCbQuery();
             }
         }
     ],
@@ -73,7 +73,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 const memberCollection = database.am4.collection<AM4_Data.member>('Members');
                 const keyboards = database.telegram.collection<Telegram.keyboard>('Keyboards')
                 const allianceCollection = database.am4.collection<AM4_Data.alliance>("Alliances");
-                this.scene.use(data);
+                this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => undefined);
                     const keyboard = await keyboards.findOne({ id: ctx.from.id, command: 'member' });
@@ -105,7 +105,10 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                         }
                         if (!member) throw new TelegramClientError('That user does not seem to be in an alliance, try searching with user ID if you are sure that this user is in an alliance.');
                         const compile = pug.compileFile('client/telegram/layouts/member.pug');
-                        const reply = compile({ member, airline, data, format, formatToString: formatDistanceToNowStrict, differenceInDays, locale });
+                        const reply = compile({ 
+                            member, airline, format, formatToString: formatDistanceToNowStrict, 
+                            differenceInDays, locale, memberDocument 
+                        });
                         if (!memberDocument || !memberDocument.dailyContribution.length) {
                             ctx.reply(reply, { parse_mode: 'HTML' });
                         } else {
@@ -246,7 +249,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
             async register({ database, rest }) {
                 const memberCollection = database.am4.collection<AM4_Data.member>('Members');
                 const allianceCollection = database.am4.collection<AM4_Data.alliance>("Alliances");
-                this.scene.use(data);
+                this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     ctx.deleteMessage().catch(() => undefined);
                     const action_keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'exit')]);

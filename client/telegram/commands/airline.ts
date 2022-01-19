@@ -23,7 +23,7 @@ type BaseSceneOptions = ConstructorParameters<typeof Scenes.BaseScene>[1];
 type SceneContext = Scenes.SceneContext<SceneSession>;
 type Aircraft = AM4_Data.plane & { amount?: number };
 
-const data = (ctx: SceneContext, next: () => void) => {
+const sessionHandler = (ctx: SceneContext, next: () => void) => {
     ctx.scene.session.user ||= ctx.from;
     return next()
 }
@@ -62,8 +62,8 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     clearTimeout(timeout);
                     timeouts.delete(ctx.message.message_id);
                 }
-                const option: string = ctx.callbackQuery['data'];
-                await ctx.scene.enter(option);
+                await ctx.scene.enter(ctx.callbackQuery.data);
+                await ctx.answerCbQuery();
             }
         }
     ],
@@ -73,7 +73,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
             async register({ database, rest }) {
                 const keyboards = database.telegram.collection<Omit<Telegram.keyboard, '_id'>>('Keyboards');
                 const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-                this.scene.use(data);
+                this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => undefined);
                     const keyboard = await keyboards.findOne({ id: ctx.from.id, command: 'airline' });
@@ -326,6 +326,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     }
                 });
                 this.scene.action('exit', async (ctx) => {
+                    await ctx.answerCbQuery();
                     await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
                 });
@@ -335,7 +336,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
             scene: new Scenes.BaseScene<SceneContext>('compare:airline', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database, rest }) {
                 const aircrafts = database.am4.collection<AM4_Data.plane>('Planes');
-                this.scene.use(data);
+                this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => undefined);
                     const action_keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'exit')]);
@@ -828,6 +829,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     }
                 });
                 this.scene.action('exit', async (ctx) => {
+                    await ctx.answerCbQuery();
                     await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
                 });

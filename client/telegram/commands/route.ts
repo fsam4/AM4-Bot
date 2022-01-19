@@ -3,14 +3,16 @@ import { Markup, Scenes } from 'telegraf';
 import Route from '../../../src/classes/route';
 import pug from 'pug';
 
+import type { Command, DataCallbackQuery } from '../types';
 import type { Message, User } from 'typegram';
 import type { AM4_Data } from '@typings/database';
-import type { Command } from '../types';
+
+type GameMode = "realism" | "easy";
 
 interface SceneSession extends Scenes.SceneSessionData {
     message: Message.TextMessage;
     user: User;
-    mode: 'realism' | 'easy';
+    mode: GameMode;
     input: string;
 }
 
@@ -52,9 +54,9 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                 });
                 this.scene.action(/realism|easy/, async (ctx) => {
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
-                    const mode = ctx.callbackQuery['data'];
+                    const mode = (<DataCallbackQuery>ctx.callbackQuery).data as GameMode;
                     const locale = ctx.from.language_code || 'en';
-                    ctx.scene.session.mode = ctx.callbackQuery['data'];
+                    ctx.scene.session.mode = mode;
                     try {
                         const input: string[] = ctx.scene.session.input.toLowerCase().split(',').map(s => s.trim());
                         await ctx.scene.leave();
@@ -112,14 +114,13 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                                     model: plane.name
                                 });
                                 if (!status.success) throw new TelegramClientError(status.error.replace('long route for this aircraft', 'No suitable stopover could be found for this route...'));
-                                if (typeof stopover[mode] === 'string') throw new TelegramClientError(stopover[mode]);
+                                if (typeof stopover[mode] === 'string') throw new TelegramClientError(<string>stopover[mode]);
                                 options = { ...options, stopover: stopover[mode] };
                             }
                         }
+                        await ctx.answerCbQuery();
                         const reply = compile(options);
-                        await ctx.editMessageText(reply, {
-                            parse_mode: 'HTML'
-                        });
+                        await ctx.editMessageText(reply, { parse_mode: 'HTML' });
                     }
                     catch(error) {
                         if (error instanceof TelegramClientError) {
@@ -131,6 +132,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                     }
                 });
                 this.scene.action('exit', async (ctx) => {
+                    await ctx.answerCbQuery();
                     await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
                 });

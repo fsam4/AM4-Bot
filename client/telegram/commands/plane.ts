@@ -6,13 +6,15 @@ import Plane from '../../../src/lib/plane';
 import pug from 'pug';
 
 import type { Message, User, InlineKeyboardMarkup, InputMediaPhoto } from 'typegram';
+import type { Command, DataCallbackQuery } from '../types';
 import type { Telegram, AM4_Data } from '@typings/database';
 import type { Context } from 'telegraf';
-import type { Command } from '../types';
+
+type GameMode = "realism" | "easy";
 
 interface SceneSession extends Scenes.SceneSessionData {
     message: Message.TextMessage;
-    gameMode: "realism" | "easy";
+    gameMode: GameMode;
     user: User;
     data: {
         engines: Map<string, string>,
@@ -25,7 +27,7 @@ interface SceneSession extends Scenes.SceneSessionData {
 type BaseSceneOptions = ConstructorParameters<typeof Scenes.BaseScene>[1];
 type SceneContext = Scenes.SceneContext<SceneSession>
 
-const data = (ctx: SceneContext, next: () => void) => {
+const sessionHandler = (ctx: SceneContext, next: () => void) => {
     ctx.scene.session.user ||= ctx.from;
     ctx.scene.session.data ||= {
         engines: new Map(),
@@ -70,8 +72,8 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     clearTimeout(timeout);
                     timeouts.delete(ctx.message.message_id);
                 }
-                const option: string = ctx.callbackQuery['data'];
-                await ctx.scene.enter(option)
+                await ctx.scene.enter(ctx.callbackQuery.data);
+                await ctx.answerCbQuery();
             }
         }
     ],
@@ -81,7 +83,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
             async register({ database }) {
                 const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
                 const keyboards = database.telegram.collection<Telegram.keyboard>('Keyboards');
-                this.scene.use(data);
+                this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => undefined);
                     const keyboard = await keyboards.findOne({ id: ctx.from.id, command: 'plane' });
@@ -173,16 +175,19 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 this.scene.action(/engine:/, async (ctx) => {
                     const data = ctx.scene.session.data;
                     const expr = new RegExp([...data.engines.keys()].join('|'));
-                    const [engineName] = (<string>ctx.callbackQuery['data']).match(expr);
+                    const [engineName] = (<DataCallbackQuery>ctx.callbackQuery).data.match(expr);
                     const reply = data.engines.get(engineName);
                     if (!reply) return;
+                    await ctx.answerCbQuery();
                     await ctx.editMessageCaption(reply, {
                         parse_mode: 'HTML',
                         reply_markup: data.markup
-                    }).catch(() => ctx.scene.leave());
+                    })
+                    .catch(ctx.scene.leave);
                 });
                 this.scene.action('delete', async (ctx) => {
                     ctx.scene.session.data.engines.clear();
+                    await ctx.answerCbQuery();
                     await ctx.scene.leave();
                 });
             }
@@ -191,7 +196,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
             scene: new Scenes.BaseScene<SceneContext>('compare:plane', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database }) {
                 const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-                this.scene.use(data);
+                this.scene.use(sessionHandler);
                 this.scene.enter(async ctx => {
                     await ctx.deleteMessage().catch(() => undefined);
                     const keyboard = Markup.inlineKeyboard([
@@ -203,7 +208,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 });
                 this.scene.action(/realism|easy/, async ctx => {
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
-                    ctx.scene.session.gameMode = ctx.callbackQuery["data"];
+                    ctx.scene.session.gameMode = (<DataCallbackQuery>ctx.callbackQuery).data as GameMode;
                     const keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'exit')]);
                     await ctx.replyWithMarkdown('Type the plane names or shortcuts of the planes that you want to compare...\nFormat: `<plane>,...`\nExample: `a380-800, cessna 172, an-225`', keyboard);
                 });
@@ -683,7 +688,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                             await TelegramClientError.sendUnknownError(ctx);
                         }
                     }
-                })
+                });
             }
         }
     ]

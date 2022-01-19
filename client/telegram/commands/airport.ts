@@ -2,16 +2,18 @@ import TelegramClientError from '../error';
 import { Markup, Scenes } from 'telegraf';
 import pug from 'pug';
 
+import type { Command, DataCallbackQuery } from '../types';
 import type { Message, User } from 'typegram';
 import type { AM4_Data } from '@typings/database';
 import type { Context } from 'telegraf';
-import type { Command } from '../types';
 import type { GeoNear } from 'mongodb';
+
+type GameMode = "realism" | "easy";
 
 interface SceneSession extends Scenes.SceneSessionData {
     pages: Generator<string, string, number>;
     message: Message.TextMessage;
-    gameMode: 'realism' | 'easy';
+    gameMode: GameMode;
     input: string;
     user: User;
 }
@@ -19,7 +21,7 @@ interface SceneSession extends Scenes.SceneSessionData {
 type BaseSceneOptions = ConstructorParameters<typeof Scenes.BaseScene>[1];
 type SceneContext = Scenes.SceneContext<SceneSession>;
 
-const data = (ctx: SceneContext, next: () => void) => {
+const sessionHandler = (ctx: SceneContext, next: () => void) => {
     ctx.scene.session.user ||= ctx.from;
     return next()
 }
@@ -59,8 +61,8 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     clearTimeout(timeout);
                     timeouts.delete(ctx.message.message_id);
                 }
-                const option: string = ctx.callbackQuery['data'];
-                await ctx.scene.enter(option);
+                await ctx.scene.enter(ctx.callbackQuery.data);
+                await ctx.answerCbQuery();
             }
         }
     ],
@@ -69,7 +71,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
             scene: new Scenes.BaseScene<SceneContext>('filter:airport', <BaseSceneOptions>{ ttl: 600000 }),
             async register({ database }) {
                 const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
-                this.scene.use(data);
+                this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => undefined);
                     const action_keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'delete')]);
@@ -129,7 +131,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 this.scene.action(/next|prev/, async (ctx) => {
                     const message = ctx.update.callback_query.message;
                     if (message.message_id !== ctx.scene.session.message.message_id || ctx.from.id !== ctx.scene.session.user.id) return;
-                    const option: string = ctx.callbackQuery['data'];
+                    const option = (<DataCallbackQuery>ctx.callbackQuery).data;
                     const page = option === "next" ? ctx.scene.session.pages.next(1) : ctx.scene.session.pages.next(-1);
                     const pages = [...ctx.scene.session.pages];
                     const currentPage = pages.findIndex(text => text === page.value);
@@ -143,9 +145,10 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                         parse_mode: 'HTML', 
                         reply_markup: markup.reply_markup
                     })
-                    .catch(() => ctx.scene.leave());
+                    .catch(ctx.scene.leave);
                 });
                 this.scene.action('delete', async (ctx) => {
+                    await ctx.answerCbQuery();
                     await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
                 });
@@ -155,7 +158,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
             scene: new Scenes.BaseScene<SceneContext>('search:airport', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database }) {
                 const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
-                this.scene.use(data);
+                this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => undefined);
                     const action_keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'exit')]);
@@ -186,6 +189,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     }
                 });
                 this.scene.action('exit', async (ctx) => {
+                    await ctx.answerCbQuery();
                     await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
                 });
@@ -196,9 +200,9 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
             async register({ database }) {
                 const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
                 const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-                this.scene.use(data);
+                this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
-                    ctx.scene.session.gameMode = ctx.callbackQuery['data'];
+                    ctx.scene.session.gameMode = (<DataCallbackQuery>ctx.callbackQuery).data as GameMode;
                     const action_keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'exit')]);
                     await ctx.reply('Type the ICAO, IATA or id of the airport followed by the plane...\nFormat: `<icao|iata>, <plane>`\nExample: `cdg, a380-800`', {
                         parse_mode: 'Markdown',
@@ -218,8 +222,9 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 });
                 this.scene.action(/realism|easy/, async (ctx) => {
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
+                    await ctx.answerCbQuery();
                     await ctx.deleteMessage().catch(() => undefined);
-                    const mode = ctx.callbackQuery['data'] as 'realism' | 'easy';
+                    const mode = (<DataCallbackQuery>ctx.callbackQuery).data as GameMode;
                     const locale = ctx.from.language_code || 'en';
                     await ctx.scene.leave();
                     try {
@@ -274,6 +279,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     }
                 });
                 this.scene.action('exit', async (ctx) => {
+                    await ctx.answerCbQuery();
                     await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
                 })

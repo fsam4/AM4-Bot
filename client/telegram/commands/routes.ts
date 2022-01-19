@@ -3,10 +3,10 @@ import { Markup, Scenes } from 'telegraf';
 import Route from '../../../src/classes/route';
 import pug from 'pug';
 
+import type { Command, DataCallbackQuery } from '../types';
 import type { AM4_Data, BaseDocument } from '@typings/database';
 import type { Message, User } from 'typegram';
 import type { Document } from 'mongodb';
-import type { Command } from '../types';
 
 type SeatType = "Y" | "J" | "F" | "L" | "H";
 
@@ -26,10 +26,12 @@ interface RouteDocument extends BaseDocument {
     };
 }
 
+type GameMode = "realism" | "easy";
+
 interface SceneSession extends Scenes.SceneSessionData {
     message: Message.TextMessage;
     user: User;
-    mode: 'realism' | 'easy';
+    mode: GameMode;
     input: string;
     pages: {
         list: string[],
@@ -84,7 +86,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                 this.scene.action(/realism|easy/, async (ctx) => {
                     if (ctx.scene.session.mode) return;
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
-                    const mode = ctx.callbackQuery['data'] as 'realism' | 'easy';
+                    const mode = (<DataCallbackQuery>ctx.callbackQuery).data as GameMode;
                     ctx.scene.session.mode = mode;
                     try {
                         const input: string[] = ctx.scene.session.input.toLowerCase().split(',').map(s => s.trim());
@@ -330,6 +332,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                                 route: route
                             });
                         });
+                        await ctx.answerCbQuery();
                         const markup = Markup.inlineKeyboard([
                             Markup.button.callback('▶️', 'next'),
                             Markup.button.callback('🗑️', 'delete')
@@ -354,7 +357,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                 this.scene.action(/next|prev/, async (ctx) => {
                     const message = ctx.update.callback_query.message;
                     if (message.message_id !== ctx.scene.session.message.message_id || ctx.from.id !== ctx.scene.session.user.id) return;
-                    const option: string = ctx.callbackQuery['data'];
+                    const option = (<DataCallbackQuery>ctx.callbackQuery).data;
                     const current_page = ctx.scene.session.pages.current;
                     const max_page = ctx.scene.session.pages.list.length - 1;
                     if (current_page === 0 && option === 'prev') return;
@@ -373,6 +376,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                     .catch(() => undefined);
                 });
                 this.scene.action('delete', async (ctx) => {
+                    await ctx.answerCbQuery();
                     await ctx.deleteMessage().catch(() => undefined);
                     await ctx.scene.leave();
                 });

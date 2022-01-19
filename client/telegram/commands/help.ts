@@ -54,7 +54,8 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         {
             value: /help(?=:(command|news|menu))/,
             async execute(ctx) {
-                const [_, section] = (<string>ctx.callbackQuery["data"]).split(":");
+                const [_, section] = ctx.callbackQuery.data.split(":");
+                await ctx.answerCbQuery();
                 switch(section) {
                     case "command": {
                         await ctx.scene.enter('commands');
@@ -104,7 +105,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     });
                 }
                 this.scene.enter(async (ctx) => {
-                    const commands = await ctx.getMyCommands();
+                    const commands = await ctx.telegram.getMyCommands();
                     const content = `*Click the command that you would like to get help with.*\n${commands.map(({ command, description }) => `/${command} - ${description}`).join('\n')}`;
                     ctx.scene.session.message = await ctx.editMessageText(content, {
                         reply_markup: markup.reply_markup,
@@ -113,6 +114,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 });
                 this.scene.action('back', async (ctx) => {
                     await ctx.scene.leave();
+                    await ctx.answerCbQuery();
                     await ctx.editMessageText(`*AM4 Telegram Bot*\n${text.join('\n')}`, {
                         parse_mode: 'Markdown',
                         reply_markup: keyboard.reply_markup
