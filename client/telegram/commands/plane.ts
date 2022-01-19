@@ -36,7 +36,7 @@ const data = (ctx: SceneContext, next: () => void) => {
     return next()
 }
 
-const command: Command<Context, SceneContext> = {
+const command: Command<Context, Scenes.SceneContext, SceneContext> = {
     name: 'plane',
     cooldown: 20,
     description: 'Search or compare planes',

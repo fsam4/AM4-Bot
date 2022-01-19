@@ -33,7 +33,7 @@ const definitionURL = (term: string) => `https://www.urbandictionary.com/define.
 const replaceHyperlinks = (s: string) => `[${s}](${definitionURL(s)})`;
 const hyperlink = /\[\w{1,}\]/g;
 
-const command: Command<Scenes.SceneContext, SceneContext> = {
+const command: Command<Scenes.SceneContext, never, SceneContext> = {
     name: 'urban',
     cooldown: 10,
     description: 'Search the urban dictionary',

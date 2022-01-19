@@ -19,9 +19,9 @@ interface CommandOptions extends BaseOptions {
     account: Telegram.user;
 }
 
-interface Action {
+interface Action<ActionContext extends Context = Context> {
     value: string | RegExp;
-    execute: (this: this, ctx: Scenes.SceneContext, options: CommandOptions) => Promise<void>;
+    execute: (this: this, ctx: ActionContext, options: CommandOptions) => Promise<void>;
 }
 
 interface Scene<SceneContext extends Context = Context> {
@@ -29,13 +29,13 @@ interface Scene<SceneContext extends Context = Context> {
     register: (this: this, options: BaseOptions) => Promise<void>;
 }
 
-export interface Command<CommandContext extends Context = Context, SceneContext extends Context = Context> {
+export interface Command<CommandContext extends Context = Context, ActionContext extends Context = Context, SceneContext extends Context = Context> {
     name: string;
     cooldown?: number;
     description: string;
     help?: string;
     execute: (this: this, ctx: CommandContext, options: CommandOptions) => Promise<void>;
-    actions: Action[];
+    actions: Action<ActionContext>[];
     scenes: Scene<SceneContext>[];
 }
 

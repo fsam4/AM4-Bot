@@ -1,4 +1,4 @@
-import type * as Discord from './client/discord/types';
+import type * as DiscordClientTypes from './client/discord/types';
 import type { Collection } from 'discord.js';
 
 type StringKeys<T> = `${Exclude<keyof T, symbol>}`;
@@ -156,17 +156,17 @@ declare global {
 declare module 'mongodb' {
 
     type Project<T extends Record<keyof P, any>, P> = {
-        [Property in keyof P as P[Property] extends false ? never : Property]: T[Property]
-    };
+        [Property in keyof P as P[Property] extends false ? never : Property]: T[Property];
+    }
 
     type GeoNear<T> = T & {
         dist : {
-            calculated: number,
+            calculated: number;
             location: {
-               type: "Point",
-               coordinates: [number, number]
-            }
-        }
+               type: "Point";
+               coordinates: [number, number];
+            };
+        };
     }
 
 }
@@ -174,9 +174,9 @@ declare module 'mongodb' {
 declare module 'discord.js' {
 
     interface Client {
-        chatCommands: Collection<string, Discord.SlashCommand>;
-        menuCommands: Collection<string, Discord.ContextMenu>;
-        components: Collection<string, Discord.Component>;
+        chatCommands: Collection<string, DiscordClientTypes.SlashCommand>;
+        menuCommands: Collection<string, DiscordClientTypes.ContextMenu>;
+        components: Collection<string, DiscordClientTypes.Component>;
         cooldowns: Collection<string, Collection<string, Date>>;
     }
 

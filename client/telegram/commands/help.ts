@@ -43,7 +43,7 @@ const news = [
     '• /joke has been removed due to it being broken'
 ];
 
-const command: Command<Context, SceneContext> = {
+const command: Command<Context, Scenes.SceneContext, SceneContext> = {
     name: 'help',
     cooldown: 0,
     description: 'Get help with using the bot & commands',

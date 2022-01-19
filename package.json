@@ -2,7 +2,7 @@
   "name": "am4-bot",
   "version": "4.9.0",
   "description": "A Discord & Telegram bot for Airline Manager 4",
-  "main": "bot.ts",
+  "main": "bot.js",
   "scripts": {
     "postinstall": "patch-package",
     "dev": "node bot.js --dev",

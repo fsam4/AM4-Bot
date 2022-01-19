@@ -17,7 +17,7 @@ interface SceneSession extends Scenes.SceneSessionData {
 type BaseSceneOptions = ConstructorParameters<typeof Scenes.BaseScene>[1];
 type SceneContext = Scenes.SceneContext<SceneSession>;
 
-const command: Command<Scenes.SceneContext, SceneContext> = {
+const command: Command<Scenes.SceneContext, never, SceneContext> = {
     name: 'route',
     cooldown: 25,
     description: "Search for a route and it's stopover, config, ticket prices...",

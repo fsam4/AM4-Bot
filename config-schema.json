@@ -13,7 +13,7 @@
         "clientId": {
             "type": "string",
             "description": "The main client ID. This can be used to run certain features only if the ID of the running client matches this ID.",
-            "pattern": "\\d{17,19}"
+            "pattern": "^\\d{17,19}$"
         },
         "permissions": {
             "type": "array",
@@ -69,10 +69,10 @@
             "type": "object",
             "description": "An object of emoji IDs used in the bot. Each key being the name of the emoji and each value being the ID.",
             "patternProperties": {
-                "\\w+$": {
+                "^\\w+$": {
                     "type": "string",
                     "description": "The ID of the emoji",
-                    "pattern": "\\d{17,19}"
+                    "pattern": "^\\d{17,19}$"
                 }
             }
         },

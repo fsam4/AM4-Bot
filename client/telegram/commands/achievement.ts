@@ -15,7 +15,7 @@ interface SceneSession extends Scenes.SceneSessionData {
 type BaseSceneOptions = ConstructorParameters<typeof Scenes.BaseScene>[1];
 type SceneContext = Scenes.SceneContext<SceneSession>;
 
-const command: Command<Scenes.SceneContext, SceneContext> = {
+const command: Command<Scenes.SceneContext, never, SceneContext> = {
     name: 'achievement',
     cooldown: 10,
     description: 'Seach for an achievement',
@@ -23,9 +23,9 @@ const command: Command<Scenes.SceneContext, SceneContext> = {
     async execute(ctx) {
         if (ctx.chat.type !== 'private') {
             await ctx.reply('This command can only be used in DMs...');
-            return;
-        };
-        await ctx.scene.enter('search:achievement');
+        } else {
+            await ctx.scene.enter('search:achievement');
+        }
     },
     actions: [],
     scenes: [

@@ -37,7 +37,7 @@ const message = "An unknown error occured. Please report this in https://discord
     }
 
     /**
-     * Send an unknown error reply to the interaction
+     * Send an unknown error reply to an interaction
      * @param interaction The interaction to reply to
      */
 

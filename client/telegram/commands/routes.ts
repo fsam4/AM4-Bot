@@ -43,7 +43,7 @@ type SceneContext = Scenes.SceneContext<SceneSession>;
 const R = 6371 * (Math.pow(10, 3));
 const P = (Math.PI / 180);
 
-const command: Command<Scenes.SceneContext, SceneContext> = {
+const command: Command<Scenes.SceneContext, never, SceneContext> = {
     name: 'routes',
     cooldown: 30,
     description: 'Search for routes from a hub',

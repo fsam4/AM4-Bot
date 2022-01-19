@@ -24,7 +24,7 @@ const data = (ctx: SceneContext, next: () => void) => {
     return next()
 }
 
-const command: Command<Context, SceneContext> = {
+const command: Command<Context, Scenes.SceneContext, SceneContext> = {
     name: 'airport',
     cooldown: 20,
     description: 'Search for airports',
