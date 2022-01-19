@@ -13,7 +13,7 @@ export default class AM4APIError extends Error implements Omit<APIStatus, "descr
     public requests_remaining: number;
     constructor(status: APIStatus) {
         super(status.description);
-        super.name = "AM4 API Error";
+        this.name = "AM4 API Error";
         this.requests_remaining = status.requests_remaining;
         this.request = status.request;
     }

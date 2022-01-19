@@ -3,7 +3,7 @@ import Status from './status';
 import type { Planes } from '@typings/api/tools';
 
 /**
- * Represents an aircraft
+ * Represents an aircraft search result
  * @constructor
  * @param data - The raw API data of the aircraft
  */

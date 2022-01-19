@@ -107,12 +107,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                             options = { ...options, config: configuration, flights, plane };
                             if (route.distance > plane.range) {
                                 if (plane.type === "vip") throw new TelegramClientError("Currently it is not possible to fetch a stopover for a VIP plane...");
-                                const { stopover, status } = await rest.fetchStopover({
-                                    type: plane.type,
-                                    departure: dep,
-                                    arrival: arr,
-                                    model: plane.name
-                                });
+                                const { stopover, status } = await route.findStopover(plane.name, plane.type);
                                 if (!status.success) throw new TelegramClientError(status.error.replace('long route for this aircraft', 'No suitable stopover could be found for this route...'));
                                 if (typeof stopover[mode] === 'string') throw new TelegramClientError(<string>stopover[mode]);
                                 options = { ...options, stopover: stopover[mode] };

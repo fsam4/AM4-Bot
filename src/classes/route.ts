@@ -66,8 +66,8 @@ function padNumber(number: number, padding: number) {
 /**
  * Represents a route
  * @constructor
- * @param {AM4.route} route - The raw API data of the route
- * @param {AM4Client} client - The AM4 client that was used
+ * @param route - The raw API data of the route
+ * @param client - The AM4 client that was used
  * @param searchQuery - The given options for this route
  */
 
@@ -84,7 +84,7 @@ export default class Route extends Status {
             fetch(): Promise<Airport>
         }
         distance: number;
-        stopover(plane: string, type: 'pax' | 'cargo'): Promise<Stopover>
+        findStopover(plane: string, type: 'pax' | 'cargo'): Promise<Stopover>
     }
     public readonly demand?: Record<SeatType, number> & {
         total: {
@@ -113,12 +113,16 @@ export default class Route extends Status {
                     async fetch() {
                         if (!client.tools) throw new Error("Missing access key");
                         const query = new URLSearchParams({
-                            token: client.tools.accessToken,
                             mode: 'normal',
                             code: searchQuery.dep_icao
                         });
-                        const response: Tools.Airports = await fetch(`https://api.am4tools.com/airport/search?${query}`).then(response => response.json());
-                        return new Airport(response);
+                        const response = await fetch(`https://api.am4tools.com/airport/search?${query}`, {
+                            headers: {
+                                "x-access-token": this.tools.accessToken
+                            }
+                        });
+                        const body: Tools.Airports = await response.json();
+                        return new Airport(body);
                     }
                 },
                 arrival: {
@@ -126,27 +130,35 @@ export default class Route extends Status {
                     async fetch() {
                         if (!client.tools) throw new Error("Missing access key");
                         const query = new URLSearchParams({
-                            token: client.tools.accessToken,
                             mode: 'normal',
                             code: searchQuery.arr_icao
                         });
-                        const response: Tools.Airports = await fetch(`https://api.am4tools.com/airport/search?${query}`).then(response => response.json());
-                        return new Airport(response);
+                        const response = await fetch(`https://api.am4tools.com/airport/search?${query}`, {
+                            headers: {
+                                "x-access-token": this.tools.accessToken
+                            }
+                        });
+                        const body: Tools.Airports = await response.json();
+                        return new Airport(body);
                     }
                 },
                 distance: route.distance,
-                async stopover(plane, type) {
+                async findStopover(plane, type) {
                     if (!client.tools) throw new Error("Missing access key");
                     const query = new URLSearchParams({
-                        token: client.tools.accessToken,
                         type: type,
                         mode: 'normal', 
                         departure: searchQuery.dep_icao,
                         arrival: searchQuery.arr_icao,
                         model: plane
                     });
-                    const object: Tools.Stopover = await fetch(`https://api.am4tools.com/route/stopover?${query}`).then(response => response.json());
-                    return new Stopover(object);
+                    const response = await fetch(`https://api.am4tools.com/route/stopover?${query}`, {
+                        headers: {
+                            "x-access-token": this.tools.accessToken
+                        }
+                    });
+                    const body: Tools.Stopover = await response.json();
+                    return new Stopover(body);
                 }
             }
             this.demand = {

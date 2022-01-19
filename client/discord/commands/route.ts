@@ -499,7 +499,7 @@ const command: SlashCommand = {
                             ]);
                             if (route.distance > plane.range) {
                                 if (plane.type === "vip") throw new DiscordClientError("Currently it is not possible to fetch a stopover for a VIP plane...");
-                                const { status, stopover } = await route.stopover(plane.name, plane.type);
+                                const { status, stopover } = await route.findStopover(plane.name, plane.type);
                                 if (!status.success) followups.push('**Warning:** no suitable stopover could be found for this route!');
                                 if (status.success && typeof stopover[user.mode] !== 'string') {
                                     embed.fields.unshift({ 

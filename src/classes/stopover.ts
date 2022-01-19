@@ -5,7 +5,7 @@ import type * as Tools from '@typings/api/tools';
 /**
  * Represents a stopover
  * @constructor
- * @param {Tools.stopover} data - The raw API data of the stopover
+ * @param data - The raw API data of the stopover
  */
 
 export default class Stopover extends Status {

@@ -17,7 +17,7 @@ type SeatType = CargoLoadType | PaxSeatType;
 /**
  * Represents a route research result
  * @constructor
- * @param {AM4.route} data - The raw API data of the routes
+ * @param data - The raw API data of the routes
  */
 
 export default class Routes extends Status {

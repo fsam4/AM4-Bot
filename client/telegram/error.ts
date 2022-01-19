@@ -29,6 +29,16 @@ export default class TelegramClientError extends ClientError {
     }
 
     /**
+     * Send the error as an answer to a callback query
+     * @param ctx The contect to answer to
+     */
+
+    async answerCbQuery(ctx: Context) {
+        await ctx.answerCbQuery(this.message, { show_alert: true })
+        .catch(console.error);
+    }
+
+    /**
      * Send an unknown error reply
      * @param ctx The context to reply to
      */

@@ -3,9 +3,9 @@ import Status from './status';
 import type { Airports } from '@typings/api/tools';
 
 /**
- * Represents an airport
+ * Represents an airport search result
  * @constructor
- * @param {Tools.airports} data - The raw API data of the airport
+ * @param data - The raw API data of the airport
  */
 
 export default class Airport extends Status {

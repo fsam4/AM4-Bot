@@ -42,6 +42,8 @@ const isJavaScript = (fileName: string) => fileName.endsWith('.js');
 
 if (cluster.isPrimary) {
 
+    // The main cluster, responsible for listening to general events and managing the other clusters
+
     console.log(chalk.bold(`Using Node.js ${process.version}`));
     let env = dotenv.config(isDev ? { path: ".env.local" } : {});
     env = dotenvExpand(env);
@@ -108,6 +110,8 @@ if (cluster.isPrimary) {
 
     switch (cluster.worker.id) {
         case 1: {
+
+            // The cluster responsible for running & managing the Discord client
 
             const label = chalk.blue('Starting Discord client');
             console.time(label);
@@ -223,6 +227,8 @@ if (cluster.isPrimary) {
             break;
         }
         case 2: {
+
+            // The cluster responsible for running & managing the Telegram client
 
             const label = chalk.blue('Starting Telegram client');
             console.time(label);

@@ -15,9 +15,9 @@ type APIMember = AM4.Alliance['members'][number];
 /**
  * Represents a member of an alliance
  * @constructor
- * @param {member} member - The raw API data of the member
- * @param {alliance} alliance - The constructed alliance
- * @param {AM4Client} client - The AM4 client that was used
+ * @param member - The raw API data of the member
+ * @param alliance - The constructed alliance
+ * @param client - The AM4 client that was used
  */
 
 export class Member {
@@ -75,8 +75,8 @@ export class Member {
 /**
  * Represents an alliance
  * @constructor
- * @param {AM4.alliance} data - The raw API data of the alliance
- * @param {AM4Client} client - The AM4 client that was used
+ * @param data - The raw API data of the alliance
+ * @param client - The AM4 client that was used
  */
 
 export default class Alliance extends Status {

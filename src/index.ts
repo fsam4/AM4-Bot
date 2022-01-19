@@ -145,17 +145,19 @@ export default class AM4RestClient {
 
     public async fetchStopover(parameters: { type: 'pax' | 'cargo', departure: string, arrival: string, model: string }): Promise<Stopover> {
         if (!this.tools?.accessToken) throw new Error("Missing access token");
-        const query = new URLSearchParams({
-            token: this.tools.accessToken,
-            mode: 'normal'
-        });
+        const query = new URLSearchParams({ mode: 'normal' });
         for (const key in parameters) {
             const value = parameters[key].toString();
             query.append(key, value);
         }
-        const response: Tools.Stopover = await fetch(`${toolsBaseUrl}/route/stopover?${query}`).then(response => response.json());
-        this.tools.requestsRemaining = response.request.quotas;
-        return new Stopover(response);
+        const response = await fetch(`${toolsBaseUrl}/route/stopover?${query}`, {
+            headers: {
+                "x-access-token": this.tools.accessToken
+            }
+        });
+        const body: Tools.Stopover = await response.json();
+        this.tools.requestsRemaining = body.request.quotas;
+        return new Stopover(body);
     }
 
     /**
