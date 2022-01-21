@@ -261,6 +261,7 @@ const command: SlashCommand = {
                                 }
                             ]);
                             const closeCursorAndThrowError = (err: string) => {
+                                quizCooldowns.delete(interaction.guildId);
                                 cursor.close();
                                 throw err;
                             }
