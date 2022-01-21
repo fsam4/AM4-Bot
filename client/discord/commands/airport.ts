@@ -317,9 +317,7 @@ const command: SlashCommand = {
                 case "search": {
                     const input = interaction.options.getString("code").trim();
                     const airport = await airportCollection.findOne(createAirportFilter(input));
-                    const cursor = routeCollection.find({ airports: airport._id });
-                    const routes = await cursor.toArray();
-                    const amount = await cursor.count();
+                    const routes = await routeCollection.find({ airports: airport._id }).toArray();
                     const average = {
                         Y: Math.round(routes.map(route => route.demand.Y).reduce((a, b) => a + b) / routes.length),
                         J: Math.round(routes.map(route => route.demand.J).reduce((a, b) => a + b) / routes.length),
@@ -341,7 +339,7 @@ const command: SlashCommand = {
                             },
                             { 
                                 name: Formatters.bold(Formatters.underscore("Statistics")), 
-                                value: `**Market:** ${airport.market}%\n**Runway:** ${airport.runway.toLocaleString(locale)} ft\n**Routes:** ${amount.toLocaleString(locale)}` 
+                                value: `**Market:** ${airport.market}%\n**Runway:** ${airport.runway.toLocaleString(locale)} ft\n**Routes:** ${routes.length.toLocaleString(locale)}` 
                             },
                             { 
                                 name: Formatters.bold(Formatters.underscore("Average demand")), 

@@ -31,7 +31,6 @@
   },
   "devDependencies": {
     "@discordjs/rest": "^0.2.0-canary.0",
-    "@types/color-name": "^1.1.1",
     "@types/crypto-js": "^4.0.1",
     "@types/keyv": "^3.1.1",
     "@types/mongodb": "^3.6.19",

@@ -33,7 +33,7 @@ export class Member {
     public contribution: {
         total: number;
         daily: number;
-        readonly season?: number;
+        season?: number;
         average: {
             day: number;
             week: number;
@@ -62,13 +62,13 @@ export class Member {
         this.contribution = {
             total: member.contributed,
             daily: member.dailyContribution,
-            season: member.season,
             average: {
-                day: days > 0 ? member.contributed / days : member.contributed,
-                week: weeks > 0 ? member.contributed / weeks : member.contributed,
+                day: days > 0 ? (member.contributed / days) : member.contributed,
+                week: weeks > 0 ? (member.contributed / weeks) : member.contributed,
                 flight: member.contributed / member.flights
             }
         }
+        if (alliance.inSeason) this.contribution.season = member.season;
     }
 }
 
@@ -122,23 +122,25 @@ export default class Alliance extends Status {
                     max: alliance.maxMembers
                 },
                 ipo: {
-                    required: Boolean(alliance.ipo),
-                    value: alliance.ipo ? alliance.minSV : undefined
+                    required: Boolean(alliance.ipo)
                 },
                 contribution: {
                     daily: members.map(member => member.dailyContribution).reduce((total, current) => total + current),
                     total: members.map(member => member.contributed).reduce((total, current) => total + current)
                 }
             }
+            if (alliance.ipo) this.alliance.ipo.value = alliance.minSV;
             if (this.alliance.inSeason) {
                 const total = members.map(member => member.season).reduce((a, b) => a + b);
                 this.alliance.contribution.season = total;
             }
-            this.members = new Collection(members.map((member, i) => {
-                const member_object = new Member(member, this.alliance, client);
-                member_object.position = i + 1;
-                return [member.company, member_object];
-            }));
+            this.members = new Collection(
+                members.map((member, i) => {
+                    const allianceMember = new Member(member, this.alliance, client);
+                    allianceMember.position = i + 1;
+                    return [member.company, allianceMember];
+                })
+            );
         }
     }
 }

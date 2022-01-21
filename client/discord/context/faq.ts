@@ -22,10 +22,11 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
         defaultPermission: true
     },
     async execute(interaction, { database }) {
-        await interaction.deferReply({ ephemeral: interaction.targetMessage instanceof Message });
+        const isMessage = interaction.targetMessage instanceof Message;
+        await interaction.deferReply({ ephemeral: isMessage });
         const faqCollection = database.discord.collection<Discord.faq>("FAQ");
         try {
-            if (!interaction.targetMessage.content) throw new DiscordClientError("This message has no content to search for...");
+            if (!interaction.targetMessage.content) throw new DiscordClientError(`${isMessage ? Formatters.hyperlink("This message", interaction.targetMessage.url) : "This message"} has no content to search for...`);
             const content = interaction.targetMessage.content.match(/[0-9a-zA-Z'-? ]/g).join("");
             const filter: Filter<Discord.faq> = {
                 $text: { $search: content },
@@ -39,7 +40,7 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
                 sort: { score: { $meta: "textScore" } },
                 limit: 25
             });
-            if (interaction.targetMessage instanceof Message) {
+            if (isMessage) {
                 const documents = await cursor.toArray();
                 if (!documents.length) throw new DiscordClientError(`No FAQ results could be found with ${Formatters.hyperlink("this", interaction.targetMessage.url)} message...`);
                 const selectRow = new MessageActionRow({ 
@@ -132,6 +133,8 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
                         users: [interaction.targetMessage.author.id]
                     }
                 });
+                const hasNext = await cursor.hasNext();
+                if (hasNext) cursor.close();
             }
         }
         catch(error) {

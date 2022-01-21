@@ -1,11 +1,13 @@
 import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, Formatters, Constants, type ButtonInteraction, type Message, type TextChannel, type ThreadChannel } from 'discord.js';
 import { ObjectId, type Binary, type Filter } from 'mongodb';
 import DiscordClientError from '../error';
+import { promisify } from 'util';
 import config from '../../../config.json';
 
 import type { Quiz, Discord, QuestionDifficulty } from '@typings/database';
 import type { SlashCommand } from '../types';
 
+const quizCooldowns = new Set<string>();
 const eventMultiplier = 1;
 const modes = {
     easy: 0.5,
@@ -14,6 +16,7 @@ const modes = {
 };
 
 const addScore = (multiplier: number) => parseFloat((Math.random() * multiplier * eventMultiplier).toFixed(2));
+const wait = promisify(setTimeout);
 
 const command: SlashCommand = {
     get name() {
@@ -150,10 +153,13 @@ const command: SlashCommand = {
         ]
     },
     async execute(interaction, { database, ephemeral, guildLocale, locale }) {
-        if (ephemeral) return interaction.reply({
-            content: "This channel is blacklisted from using commands! Quiz games can only be played in non-blacklisted channels...",
-            ephemeral: true
-        });
+        if (ephemeral) {
+            await interaction.reply({
+                content: "This channel is blacklisted from using commands! Quiz games can only be played in non-blacklisted channels...",
+                ephemeral: true
+            });
+            return;
+        }
         await interaction.deferReply();
         const games = database.quiz.collection<Quiz.game>('Games');
         const quizUserCollection = database.quiz.collection<Quiz.user>('Users');
@@ -171,21 +177,9 @@ const command: SlashCommand = {
                     const rounds = interaction.options.getInteger("rounds") || 5;
                     const game = await games.findOne(gameId);
                     if (!game) throw new DiscordClientError('That is not a valid game...');
-                    const filterQuery: Filter<Quiz.question> = {
-                        difficulty: { $in: (mode === "normal" ? ["easy", "hard"] : [mode]) },
-                        tags: { $in: [game.tag] }
-                    };
+                    const filterQuery: Filter<Quiz.question> = { tags: game.tag };
+                    if (mode !== "normal") filterQuery.difficulty = mode;
                     const poolSize = await questionCollection.countDocuments(filterQuery);
-                    const cursor = questionCollection.aggregate<Quiz.question>([
-                        {
-                            $match: filterQuery
-                        },
-                        {
-                            $sample: {
-                                size: rounds
-                            }
-                        }
-                    ]);
                     console.log(`${game.name} was started in ${interaction.guild.name}!`);
                     const embed = new MessageEmbed({
                         title: game.name,
@@ -233,17 +227,19 @@ const command: SlashCommand = {
                     await message.awaitMessageComponent({ filter, time: 5 * 60 * 1000, componentType: "BUTTON" })
                     .then(async component => {
                         for (const component of components[0].components) component.setDisabled(true);
+                        await component.update({ embeds: [embed], components });
                         if (component.customId === "start") {
-                            await component.update({ embeds: [embed], components });
-                            const has_cooldow = interaction.client.cooldowns.has(interaction.guildId);
-                            if (has_cooldow) return component.followUp("Finish the ongoing game before starting a new one!");
-                            interaction.client.cooldowns.set(interaction.guildId, null);
+                            if (quizCooldowns.has(interaction.guildId)) {
+                                await component.followUp("Finish the ongoing game before starting a new one!");
+                                return;
+                            }
+                            quizCooldowns.add(interaction.guildId);
                             let thread: ThreadChannel;
                             if (interaction.channel.isThread()) {
                                 thread = interaction.channel;
-                                if (thread.ownerId === interaction.client.user.id) {
+                                if (thread.ownerId === interaction.client.user.id && thread.name !== game.name) {
                                     const reason = `Quiz started by ${interaction.user.username}#${interaction.user.discriminator}`;
-                                    if (thread.name !== game.name) await thread.setName(game.name, reason);
+                                    await thread.setName(game.name, reason);
                                 }
                             } else {
                                 thread = await (<TextChannel>interaction.channel).threads.create({
@@ -254,31 +250,43 @@ const command: SlashCommand = {
                                 });
                                 await thread.members.add(interaction.user, "Started a quiz game");
                             }
-                            const play = async (index: number) => {
-                                const playing = await cursor.hasNext();
-                                if (playing) {
-                                    const question = await cursor.next();
-                                    const filter = (res: Message) => question.answers.some(answer => answer.toLowerCase() === res.content.toLowerCase());
+                            const cursor = questionCollection.aggregate<Quiz.question>([
+                                {
+                                    $match: filterQuery
+                                },
+                                {
+                                    $sample: {
+                                        size: rounds
+                                    }
+                                }
+                            ]);
+                            const closeCursorAndThrowError = (err: string) => {
+                                cursor.close();
+                                throw err;
+                            }
+                            const play = async (round: number) => {
+                                const doc = await cursor.tryNext();
+                                if (doc) {
+                                    const filter = (res: Message) => doc.answers.some(answer => answer.toLowerCase() === res.content.toLowerCase());
                                     const display = new MessageEmbed({ 
                                         color: 0x00AE86,
-                                        timestamp: question._id.getTimestamp(),
+                                        timestamp: doc._id.getTimestamp(),
                                         footer: {
-                                            text: `Question ID: ${question._id}`,
+                                            text: `Question ID: ${doc._id}`,
                                             iconURL: interaction.client.user.displayAvatarURL()
                                         }
                                     });
                                     let questionMessage: Message;
-                                    if (question.type === "image") {
-                                        display.setTitle(`${game.base_question} (${index + 1}/${rounds})`);
-                                        const attachment = new MessageAttachment((<Binary>question.question).buffer, "question.jpg");
+                                    if (doc.type === "image") {
+                                        display.setTitle(`${game.base_question} (${round}/${rounds})`);
+                                        const attachment = new MessageAttachment((<Binary>doc.question).buffer, "question.jpg");
                                         display.setImage('attachment://question.jpg');
-                                        questionMessage = await thread.send({
-                                            embeds: [display],
-                                            files: [attachment]
-                                        });
+                                        questionMessage = await thread.send({ embeds: [display], files: [attachment] })
+                                        .catch(closeCursorAndThrowError);
                                     } else {
-                                        display.setTitle(`${question.question} (${index + 1}/${rounds})`);
-                                        questionMessage = await thread.send({ embeds: [display] });
+                                        display.setTitle(`${doc.question} (${round}/${rounds})`);
+                                        questionMessage = await thread.send({ embeds: [display] })
+                                        .catch(closeCursorAndThrowError);
                                     }
                                     const messages = await thread.awaitMessages({ filter, max: 1, time: time * 1000 });
                                     if (messages.size) {
@@ -303,7 +311,11 @@ const command: SlashCommand = {
                                                     returnDocument: "after" 
                                                 }
                                             );
-                                            await msg.reply(`That is the correct answer! You now have ${Formatters.bold(user.value.points.toLocaleString(guildLocale))} (+${game.reward * modes[mode]}) points and a score of ${Formatters.bold(user.value.score.toLocaleString(guildLocale))} (+${$score})!`);
+                                            let content = `That is the correct answer! You now have ${Formatters.bold(user.value.points.toLocaleString(guildLocale))} (+${game.reward * modes[mode]}) points and a score of ${Formatters.bold(user.value.score.toLocaleString(guildLocale))} (+${$score})!`;
+                                            const nextRound = await cursor.hasNext();
+                                            if (nextRound) content += " Next round starts in 5 seconds!";
+                                            await msg.reply(content)
+                                            .catch(closeCursorAndThrowError);
                                         } else {
                                             const user = await quizUserCollection.findOneAndUpdate(
                                                 { 
@@ -322,19 +334,24 @@ const command: SlashCommand = {
                                                     returnDocument: "after" 
                                                 }
                                             );
-                                            await msg.reply(`That is the correct answer! You now have ${Formatters.bold(user.value.points.toLocaleString(guildLocale))} (+${game.reward * modes[mode]}) points!`);
+                                            let content = `That is the correct answer! You now have ${Formatters.bold(user.value.points.toLocaleString(guildLocale))} (+${game.reward * modes[mode]}) points!`;
+                                            const nextRound = await cursor.hasNext();
+                                            if (nextRound) content += " Next round starts in 5 seconds!";
+                                            await msg.reply(content)
+                                            .catch(closeCursorAndThrowError);
                                         }
-                                        setTimeout(play, 5000, index + 1);
                                     } else {
-                                        let error_message = "Looks like nobody got the right answer this time...";
-                                        const next = await cursor.hasNext();
-                                        if (next) error_message += " Next round starts in 5 seconds!";
-                                        await questionMessage.reply(error_message);
-                                        setTimeout(play, 5000, index + 1);
+                                        let content = "Looks like nobody got the right answer this time...";
+                                        const nextRound = await cursor.hasNext();
+                                        if (nextRound) content += " Next round starts in 5 seconds!";
+                                        await questionMessage.reply(content)
+                                        .catch(closeCursorAndThrowError);
                                     }
+                                    await wait(5000);
+                                    await play(round + 1);
                                 } else {
                                     await thread.send("Game ended! To start a new game in this thread use `/quiz play` in this thread. Using the command again in a normal channel will create a new thread.");
-                                    interaction.client.cooldowns.delete(interaction.guildId);
+                                    quizCooldowns.delete(interaction.guildId);
                                     await games.updateOne({ _id: gameId }, {
                                         $inc: {
                                             played: 1
@@ -344,9 +361,11 @@ const command: SlashCommand = {
                                 }
                             }
                             await thread.send("Game starting in 15 seconds...");
-                            setTimeout(play, 15000, 0);
+                            await wait(15000);
+                            await play(1);
+                            const hasNext = await cursor.hasNext();
+                            if (hasNext) cursor.close();
                         } else {
-                            await component.update({ embeds: [embed], components });
                             await interaction.followUp("Game cancelled...");
                         }
                     })
@@ -371,7 +390,7 @@ const command: SlashCommand = {
                     const cursor = quizUserCollection.find(type === "score" && { score: { $exists: true } }, {
                         sort: type === "score" 
                             ? { score: -1 } 
-                            : { points: - 1 }
+                            : { points: -1 }
                     });
                     const amount = await cursor.count();
                     const users = await cursor.limit(10).toArray();

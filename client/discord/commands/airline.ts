@@ -296,10 +296,6 @@ const command: SlashCommand = {
                             ]
                         })
                     ];
-                    if (awards.length) embeds[0].addFields({
-                        name: Formatters.bold(Formatters.underscore("Awards")),
-                        value: Formatters.codeBlock(awards.map(award => `${award.name} • ${format(award.date, 'dd/MM/yyyy')}`).join('\n'))
-                    });
                     if (ipo.has) {  
                         const field = embeds[0].fields.pop();
                         const estimatedGrowth = Airline.estimatedShareValueGrowth(planes, profitOptions);
@@ -389,6 +385,10 @@ const command: SlashCommand = {
                         const url = await history.getShortUrl();
                         embeds[0].setImage(url);
                     }
+                    if (awards.length) embeds[0].addFields({
+                        name: Formatters.bold(Formatters.underscore("Awards")),
+                        value: Formatters.codeBlock(awards.map(award => `${award.name} • ${format(award.date, 'dd/MM/yyyy')}`).join('\n'))
+                    });
                     const chart = new QuickChart()
                     .setConfig({
                         type: 'pie',

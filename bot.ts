@@ -45,7 +45,7 @@ if (cluster.isPrimary) {
     // The main cluster, responsible for listening to general events and managing the other clusters
 
     console.log(chalk.bold(`Using Node.js ${process.version}`));
-    let env = dotenv.config(isDev ? { path: ".env.local" } : {});
+    let env = dotenv.config({ path: isDev ? ".env.local" : ".env" });
     env = dotenvExpand(env);
     const discordWorker = cluster.fork(env.parsed);
     const telegramWorker = cluster.fork(env.parsed);
@@ -53,25 +53,29 @@ if (cluster.isPrimary) {
     let discordDisconnectTimeout: NodeJS.Timeout, telegramDisconnectTimeout: NodeJS.Timeout;
 
     const disconnectWorkers = () => {
-        discordWorker.send("shutdown");
-        discordWorker.disconnect();
-        discordDisconnectTimeout = setTimeout(() => discordWorker.kill(), 2500);
-        telegramWorker.send("shutdown");
-        telegramWorker.disconnect();
-        telegramDisconnectTimeout = setTimeout(() => telegramWorker.kill(), 2500);
+        if (discordWorker.isConnected() && !discordWorker.isDead() && !discordDisconnectTimeout) {
+            discordWorker.send("shutdown");
+            discordWorker.disconnect();
+            discordDisconnectTimeout = setTimeout(() => discordWorker.kill(), 2500);
+        }
+        if (telegramWorker.isConnected() && !telegramWorker.isDead() && !telegramDisconnectTimeout) {
+            telegramWorker.send("shutdown");
+            telegramWorker.disconnect();
+            telegramDisconnectTimeout = setTimeout(() => telegramWorker.kill(), 2500);
+        }
     };
 
-    discordWorker.on("disconnect", () => clearTimeout(discordDisconnectTimeout));
-    telegramWorker.on("disconnect", () => clearTimeout(telegramDisconnectTimeout));
+    discordWorker.on("disconnect", () => discordDisconnectTimeout && clearTimeout(discordDisconnectTimeout));
+    telegramWorker.on("disconnect", () => telegramDisconnectTimeout && clearTimeout(telegramDisconnectTimeout));
 
-    process.once("disconnect", disconnectWorkers);
+    process.on("disconnect", disconnectWorkers);
     process.once("SIGTERM", disconnectWorkers);
     process.once("exit", disconnectWorkers);
 
-    const events = new EventEmitter({ captureRejections: true });
     if (!isDev) {
 
         const options = { discordWorker, telegramWorker };
+        const events = new EventEmitter({ captureRejections: true });
         fs.readdir("./client/events", async (err, files) => {
             if (err) throw err;
             files = files.filter(isJavaScript);
@@ -210,7 +214,7 @@ if (cluster.isPrimary) {
                 }
             });
 
-            cluster.worker.on("exit", (code, signal) => {
+            cluster.worker.once("exit", (code, signal) => {
                 let message: string;
                 if (signal) {
                     message = chalk.red(`Discord worker was killed by signal: ${signal}`);
@@ -359,7 +363,7 @@ if (cluster.isPrimary) {
                 }
             });
 
-            cluster.worker.on("exit", (code, signal) => {
+            cluster.worker.once("exit", (code, signal) => {
                 let message: string;
                 if (signal) {
                     message = chalk.red(`Telegram worker was killed by signal: ${signal}`);

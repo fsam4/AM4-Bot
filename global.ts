@@ -113,7 +113,7 @@ Number.prototype.abbreviate = function(fractionDigits = 1) {
         if (<number>shortValue % 1 != 0)  shortValue = (<number>shortValue).toFixed(fractionDigits);
         newValue = shortValue + suffixes[suffixNum];
     }
-    return <string>newValue;
+    return newValue as string;
 }
 
 Date.prototype.isValid = function() {

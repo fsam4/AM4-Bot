@@ -64,8 +64,8 @@ declare global {
         split(this: this, chunks: number, balanced?: boolean): T[][];
 
         /**
-         * Turn this array into a generator
-         * This can be used to iterate over the values endlessly
+         * Turn this array into a generator.
+         * This can be used to iterate over the values endlessly.
          * @returns The generator of this array
          */
 

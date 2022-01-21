@@ -31,6 +31,6 @@ AM4 Bot team was a selected group of players for moderation, error reporting and
 - `•_•#1381` aka Emeritas _(since summer of 2021)_
 
 # Discussions
-> ⚠️ _This respitory will be archived in some months or a year. Starting new dicussions will not be possible after that_.
+> ⚠️ _This repository will be archived in some months or a year. Starting new dicussions will not be possible after that_.
 
 If you have any questions about the bot, tool developing or the source code, you can ask them in the [Questions category](https://github.com/fsam4/AM4-Bot/discussions/categories/questions). I will answer questions occasionally. If you just want to leave feedback, share your thoughts, share your own tools or anything else, you can start a discussion in the [General category](https://github.com/fsam4/AM4-Bot/discussions/categories/general). Please stay in appropriate categories with your discussions and use appropriate language.

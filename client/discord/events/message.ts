@@ -1,7 +1,7 @@
 import { MessageActionRow, MessageButton, Formatters, User, type MessageComponentInteraction } from 'discord.js';
 import DiscordClientError from '../error';
-import config from '../../../config.json';
 import { ObjectId } from 'bson';
+import { prefix } from '../../../config.json';
 
 import formatDistanceToNowStrict from 'date-fns/formatDistanceToNowStrict';
 import addSeconds from 'date-fns/addSeconds';
@@ -11,8 +11,6 @@ import addDays from 'date-fns/addDays';
 
 import type { Discord, AM4_Data } from '@typings/database';
 import type { Event } from '../types';
-
-const { prefix } = config;
 
 const requiredLevel = {
     data: 5,

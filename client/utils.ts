@@ -75,22 +75,22 @@ export class User implements Settings.user {
     }
     static readonly limits = {
         salaries: {
-            pilot: [200, 10000],
-            crew: [150, 10000],
-            engineer: [250, 10000],
-            tech: [225, 10000]
+            pilot: [200, 10000] as const,
+            crew: [150, 10000] as const,
+            engineer: [250, 10000] as const,
+            tech: [225, 10000] as const
         },
         training: {
-            fuel: [0, 3],
-            co2: [0, 5],
-            cargo_heavy: [0, 6],
-            cargo_large: [0, 6]
+            fuel: [0, 3] as const,
+            co2: [0, 5] as const,
+            cargo_heavy: [0, 6] as const,
+            cargo_large: [0, 6] as const
         },
         options: {
-            fuel_price: [0, 3000],
-            co2_price: [0, 200],
-            activity: [1, 24],
-            cost_index: [0, 200]
+            fuel_price: [0, 3000] as const,
+            co2_price: [0, 200] as const,
+            activity: [1, 24] as const,
+            cost_index: [0, 200] as const
         }
     }
 }

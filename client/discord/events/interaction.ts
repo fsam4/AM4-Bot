@@ -15,15 +15,15 @@ const event: Event = {
         const users = database.discord.collection<Discord.user>('Users');
         let user = await users.findOne({ id: interaction.user.id });
         if (!user) {
-            const document: Discord.user = {
+            const userDocument: Discord.user = {
                 id: interaction.user.id,
                 notifications_made: 0,
                 admin_level: 0,
                 commands: [],
                 warnings: []
             };
-            const res = await users.insertOne(document);
-            user = { ...document, _id: res.insertedId };
+            const res = await users.insertOne(userDocument);
+            user = { ...userDocument, _id: res.insertedId };
         }
         options.account = user;
         options.locale = interaction.locale || "en";
@@ -35,9 +35,13 @@ const event: Event = {
                         await interaction.respond([])
                         .catch(() => undefined);
                         return;
-                    };
+                    }
                     const command = interaction.client.chatCommands.get(interaction.commandName);
-                    if (!command.autocomplete) return interaction.respond([]);
+                    if (!command.autocomplete) {
+                        await interaction.respond([])
+                        .catch(() => undefined);
+                        return;
+                    }
                     type AutoCompleteOptions = Omit<CommandOptions, "ephemeral">;
                     await command.autocomplete(interaction, <AutoCompleteOptions>options);
                 }
@@ -71,7 +75,13 @@ const event: Event = {
                             }
                             if (interaction.guild) {
                                 const permissions = interaction.guild.me.permissionsIn(<TextChannel>interaction.channel).missing(command.permissions);
-                                if (permissions.length > 0) return await interaction.reply(`The bot has ${Formatters.bold(permissions.length.toString())} permissions missing that it requires for this command:\n${permissions.map(s => `► ${s.toLowerCase().replace(/_/g, " ")}`).join('\n')}`);
+                                if (permissions.length > 0) {
+                                    await interaction.reply({
+                                        content: `The bot has ${Formatters.bold(permissions.length.toString())} permissions missing that it requires for this command:\n${permissions.map(s => `► ${s.toLowerCase().replace(/_/g, " ")}`).join('\n')}`,
+                                        ephemeral: options.ephemeral
+                                    });
+                                    return;
+                                }
                             }
                         }
                     } else if (interaction.isContextMenu()) {
