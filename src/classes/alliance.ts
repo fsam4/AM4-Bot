@@ -1,7 +1,8 @@
 import { Collection } from 'discord.js';
 import AM4APIError from './error';
-import Status from './status';
 import Airline from './airline';
+import Status from './status';
+import fetch from 'node-fetch';
 
 import compareAsc from 'date-fns/compareAsc';
 import differenceInDays from 'date-fns/differenceInDays';

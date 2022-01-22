@@ -28,38 +28,43 @@ dotenvExpand(env);
 const clientId = process.env.CLIENT_ID;
 const guildId = process.env.TEST_GUILD;
 
-for (const file of chatCommandFiles) {
-	const command: SlashCommand = require(`./client/discord/commands/${file}`);
-	if (isDev) command.data.defaultPermission = true;
-	if (!isDev && !command.isPublic) continue;
-	const commandData = new ApplicationCommand(command.data);
-	commands.push(commandData);
-}
-
-for (const file of menuCommandFiles) {
-	const command: ContextMenu = require(`./client/discord/context/${file}`);
-	if (isDev) command.data.defaultPermission = true;
-	if (!command.isPublic) continue;
-	const commandData = new ApplicationCommand(command.data);
-	commands.push(commandData);
-}
-
 const rest = new REST({ version: '9' }).setToken(process.env.BOT_TOKEN);
 
 void async function () {
+
+	for (const file of chatCommandFiles) {
+		const command: SlashCommand = await import(`./client/discord/commands/${file}`);
+		if (isDev && !command.data.defaultPermission) command.data.defaultPermission = true;
+		if (!isDev && !command.isPublic) continue;
+		const commandData = new ApplicationCommand(command.data);
+		commands.push(commandData);
+	}
+
+	for (const file of menuCommandFiles) {
+		const command: ContextMenu = await import(`./client/discord/context/${file}`);
+		if (isDev && !command.data.defaultPermission) command.data.defaultPermission = true;
+		if (!command.isPublic) continue;
+		const commandData = new ApplicationCommand(command.data);
+		commands.push(commandData);
+	}
+
 	try {
-		console.log('Started refreshing application commands.');
+		console.log('Started refreshing application commands...');
 		const fullRoute = isDev 
 			? Routes.applicationGuildCommands(clientId, guildId) 
 			: Routes.applicationCommands(clientId);
 		const applicationCommands = await rest.put(fullRoute, { body: commands }) as APIApplicationCommand[];
 		console.log(chalk.green('Successfully reloaded application commands.'));
-		console.table(applicationCommands.map(command => ({
-			"Command Name": command.name,
-			"Command ID": command.id,
-			"Version": command.version
-		})));
-	} catch (error) {
+		console.table(
+			applicationCommands.map(command => ({
+				"Command Name": command.name,
+				"Command ID": command.id,
+				"Version": command.version
+			}))
+		);
+	} 
+	catch (error) {
 		console.error(chalk.red("Failed to reload application commands:"), error);
 	}
+
 }();

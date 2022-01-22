@@ -57,7 +57,7 @@ declare global {
         /**
          * Split this array into chunks
          * @param chunks The amount of chunks
-         * @param balanced Whether to make the chunks balanced, if false will have an extra element with values that did not fit equally into the chunks
+         * @param balanced Whether to make the chunks balanced. If false will have an extra element with values that did not fit equally into the chunks. If true will try to balance the chunks as equally as possible, if not possible some chunks may be larger than others. By default true.
          * @returns A multidimensional array of the chunks
          */
 

@@ -23,6 +23,7 @@
     "dotenv-expand": "^5.1.0",
     "keyv": "^4.0.3",
     "mongodb": "^4.1.3",
+    "node-fetch": "^2.6.7",
     "patch-package": "^6.4.7",
     "pug": "^3.0.2",
     "quick-lru": "^5.1.1",
@@ -36,6 +37,7 @@
     "@types/mongodb": "^3.6.19",
     "@types/node-fetch": "^2.5.7",
     "@types/pug": "^2.0.4",
-    "discord-api-types": "^0.26.1"
+    "discord-api-types": "^0.26.1",
+    "typegram": "^3.7.0"
   }
 }
