@@ -201,7 +201,7 @@ export namespace MongoDB {
 
     export function createPlaneFilter(query: string): Filter<AM4_Data.plane> {
         if (ObjectId.isValid(query)) {
-            return new ObjectId(query);
+            return { _id: new ObjectId(query) };
         } else {
             return {
                 $text: { 
