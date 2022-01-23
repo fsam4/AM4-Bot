@@ -1,4 +1,4 @@
-import type * as DiscordClientTypes from './client/discord/types';
+import type * as DiscordClientTypes from '@discord/types';
 import type { Collection } from 'discord.js';
 
 type StringKeys<T> = `${Exclude<keyof T, symbol>}`;
@@ -148,6 +148,19 @@ declare global {
          */
 
         abbreviate(this: number, fractionDigits?: number): string;
+
+    }
+
+    interface JSON {
+
+        /**
+         * Convert JSON to CSV format
+         * @param array An array of JSON objects
+         * @param seperator The seperator to use in the CSV
+         * @returns A string containing the formatted JSON
+         */
+        
+        convertToCSV(array: Array<{ [key: string]: any }>, seperator?: string): string;
 
     }
 

@@ -57,6 +57,8 @@ interface SearchQuery {
     arr_icao: string; 
 }
 
+const toolsBaseUrl = "https://api.am4tools.com";
+
 function padNumber(number: number, padding: number) {
     let str = number.toString();
     while (str.length < padding) str = '0' + str;
@@ -116,7 +118,7 @@ export default class Route extends Status {
                             mode: 'normal',
                             code: searchQuery.dep_icao
                         });
-                        const response = await fetch(`https://api.am4tools.com/airport/search?${query}`, {
+                        const response = await fetch(`${toolsBaseUrl}/airport/search?${query}`, {
                             headers: {
                                 "x-access-token": this.tools.accessToken
                             }
@@ -133,7 +135,7 @@ export default class Route extends Status {
                             mode: 'normal',
                             code: searchQuery.arr_icao
                         });
-                        const response = await fetch(`https://api.am4tools.com/airport/search?${query}`, {
+                        const response = await fetch(`${toolsBaseUrl}/airport/search?${query}`, {
                             headers: {
                                 "x-access-token": this.tools.accessToken
                             }
@@ -152,7 +154,7 @@ export default class Route extends Status {
                         arrival: searchQuery.arr_icao,
                         model: plane
                     });
-                    const response = await fetch(`https://api.am4tools.com/route/stopover?${query}`, {
+                    const response = await fetch(`${toolsBaseUrl}/route/stopover?${query}`, {
                         headers: {
                             "x-access-token": this.tools.accessToken
                         }

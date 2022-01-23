@@ -7,7 +7,7 @@ interface ApplicationCommandOption {
 	required?: boolean;
     min_value?: number;
     max_value?: number;
-    options?: this[];
+    options?: ApplicationCommandOption[];
     channel_types?: number[];
     autocomplete?: boolean;
 	choices?: Array<{
@@ -70,8 +70,10 @@ export default class ApplicationCommand {
         this.default_permission = command.defaultPermission;
         if (command.type === "CHAT_INPUT" || command.type === 1) {
             this.description = command.description;
-            // @ts-ignore: ApplicationCommandOption will return the correct value when called as a function
-            if ("options" in command) this.options = command.options.map(ApplicationCommandOption);
+            if ("options" in command) {
+                type ApplicationCommandOptionFunction = (option: ApplicationCommandOptionData) => ApplicationCommandOption;
+                this.options = command.options.map(<ApplicationCommandOptionFunction>ApplicationCommandOption);
+            }
         }
     }
 }

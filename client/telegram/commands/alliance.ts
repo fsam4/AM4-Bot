@@ -1,3 +1,4 @@
+import { Telegram as Utils } from '../../utils';
 import TelegramClientError from '../error';
 import { Markup, Scenes } from 'telegraf';
 import QuickChart from 'quickchart-js';
@@ -37,6 +38,8 @@ interface SceneSession extends Scenes.SceneSessionData {
 type BaseSceneOptions = ConstructorParameters<typeof Scenes.BaseScene>[1];
 type SceneContext = Scenes.SceneContext<SceneSession>;
 
+const commandName = "alliance";
+
 const sessionHandler = (ctx: SceneContext, next: () => void) => {
     ctx.scene.session.user ||= ctx.from;
     ctx.scene.session.alliances ||= [];
@@ -44,11 +47,11 @@ const sessionHandler = (ctx: SceneContext, next: () => void) => {
         order: undefined,
         path: undefined
     };
-    return next()
-}
+    return next();
+};
 
 const command: Command<Context, Scenes.SceneContext, SceneContext> = {
-    name: 'alliance',
+    name: commandName,
     cooldown: 10,
     description: 'Search or compare alliances',
     help: "This command can be used to search for an alliance and it's members or to compare alliances. The command has three choices which are search, members and compare. The search option has one required argument which is the name of the alliance. The members option has three required arguments: `<name>`, `<offline|contr_today|contr_total|sv>`, `<ascending|descending>`. `<name>` is the name of the alliance, `<offline|contr_today|contr_total|sv>` is the statistic to sort the members by and `<ascending|descending>` is the order to sort by. The last option is compare which can be used to compare alliances. It requires 2-5 alliance names that must be seperated by a comma.",
@@ -65,26 +68,14 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         ];
         await ctx.replyWithMarkdown(reply_text.join('\n'), keyboard)
         .then(message => {
-            const timeout = setTimeout(async () => {
-                timeouts.delete(message.message_id);
-                await ctx.telegram.deleteMessage(message.chat.id, message.message_id)
-                .catch(() => undefined);
-            }, 120000);
+            const timeout = setTimeout(Utils.deleteMessage, 120000, ctx, message, timeouts);
             timeouts.set(message.message_id, timeout);
         });
     },
     actions: [
         {
             value: /(search|members|compare)(?=:alliance)/,
-            async execute(ctx, { timeouts }) {
-                if (timeouts.has(ctx.message.message_id)) {
-                    const timeout = timeouts.get(ctx.message.message_id);
-                    clearTimeout(timeout);
-                    timeouts.delete(ctx.message.message_id);
-                }
-                await ctx.scene.enter(ctx.callbackQuery.data);
-                await ctx.answerCbQuery();
-            }
+            execute: Utils.executeAction
         }
     ],
     scenes: [
@@ -97,7 +88,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => undefined);
-                    const keyboard = await keyboards.findOne({ id: ctx.from.id, command: 'alliance' });
+                    const keyboard = await keyboards.findOne({ id: ctx.from.id, command: commandName });
                     const content: Parameters<typeof ctx.replyWithMarkdown> = ['Type the name of the alliance...\nFormat: `<name>`\nExample: `air france klm`'];
                     if (keyboard) {
                         const columns = keyboard.input.length > 1 ? Math.trunc(keyboard.input.length / 2) : 1;
@@ -278,7 +269,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                         await keyboards.bulkWrite([
                             {
                                 updateOne: {
-                                    filter: { id: ctx.from.id, command: 'alliance' },
+                                    filter: { id: ctx.from.id, command: commandName },
                                     upsert: true,
                                     update: {
                                         $addToSet: {
@@ -292,7 +283,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                             },
                             {
                                 updateOne: {
-                                    filter: { id: ctx.from.id, command: 'alliance' },
+                                    filter: { id: ctx.from.id, command: commandName },
                                     update: {
                                         $push: {
                                             input: {
@@ -351,7 +342,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => undefined);
-                    const keyboard = await keyboards.findOne({ id: ctx.from.id, command: 'alliance' });
+                    const keyboard = await keyboards.findOne({ id: ctx.from.id, command: commandName });
                     const content: Parameters<typeof ctx.replyWithMarkdown> = ['Type the name of the alliance...\nFormat: `<name>`\nExample: `air france klm`'];
                     if (keyboard) {
                         const columns = keyboard.input.length > 1 ? Math.trunc(keyboard.input.length / 2) : 1;

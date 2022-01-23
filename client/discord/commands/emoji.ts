@@ -116,7 +116,7 @@ const command: SlashCommand = {
             },
             {
                 name: 'list',
-                description: "Get a list of AM4 emojis",
+                description: "Get a list of addable AM4 emojis",
                 type: Constants.ApplicationCommandOptionTypes.SUB_COMMAND
             }
         ]
@@ -140,7 +140,11 @@ const command: SlashCommand = {
                     });
                     for (let i = 0; i < 4; i++) {
                         const field_emojis = emojis.splice(4, amount);
-                        embed.addField('\u200B', field_emojis.map(emoji => `${Formatters.inlineCode(emoji.id)}|<:${emoji.name}:${emoji.id}>`).join('\n'), true);
+                        embed.addFields({
+                            name: '\u200B', 
+                            value: field_emojis.map(emoji => `${Formatters.inlineCode(emoji.id)}|${Formatters.formatEmoji(emoji.id)}`).join('\n'), 
+                            inline: true
+                        });
                     }
                     await interaction.editReply({ embeds: [embed] });
                     break;
@@ -164,7 +168,7 @@ const command: SlashCommand = {
                     if (!emojis.size) throw new DiscordClientError("This server does not have any AM4 emojis added via AM4 Bot...");
                     const embed = new MessageEmbed({
                         color: "YELLOW",
-                        description: emojis.map(emoji => `${Formatters.inlineCode(emoji.id)}|${Formatters.time(emoji.createdAt, "d")}|<:${emoji.name}:${emoji.id}>`).join('\n'),
+                        description: emojis.map(emoji => `${Formatters.inlineCode(emoji.id)}|${Formatters.time(emoji.createdAt, "d")}|${Formatters.formatEmoji(emoji.id)}`).join('\n'),
                         author: {
                             name: interaction.guild.name,
                             iconURL: interaction.guild.iconURL()
@@ -210,12 +214,11 @@ const command: SlashCommand = {
                     const options = { reason: `New ${subCommand} emoji added by ${interaction.user.username}#${interaction.user.discriminator}` };
                     await interaction.guild.emojis.create(buffer, emoji_name, options)
                     .then(async emoji => {
-                        const identifier = `<:${emoji.name}:${emoji.id}>`;
-                        await interaction.editReply(`Added ${identifier} to your server! The ID of this emoji is ${Formatters.bold(emoji.id)}.`);
+                        await interaction.editReply(`Added ${Formatters.formatEmoji(emoji.id)} to your server! The ID of this emoji is ${Formatters.bold(emoji.id)}.`);
                     })
                     .catch(async err => {
                         console.error("Failed to create an emoji", err);
-                        await interaction.editReply("Failed to create that emoji for an unknown reason... Please make sure that you still have available emoji spaces left!");
+                        await interaction.editReply("Failed to create that emoji for an unknown reason... Please make sure that this server still has available emoji slots!");
                     });
                     break;
                 }

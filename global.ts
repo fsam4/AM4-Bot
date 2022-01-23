@@ -99,10 +99,11 @@ Math.difference = function(x, y) {
     };
 }
 
+const suffixes = ["", "k", "m", "b", "t"];
+
 Number.prototype.abbreviate = function(fractionDigits = 1) {
     let newValue: string | number = this;
     if (this >= 1000) {
-        let suffixes = ["", "k", "m", "b", "t"];
         let suffixNum = Math.floor(this.toString().length / 3);
         let shortValue: string | number = '';
         for (let precision = 2; precision >= 1; precision--) {
@@ -119,6 +120,22 @@ Number.prototype.abbreviate = function(fractionDigits = 1) {
 Date.prototype.isValid = function() {
     const ms = this.getTime();
     return !isNaN(ms);
+}
+
+JSON.convertToCSV = function(array, seperator = "|") {
+    let content = '';
+    const keys = Object.keys(array[0]);
+    content += keys.join(seperator) + '\r\n';
+    for (let i = 0; i < array.length; i++) {
+        let line = '';
+        for (const key of keys) {
+            if (line !== '') line += seperator;
+            line += array[i][key];
+        }
+        content += line;
+        if ((i + 1) !== array.length) content += '\r\n';
+    }
+    return content;
 }
 
 // * Discord declarations, types declared in global.d.ts

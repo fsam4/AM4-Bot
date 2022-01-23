@@ -36,6 +36,8 @@ type AllianceMember = {
     }
 }; 
 
+const AM4BaseUrl = "https://www.airline4.net/api";
+
 /**
  * Represents an airline
  * @constructor
@@ -122,7 +124,7 @@ export default class Airline extends Status {
                         access_token: client.am4.accessToken,
                         search: user.alliance
                     });
-                    const response: AM4.Alliance = await fetch(`https://www.airline4.net/api?${query}`).then(response => response.json());
+                    const response: AM4.Alliance = await fetch(`${AM4BaseUrl}?${query}`).then(response => response.json());
                     if (response.status.description === 'Missing or invalid access token') throw new AM4APIError(response.status);
                     return new Alliance(response, client);
                 },
@@ -131,7 +133,7 @@ export default class Airline extends Status {
                         access_token: client.am4.accessToken,
                         search: user.alliance
                     });
-                    const response: AM4.Alliance = await fetch(`https://www.airline4.net/api?${query}`).then(response => response.json());
+                    const response: AM4.Alliance = await fetch(`${AM4BaseUrl}?${query}`).then(response => response.json());
                     if (response.status.description === 'Missing or invalid access token') throw new AM4APIError(response.status);
                     const { members, status } = new Alliance(response, client);
                     if (!status.success) return { status: status };
@@ -144,7 +146,10 @@ export default class Airline extends Status {
             this.fleet = {
                 size: user.fleet,
                 routes: user.routes,
-                planes: fleet.map(object => ({ name: object.aircraft, amount: object.amount })),
+                planes: fleet.map(object => ({ 
+                    name: object.aircraft, 
+                    amount: object.amount 
+                }))
             }
             this.ipo = {
                 has: Boolean(user.ipo),
@@ -221,7 +226,10 @@ export default class Airline extends Status {
     static estimatedShareValueGrowth(planes: Aircraft[], { reputation, ...options }: ProfitOptions) {
         const growth = planes.map(plane => {
             const type = plane.type === "cargo" ? plane.type : "pax";
-            const daily = Plane.estimatedShareValueGrowth(plane, { ...options, reputation: reputation[type] });
+            const daily = Plane.estimatedShareValueGrowth(plane, { 
+                ...options, 
+                reputation: reputation[type] 
+            });
             return daily * plane.amount;
         });
         const estimated = growth.length ? growth.reduce((a, b) => a + b) : 0;
@@ -232,5 +240,6 @@ export default class Airline extends Status {
      * The default logo for an airline
      */
 
-    static readonly defaultLogoURL = "https://androidsapkmod.com/wp-content/uploads/2019/12/Airline-Manager-4-1.1.3-APK-MOD-Free-Download.png";
+    static readonly defaultLogoURL = "https://i.ibb.co/0JMbPBM/am-logo.png";
+
 }

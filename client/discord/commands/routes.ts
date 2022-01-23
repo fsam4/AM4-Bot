@@ -1,11 +1,10 @@
-import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, Formatters, Constants } from 'discord.js';
+import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, Formatters, Constants, type MessageComponentInteraction, type Message, type ApplicationCommandOptionChoice } from 'discord.js';
 import DiscordClientError from '../error';
 import * as Utils from '../../utils';
 import { emojis } from '../../../config.json';
 import Route from '../../../src/classes/route';
 import Plane from '../../../src/lib/plane';
 
-import type { MessageComponentInteraction, Message, MessagePayload, InteractionReplyOptions, ApplicationCommandOptionChoice } from 'discord.js';
 import type { Settings, AM4_Data, BaseDocument } from '@typings/database';
 import type { Document, Filter } from 'mongodb';
 import type { SlashCommand } from '../types';
@@ -149,8 +148,8 @@ const command: SlashCommand = {
         const user = new Utils.User(interaction.user.id, await settings.findOne({ id: interaction.user.id }));
         try {
             type GameMode = "realism" | "easy";
-            type MessageResolvable = string | MessagePayload | InteractionReplyOptions;
-            const followups: MessageResolvable[] = [];
+            type FollowUpOptions = Parameters<typeof interaction.followUp>[0];
+            const followups: FollowUpOptions[] = [];
             const mode = interaction.options.getString("mode")?.trim();
             if (mode && mode === user.mode) followups.push({
                 content: "🪙 When you have logged in you do not need to define the game mode anymore as it will be automatically filled for you.",

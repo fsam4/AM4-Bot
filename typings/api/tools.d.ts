@@ -88,7 +88,7 @@ export interface Airports extends Request {
 }
 
 export interface Routes extends Request {
-    routes: {
+    routes: Array<{
         id: string;
         economic_demand: number;
         business_demand: number;
@@ -98,7 +98,7 @@ export interface Routes extends Request {
         distance: number;
         departure: airport;
         arrival: airport;
-    }[];
+    }>;
 }
 
 export interface Planes extends Request {

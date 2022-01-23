@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import chalk from 'chalk';
 import fs from 'fs';
 
-import type { SlashCommand, ContextMenu } from './client/discord/types';
+import type { SlashCommand, ContextMenu } from '@discord/types';
 
 interface APIApplicationCommand extends ApplicationCommand {
 	id: string;

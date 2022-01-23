@@ -67,40 +67,40 @@ export default class Routes extends Status {
         this._route = route;
         if (this.status.success) {
             this.departure = route.departure
-            this.routes = route.data.map(r => ({
+            this.routes = route.data.map(destination => ({
                 route: {
                     departure: route.departure,
-                    arrival: r.arrival,
-                    icao: r.icao,
-                    iata: r.iata,
-                    market: r.market,
-                    runway: r.runway,
-                    distance: r.distance,
-                    flights: (...args) => Route.flights(r.distance, ...args),
-                    flightTime: (speed) => Route.flightTime(r.distance, speed)
+                    arrival: destination.arrival,
+                    icao: destination.icao,
+                    iata: destination.iata,
+                    market: destination.market,
+                    runway: destination.runway,
+                    distance: destination.distance,
+                    flights: (...args) => Route.flights(destination.distance, ...args),
+                    flightTime: (speed) => Route.flightTime(destination.distance, speed)
                 },
                 demand: {
-                    F: r.first_class_demand,
-                    J: r.business_class_demand,
-                    Y: r.economy_class_demand,
-                    L: r.cargo_large_demand * 1000,
-                    H: r.cargo_heavy_demand * 1000,
+                    F: destination.first_class_demand,
+                    J: destination.business_class_demand,
+                    Y: destination.economy_class_demand,
+                    L: destination.cargo_large_demand * 1000,
+                    H: destination.cargo_heavy_demand * 1000,
                     total: {
-                        pax: r.first_class_demand * 3 + r.business_class_demand * 2 + r.economy_class_demand,
-                        cargo: Math.round(r.cargo_heavy_demand * 1000 + Plane.largeToHeavy(r.cargo_large_demand * 1000))
+                        pax: destination.first_class_demand * 3 + destination.business_class_demand * 2 + destination.economy_class_demand,
+                        cargo: Math.round(destination.cargo_heavy_demand * 1000 + Plane.largeToHeavy(destination.cargo_large_demand * 1000))
                     }
                 },
                 ticket: {
                     easy: {
-                        default: Route.ticket(r.distance, 'easy'),
-                        vip: Route.ticket(r.distance, 'easy', true)
+                        default: Route.ticket(destination.distance, 'easy'),
+                        vip: Route.ticket(destination.distance, 'easy', true)
                     },
                     realism: {
-                        default: Route.ticket(r.distance, 'realism'),
-                        vip: Route.ticket(r.distance, 'realism', true)
+                        default: Route.ticket(destination.distance, 'realism'),
+                        vip: Route.ticket(destination.distance, 'realism', true)
                     }
                 }
-            }))
+            }));
         }
     }
 }

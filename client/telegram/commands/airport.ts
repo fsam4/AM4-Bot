@@ -1,3 +1,4 @@
+import { Telegram as Utils } from '../../utils';
 import TelegramClientError from '../error';
 import { Markup, Scenes } from 'telegraf';
 import pug from 'pug';
@@ -23,8 +24,8 @@ type SceneContext = Scenes.SceneContext<SceneSession>;
 
 const sessionHandler = (ctx: SceneContext, next: () => void) => {
     ctx.scene.session.user ||= ctx.from;
-    return next()
-}
+    return next();
+};
 
 const command: Command<Context, Scenes.SceneContext, SceneContext> = {
     name: 'airport',
@@ -44,26 +45,14 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         ];
         await ctx.replyWithMarkdown(reply_text.join('\n'), keyboard)
         .then(message => {
-            const timeout = setTimeout(async () => {
-                timeouts.delete(message.message_id);
-                await ctx.telegram.deleteMessage(message.chat.id, message.message_id)
-                .catch(() => undefined);
-            }, 120000);
+            const timeout = setTimeout(Utils.deleteMessage, 120000, ctx, message, timeouts);
             timeouts.set(message.message_id, timeout);
         });
     },
     actions: [
         {
             value: /(filter|search|sell)(?=:airport)/,
-            async execute(ctx, { timeouts }) {
-                if (timeouts.has(ctx.message.message_id)) {
-                    const timeout = timeouts.get(ctx.message.message_id);
-                    clearTimeout(timeout);
-                    timeouts.delete(ctx.message.message_id);
-                }
-                await ctx.scene.enter(ctx.callbackQuery.data);
-                await ctx.answerCbQuery();
-            }
+            execute: Utils.executeAction
         }
     ],
     scenes: [

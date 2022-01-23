@@ -1310,7 +1310,7 @@ const command: SlashCommand = {
                             if (!status.success) throw new DiscordClientError(status.error);
                             const days = Math.abs(differenceInDays(interaction.createdAt, member.joined));
                             const weeks = Math.abs(differenceInWeeks(interaction.createdAt, member.joined));
-                            const charts: Array<{ emoji: string, data: any }> = [];
+                            const charts: Array<{ emoji: string, data: { [key: string]: any } }> = [];
                             const embed = new MessageEmbed({
                                 color: "BLURPLE",
                                 timestamp: airline.founded,

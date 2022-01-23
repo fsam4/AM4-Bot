@@ -5,7 +5,7 @@ import fetch from 'node-fetch';
 import type { Message, User } from 'typegram';
 import type { Command } from '../types';
 
-interface Definitions {
+interface Definition {
     list: Array<{
         definition: string;
         permalink: string;
@@ -30,8 +30,8 @@ type BaseSceneOptions = ConstructorParameters<typeof Scenes.BaseScene>[1];
 type SceneContext = Scenes.SceneContext<SceneSession>;
 
 const definitionURL = (term: string) => `https://www.urbandictionary.com/define.php?${new URLSearchParams({ term })}`;
-const replaceHyperlinks = (s: string) => `[${s}](${definitionURL(s)})`;
-const hyperlink = /\[\w{1,}\]/g;
+const replaceHyperlinks = (s: string) => `[${s.replace(/\[|\]/g, "")}](${definitionURL(s)})`;
+const hyperlink = /\[.+\]/g;
 
 const command: Command<Scenes.SceneContext, never, SceneContext> = {
     name: 'urban',
@@ -58,9 +58,9 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                     await ctx.scene.leave();
                     try {
                         const query = new URLSearchParams({ term: ctx.message.text });
-                        const { list }: Definitions = await fetch(`https://api.urbandictionary.com/v0/define?${query}`).then((response) => response.json());
-                        if (!list.length) throw new TelegramClientError(`No results found for *${ctx.message.text}*...`);
-                        const [answer] = list;
+                        const definition: Definition = await fetch(`https://api.urbandictionary.com/v0/define?${query}`).then(response => response.json());
+                        if (!definition || !definition.list?.length) throw new TelegramClientError(`No results found for *${ctx.message.text}*...`);
+                        const [answer] = definition.list;
                         answer.definition = answer.definition.replace(hyperlink, replaceHyperlinks);
                         answer.example = answer.example.replace(hyperlink, replaceHyperlinks);
                         const bu = (text: string) => `<a><u>${text}</u></a>`;

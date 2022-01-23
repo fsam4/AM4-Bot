@@ -1,4 +1,4 @@
-import { MessageEmbed, Permissions, MessageAttachment, MessageSelectMenu, MessageButton, Formatters, MessageActionRow, Constants } from 'discord.js';
+import { MessageEmbed, Permissions, MessageAttachment, MessageSelectMenu, MessageButton, Formatters, MessageActionRow, Constants, type MessageComponentInteraction, type Message, type ApplicationCommandOptionChoice } from 'discord.js';
 import { ObjectId, type Document, type Filter } from 'mongodb';
 import DiscordClientError from '../error';
 import QuickChart from 'quickchart-js';
@@ -7,7 +7,6 @@ import * as Utils from '../../utils';
 import Route from '../../../src/classes/route';
 import Plane from '../../../src/lib/plane';
 
-import type { MessageComponentInteraction, Message, MessagePayload, InteractionReplyOptions, ApplicationCommandOptionChoice } from 'discord.js';
 import type { Settings, AM4_Data } from '@typings/database';
 import type { SlashCommand } from '../types';
 
@@ -247,8 +246,8 @@ const command: SlashCommand = {
                     const arrivalCode = interaction.options.getString("arrival", true).trim();
                     const stopoverCode = interaction.options.getString("stopover")?.trim();
                     const mode = interaction.options.getString("mode")?.trim();
-                    type MessageResolvable = string | MessagePayload | InteractionReplyOptions;
-                    const followups: MessageResolvable[] = [];
+                    type FollowUpOptions = Parameters<typeof interaction.followUp>[0];
+                    const followups: FollowUpOptions[] = [];
                     if (mode && mode === user.mode) followups.push({
                         content: "🪙 When you have logged in you do not need to define the game mode anymore as it will be automatically filled for you.",
                         ephemeral: true

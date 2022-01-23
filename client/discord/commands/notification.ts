@@ -1,4 +1,4 @@
-import { Permissions, Formatters, WebhookClient, MessageEmbed, Constants, Team, type MessagePayload, type WebhookMessageOptions } from 'discord.js';
+import { Permissions, Formatters, WebhookClient, MessageEmbed, Constants, Team } from 'discord.js';
 import { Discord as Utils } from '../../utils';
 import DiscordClientError from '../error';
 import { ObjectId } from 'bson';
@@ -133,7 +133,8 @@ const command: SlashCommand = {
             const subCommand = interaction.options.getSubcommand();
             switch(subCommand) {
                 case "post": {
-                    let options: MessagePayload | WebhookMessageOptions = {};
+                    type WebhookMessageOptions = Exclude<Parameters<typeof WebhookClient.prototype.send>[0], string>;
+                    let options: WebhookMessageOptions = {};
                     if (account?.airlineID) {
                         const { status, airline } = await rest.fetchAirline(account.airlineID);
                         if (status.success) {
@@ -211,7 +212,7 @@ const command: SlashCommand = {
                 }
                 case "edit": {
                     const id = interaction.options.getString("id", true).trim();
-                    const notification = await notificationCollection.findOne(ObjectId.isValid(id) ? new ObjectId(id) : { "webhooks.message": id });
+                    const notification = await notificationCollection.findOne(ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { "webhooks.message": id });
                     if (!notification) throw new DiscordClientError("That is not a valid notification ID. Please note that you can only edit notifications from the last 24 hours!");
                     const owner = interaction.client.application.owner;
                     const isDeveloper = owner instanceof Team ? owner.members.some(member => member.id === interaction.user.id) : (interaction.user.id === owner.id);
@@ -263,7 +264,7 @@ const command: SlashCommand = {
                 }
                 case "delete": {
                     const id = interaction.options.getString("id", true).trim();
-                    const notification = await notificationCollection.findOne(ObjectId.isValid(id) ? new ObjectId(id) : { "webhooks.message": id });
+                    const notification = await notificationCollection.findOne(ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { "webhooks.message": id });
                     if (!notification) throw new DiscordClientError("That is not a valid notification ID. Please note that you can only delete notifications from the last 24 hours!");
                     const owner = interaction.client.application.owner;
                     const isDeveloper = owner instanceof Team ? owner.members.some(member => member.id === interaction.user.id) : (interaction.user.id === owner.id);
@@ -300,7 +301,7 @@ const command: SlashCommand = {
                 }
                 case "view": {
                     const id = interaction.options.getString("id", true).trim();
-                    const notification = await notificationCollection.findOne(ObjectId.isValid(id) ? new ObjectId(id) : { "webhooks.message": id });
+                    const notification = await notificationCollection.findOne(ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { "webhooks.message": id });
                     if (!notification) throw new DiscordClientError("No notification could be found with that ID. Please note that you can only view notifications from the past 24 hours!");
                     await interaction.client.users.fetch(notification.user)
                     .then(async user => {

@@ -49,7 +49,7 @@ type UpdateContext<K extends keyof Types.MountMap> = NarrowedContext<Context, Ty
 
 type EventHandler<E extends Types.UpdateType> = {
     name: E;
-    execute: (ctx: UpdateContext<E>, options: BaseOptions) => Promise<void>;
+    execute: (this: EventHandler<E>, ctx: UpdateContext<E>, options: BaseOptions) => Promise<void>;
 }
 
 export type Event = { [P in Types.UpdateType]: EventHandler<P> }[Types.UpdateType];

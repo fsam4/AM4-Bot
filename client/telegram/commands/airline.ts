@@ -1,3 +1,4 @@
+import { Telegram as Utils } from '../../utils';
 import TelegramClientError from '../error';
 import { Markup, Scenes } from 'telegraf';
 import QuickChart from 'quickchart-js';
@@ -23,13 +24,15 @@ type BaseSceneOptions = ConstructorParameters<typeof Scenes.BaseScene>[1];
 type SceneContext = Scenes.SceneContext<SceneSession>;
 type Aircraft = AM4_Data.plane & { amount?: number };
 
+const commandName = "airline";
+
 const sessionHandler = (ctx: SceneContext, next: () => void) => {
     ctx.scene.session.user ||= ctx.from;
-    return next()
-}
+    return next();
+};
 
 const command: Command<Context, Scenes.SceneContext, SceneContext> = {
-    name: 'airline',
+    name: commandName,
     cooldown: 10,
     description: 'Search or compare airlines',
     help: "With this command you can search or compare airlines. When searcing for an airline there is one required argument which is `<name|id>`. This mean you need to either type the name or the ID of that airline. If you cannot find the right airline by username then try ID as that gives more accurate results. When comparing airlines you need to type 2-5 airlines seperated by commas. So for example if you want to compare Prestige Wings and AMBE Airlines use `prestige wings, ambe airlines`.",
@@ -45,26 +48,14 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         ];
         await ctx.replyWithMarkdown(reply_text.join('\n'), keyboard)
         .then(message => {
-            const timeout = setTimeout(async () => {
-                timeouts.delete(message.message_id);
-                await ctx.telegram.deleteMessage(message.chat.id, message.message_id)
-                .catch(() => undefined);
-            }, 120000);
+            const timeout = setTimeout(Utils.deleteMessage, 120000, ctx, message, timeouts);
             timeouts.set(message.message_id, timeout);
         });
     },
     actions: [
         {
             value: /(search|compare)(?=:airline)/,
-            async execute(ctx, { timeouts }) {
-                if (timeouts.has(ctx.message.message_id)) {
-                    const timeout = timeouts.get(ctx.message.message_id);
-                    clearTimeout(timeout);
-                    timeouts.delete(ctx.message.message_id);
-                }
-                await ctx.scene.enter(ctx.callbackQuery.data);
-                await ctx.answerCbQuery();
-            }
+            execute: Utils.executeAction
         }
     ],
     scenes: [
@@ -76,7 +67,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => undefined);
-                    const keyboard = await keyboards.findOne({ id: ctx.from.id, command: 'airline' });
+                    const keyboard = await keyboards.findOne({ id: ctx.from.id, command: commandName });
                     const content: Parameters<typeof ctx.replyWithMarkdown> = ['Type the name or the ID of the airline...\nFormat: `<name|id>`\nExample: `prestige wings`'];
                     if (keyboard) {
                         const columns = keyboard.input.length > 1 ? Math.trunc(keyboard.input.length / 2) : 1;
@@ -297,7 +288,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                         await keyboards.bulkWrite([
                             {
                                 updateOne: {
-                                    filter: { id: ctx.from.id, command: 'airline' },
+                                    filter: { id: ctx.from.id, command: commandName },
                                     upsert: true,
                                     update: {
                                         $addToSet: {
@@ -311,7 +302,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                             },
                             {
                                 updateOne: {
-                                    filter: { id: ctx.from.id, command: 'airline' },
+                                    filter: { id: ctx.from.id, command: commandName },
                                     update: {
                                         $push: {
                                             input: {

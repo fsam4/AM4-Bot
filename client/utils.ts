@@ -2,7 +2,10 @@ import { ObjectId, type Filter } from 'mongodb';
 import { Formatters } from 'discord.js';
 import { emojis } from '../config.json';
 
+import type * as TelegramClientTypes from '@telegram/types';
 import type { Settings, AM4_Data } from '@typings/database';
+import type { Context, Scenes } from 'telegraf';
+import type { Message } from 'typegram';
 
 type GameMode = "easy" | "realism";
 type CodeType = "icao" | "iata";
@@ -102,28 +105,6 @@ export class User implements Settings.user {
 export namespace Discord {
 
     /**
-     * Convert JSON to CSV format
-     * @param objectArray An array of JSON objects 
-     * @returns The given JSON in CSV format
-     */
-
-    export function convertToCSV(array: object[], seperator = "|") {
-        let content = '';
-        const keys = Object.keys(array[0]);
-        content += keys.join(seperator) + '\r\n';
-        for (let i = 0; i < array.length; i++) {
-            let line = '';
-            for (const key of keys) {
-                if (line !== '') line += seperator;
-                line += array[i][key];
-            }
-            content += line;
-            if ((i + 1) !== array.length) content += '\r\n';
-        }
-        return content;
-    }
-
-    /**
      * Format Y, J, F, L and H letters in a string to their representitive seat/load type emojis
      * @param string The string to format
      * @returns Formatted string, does not mutate the passed string
@@ -168,6 +149,45 @@ export namespace Discord {
 
 }
 
+type ActionContext = Scenes.SceneContext & { callbackQuery: TelegramClientTypes.DataCallbackQuery };
+
+/**
+ * A namespace containing utility functions for the Telegram client
+ */
+
+export namespace Telegram {
+
+    /**
+     * Delete a message after a timeout
+     * @param ctx The context to delete the message from
+     * @param message The message that was sent
+     * @param timeouts The timeout Map to remove the timeout from
+     */
+
+    export function deleteMessage(ctx: Context, message: Message.TextMessage, timeouts: Map<number, NodeJS.Timeout>) {
+        timeouts.delete(message.message_id);
+        ctx.telegram.deleteMessage(message.chat.id, message.message_id)
+        .catch(() => undefined);
+    }
+
+    /**
+     * A default action execute function that clears the timeouts for the message, enters the scene and answer the callback query
+     * @param ctx The context to answer to
+     * @param options The options for the action
+     */
+
+    export async function executeAction(ctx: ActionContext, { timeouts }: TelegramClientTypes.CommandOptions) {
+        if (timeouts.has(ctx.message.message_id)) {
+            const timeout = timeouts.get(ctx.message.message_id);
+            clearTimeout(timeout);
+            timeouts.delete(ctx.message.message_id);
+        }
+        await ctx.scene.enter(ctx.callbackQuery.data);
+        await ctx.answerCbQuery();
+    }
+
+}
+
 /**
  * A namespace containing utility functions for MongoDB
  */
@@ -182,7 +202,7 @@ export namespace MongoDB {
 
     export function createAirportFilter(query: string): Filter<AM4_Data.airport> {
         if (ObjectId.isValid(query)) {
-            return new ObjectId(query);
+            return { _id: new ObjectId(query) };
         } else {
             return {
                 $or: [
@@ -219,7 +239,7 @@ export namespace MongoDB {
 
     export function createAchievementFilter(query: string): Filter<AM4_Data.achievement> {
         if (ObjectId.isValid(query)) {
-            return new ObjectId(query);
+            return { _id: new ObjectId(query) };
         } else {
             return {
                 $text: { 

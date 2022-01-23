@@ -13,6 +13,8 @@ import type AM4Client from '@source/index';
 
 type APIMember = AM4.Alliance['members'][number];
 
+const AM4BaseUrl = "https://www.airline4.net/api";
+
 /**
  * Represents a member of an alliance
  * @constructor
@@ -49,7 +51,7 @@ export class Member {
                     access_token: client.am4.accessToken,
                     user: member.company
                 });
-                const response: AM4.Airline = await fetch(`https://www.airline4.net/api?${query}`).then(response => response.json());
+                const response: AM4.Airline = await fetch(`${AM4BaseUrl}?${query}`).then(response => response.json());
                 if (response.status.description === 'Missing or invalid access token') throw new AM4APIError(response.status);
                 return new Airline(response, client)
             }

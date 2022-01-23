@@ -358,10 +358,13 @@ const command: SlashCommand = {
                     let query: Filter<AM4_Data.airport> = {};
                     if (market) query.market = { $gte: market };
                     if (runway) query.runway = { $gte: runway };
-                    if (country) query.$or = [
-                        { country_code: country.toLowerCase() },
-                        { country: country.toLowerCase() },
-                    ];
+                    if (country) query = {
+                        ...query,
+                        $or: [
+                            { country_code: country.toLowerCase() },
+                            { country: country.toLowerCase() },
+                        ]
+                    };
                     const found_airports = airportCollection.find(query);
                     const amount = await found_airports.count();
                     const airports = await found_airports.limit(limit).toArray();

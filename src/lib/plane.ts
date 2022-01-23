@@ -124,4 +124,5 @@ export default class Plane {
      */
 
     static largeToHeavy = (capacity: number) => Math.round(capacity * (10 / 7));
+    
 }

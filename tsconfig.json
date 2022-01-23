@@ -15,8 +15,7 @@
             "@discord/*": ["client/discord/*"],
             "@telegram/*": ["client/telegram/*"],
             "@typings/*": ["typings/*"],
-            "@source/*": ["src/*"],
-            "@documents/*": ["documents/*"]
+            "@source/*": ["src/*"]
         }
     },
     "include": [

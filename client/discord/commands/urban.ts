@@ -4,7 +4,7 @@ import fetch from 'node-fetch';
 
 import type { SlashCommand } from '../types';
 
-interface Definitions {
+interface Definition {
     list: Array<{
         definition: string;
         permalink: string;
@@ -21,8 +21,8 @@ interface Definitions {
 }
 
 const definitionURL = (term: string) => `https://www.urbandictionary.com/define.php?${new URLSearchParams({ term })}`;
-const replaceHyperlinks = (s: string) => Formatters.hyperlink(s, definitionURL(s));
-const hyperlink = /\[\w{1,}\]/g;
+const replaceHyperlinks = (s: string) => Formatters.hyperlink(s.replace(/\[|\]/g, ""), definitionURL(s));
+const hyperlink = /\[.+\]/g;
 
 const command: SlashCommand = {
     get name() {
@@ -51,14 +51,14 @@ const command: SlashCommand = {
             }
         ]
     },
-    async execute(interaction, { ephemeral, locale }) {
+    async execute(interaction, { ephemeral, guildLocale }) {
         await interaction.deferReply({ ephemeral });
         try {
             const term = interaction.options.getString("term");
             const query = new URLSearchParams({ term });
-            const { list }: Definitions = await fetch(`https://api.urbandictionary.com/v0/define?${query}`).then((response) => response.json());
-            if (!list.length) throw new DiscordClientError(`No results found for ${Formatters.bold(term)}...`);
-            const [answer] = list;
+            const definition: Definition = await fetch(`https://api.urbandictionary.com/v0/define?${query}`).then(response => response.json());
+            if (definition || !definition.list?.length) throw new DiscordClientError(`No results found for ${Formatters.bold(term)}...`);
+            const [answer] = definition.list;
             answer.definition = answer.definition.replace(hyperlink, replaceHyperlinks);
             answer.example = answer.example.replace(hyperlink, replaceHyperlinks);
             const embed = new MessageEmbed({
@@ -81,17 +81,17 @@ const command: SlashCommand = {
                 components: [
                     new MessageButton({
                         style: "PRIMARY",
-                        customId: "thumbs_down",
-                        label: answer.thumbs_down.toLocaleString(locale),
+                        customId: "thumbs_up",
+                        label: answer.thumbs_up.toLocaleString(guildLocale),
                         disabled: true,
-                        emoji: "👎"
+                        emoji: "👍"
                     }),
                     new MessageButton({
                         style: "PRIMARY",
-                        customId: "thumbs_up",
-                        label: answer.thumbs_up.toLocaleString(locale),
+                        customId: "thumbs_down",
+                        label: answer.thumbs_down.toLocaleString(guildLocale),
                         disabled: true,
-                        emoji: "👍"
+                        emoji: "👎"
                     })
                 ]
             });

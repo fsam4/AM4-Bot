@@ -15,8 +15,10 @@ interface SceneSession extends Scenes.SceneSessionData {
 type BaseSceneOptions = ConstructorParameters<typeof Scenes.BaseScene>[1];
 type SceneContext = Scenes.SceneContext<SceneSession>;
 
+const commandName = "achievement";
+
 const command: Command<Scenes.SceneContext, never, SceneContext> = {
-    name: 'achievement',
+    name: commandName,
     cooldown: 10,
     description: 'Seach for an achievement',
     help: "With this command you can search for information about achievements. The command has one option and it's only required achievement is `<achievement>` which is the name of the achievement. This command can only be used in direct messages with the bot!",
@@ -37,10 +39,10 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                 const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
                 this.scene.use((ctx, next) => {
                     ctx.scene.session.user ||= ctx.from;
-                    return next()
+                    return next();
                 });
                 this.scene.enter(async (ctx) => {
-                    const keyboard = await keyboards.findOne({ id: ctx.from.id, command: 'achievement' });
+                    const keyboard = await keyboards.findOne({ id: ctx.from.id, command: commandName });
                     const content: Parameters<typeof ctx.replyWithMarkdown> = ['Now type the name of the achievement...\nFormat: `<achievement>`\nExample: `airbus`'];
                     if (keyboard) {
                         const columns = keyboard.input.length > 1 ? Math.trunc(keyboard.input.length / 2) : 1;
@@ -106,7 +108,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                         await keyboards.bulkWrite([
                             {
                                 updateOne: {
-                                    filter: { id: ctx.from.id, command: 'achievement' },
+                                    filter: { id: ctx.from.id, command: commandName },
                                     upsert: true,
                                     update: {
                                         $addToSet: {
@@ -120,7 +122,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                             },
                             {
                                 updateOne: {
-                                    filter: { id: ctx.from.id, command: 'achievement' },
+                                    filter: { id: ctx.from.id, command: commandName },
                                     update: {
                                         $push: {
                                             input: {
@@ -133,7 +135,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                             }
                         ]);
                     }
-                })
+                });
             }
         }
     ]

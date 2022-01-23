@@ -128,16 +128,19 @@ const command: SlashCommand = {
             switch(subCommand) {
                 case "search": {
                     const query = interaction.options.getString("query", true);
-                    const filter: Filter<Discord.faq> = ObjectId.isValid(query) ? { _id: new ObjectId(query) } : { question: query };
+                    let filter: Filter<Discord.faq> = ObjectId.isValid(query) ? { _id: new ObjectId(query) } : { question: query };
                     const type = <QuestionType>interaction.options.getString("type", true);
                     switch(type) {
                         case "custom": {
                             filter.author = { $exists: true };
                             if (interaction.inGuild()) {
-                                filter.$or = [
-                                    { public: true },
-                                    { server: interaction.guildId }
-                                ];
+                                filter = {
+                                    ...filter,
+                                    $or: [
+                                        { public: true },
+                                        { server: interaction.guildId }
+                                    ]
+                                };
                             } else {
                                 filter.public = true;
                             }
@@ -152,19 +155,25 @@ const command: SlashCommand = {
                         case "personal":
                             filter.author = interaction.user.id;
                             if (interaction.inGuild()) {
-                                filter.$or = [
-                                    { public: true },
-                                    { server: interaction.guildId }
-                                ];
+                                filter = {
+                                    ...filter,
+                                    $or: [
+                                        { public: true },
+                                        { server: interaction.guildId }
+                                    ]
+                                }
                             } else {
                                 filter.public = true;
                             }
                             break;
                         default:
-                            filter.$or = [
-                                { public: true },
-                                { author: { $exists: false } }
-                            ];
+                            filter = {
+                                ...filter,
+                                $or: [
+                                    { public: true },
+                                    { author: { $exists: false } }
+                                ]
+                            };
                     }
                     const doc = await faqCollection.findOne(filter);
                     if (!doc) throw new DiscordClientError("No question could be found with that query...");

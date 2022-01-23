@@ -22,9 +22,9 @@ import addDays from 'date-fns/addDays';
 import isPast from 'date-fns/isPast';
 
 // * Importing types
-import type * as TelegramClientTypes from './client/telegram/types';
-import type * as DiscordClientTypes from './client/discord/types';
-import type * as ClientTypes from './client/types';
+import type * as TelegramClientTypes from '@telegram/types';
+import type * as DiscordClientTypes from '@discord/types';
+import type * as ClientTypes from '@client/types';
 import type { BotCommand } from 'typegram';
 import type * as Database from '@typings/database';
 

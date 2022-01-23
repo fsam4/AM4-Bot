@@ -79,7 +79,6 @@
         "tournament": {
             "type": "object",
             "description": "Tournament configurations for the bot.",
-            "required": [],
             "properties": {
                 "enabled": {
                     "type": "boolean",

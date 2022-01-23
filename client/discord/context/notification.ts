@@ -78,6 +78,8 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
                     console.error("Failed to fetch webhook:", err);
                     await interaction.editReply(`Failed to fetch the webhook of ${Formatters.hyperlink("this", (<Message>interaction.targetMessage).url)} notification...`);
                 })
+            } else {
+                await interaction.editReply("Unable to fetch this message's webhook...");
             }
         }
         catch(error) {
