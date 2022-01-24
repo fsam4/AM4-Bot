@@ -25,7 +25,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
     },
     cooldown: 10,
     isAdministrator: false,
-    isPublic: true,
+    isGlobal: true,
     data: {
         name: "Get Alliance",
         type: Constants.ApplicationCommandTypes.USER,
@@ -33,10 +33,10 @@ const command: ContextMenu<UserContextMenuInteraction> = {
     },
     async execute(interaction, { database, rest, locale }) {
         await interaction.deferReply();
-        const allainceCollection = database.am4.collection<AM4_Data.alliance>('Alliances');
-        const memberCollection = database.am4.collection<AM4_Data.member>('Members');
-        const users = database.discord.collection<Discord.user>("Users");
         try {
+            const allainceCollection = database.am4.collection<AM4_Data.alliance>('Alliances');
+            const memberCollection = database.am4.collection<AM4_Data.member>('Members');
+            const users = database.discord.collection<Discord.user>("Users");
             const account = await users.findOne({ id: interaction.targetId });
             if (!account?.airlineID) throw new DiscordClientError(`${Formatters.userMention(interaction.targetId)} has not logged in...`);
             const { status: airlineStatus, airline } = await rest.fetchAirline(account.airlineID);

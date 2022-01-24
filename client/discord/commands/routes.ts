@@ -42,7 +42,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 30,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: false,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -140,13 +140,13 @@ const command: SlashCommand = {
     },
     async execute(interaction, { rest, database, ephemeral, locale }) {
         await interaction.deferReply({ ephemeral });
-        const planeSettings = database.settings.collection<Settings.plane>('Planes');
-        const settings = database.settings.collection<Settings.user>('Users');
-        const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
-        const routeCollection = database.am4.collection<AM4_Data.route>('Routes');
-        const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-        const user = new Utils.User(interaction.user.id, await settings.findOne({ id: interaction.user.id }));
         try {
+            const planeSettings = database.settings.collection<Settings.plane>('Planes');
+            const settings = database.settings.collection<Settings.user>('Users');
+            const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
+            const routeCollection = database.am4.collection<AM4_Data.route>('Routes');
+            const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
+            const user = new Utils.User(interaction.user.id, await settings.findOne({ id: interaction.user.id }));
             type GameMode = "realism" | "easy";
             type FollowUpOptions = Parameters<typeof interaction.followUp>[0];
             const followups: FollowUpOptions[] = [];

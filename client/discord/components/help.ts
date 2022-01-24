@@ -12,11 +12,11 @@ const component: Component<SelectMenuInteraction> = {
     cooldown: 0,
     customId: /help:\d{1,}/,
     async execute(interaction, { parsedCustomId, database, guildLocale }) {
-        const bot = await interaction.client.application.fetch();
         const [userId] = parsedCustomId;
+        if (userId !== interaction.user.id) return;
+        await interaction.deferUpdate();
         try {
-            if (userId !== interaction.user.id) return;
-            await interaction.deferUpdate();
+            const bot = await interaction.client.application.fetch();
             const category = interaction.values[0];
             const select = <MessageSelectMenu>interaction.message.components[0].components[0];
             const buttons = <MessageButton[]>interaction.message.components[1].components;

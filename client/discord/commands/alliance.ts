@@ -76,7 +76,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 20,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: false,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -250,9 +250,9 @@ const command: SlashCommand = {
     },
     async execute(interaction, { database, rest, account, ephemeral, locale }) {
         await interaction.deferReply({ ephemeral });
-        const allianceCollection = database.am4.collection<AM4_Data.alliance>('Alliances');
-        const memberCollection = database.am4.collection<AM4_Data.member>('Members');
         try {
+            const allianceCollection = database.am4.collection<AM4_Data.alliance>('Alliances');
+            const memberCollection = database.am4.collection<AM4_Data.member>('Members');
             const subCommand = interaction.options.getSubcommand();
             const group = interaction.options.getSubcommandGroup(false);
             switch(group || subCommand) {

@@ -18,7 +18,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 30,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: true,
     permissions: new Permissions([
         Permissions.FLAGS.MANAGE_EVENTS,
@@ -122,10 +122,19 @@ const command: SlashCommand = {
         ]
     },
     async execute(interaction, { database, account, timeouts }) {
-        if (!interaction.guild) return interaction.reply("This command requires the bot to be in this server...");
+        if (!interaction.inGuild() as boolean) {
+            await interaction.reply("This command can only be used in servers...");
+            return;
+        } else if (!interaction.inCachedGuild()) {
+            await interaction.reply({
+                content: "This command can only be used in servers where the bot is in...",
+                ephemeral: true
+            });
+            return;
+        }
         await interaction.deferReply({ ephemeral: true });
-        const giveaways = database.discord.collection<Discord.giveaway>("Giveaways");
         try {
+            const giveaways = database.discord.collection<Discord.giveaway>("Giveaways");
             const subCommand = interaction.options.getSubcommand();
             switch(subCommand) {
                 case "reroll": {
@@ -314,7 +323,9 @@ const command: SlashCommand = {
                             return false;
                         });
                         if (!status) return;
-                        bonus_code = CryptoJS.AES.encrypt(bonus_code, process.env.HASH_SECRET).toString();
+                        const key = process.env.HASH_SECRET;
+                        if (key === undefined) throw new Error("HASH_SECRET must be provided!");
+                        bonus_code = CryptoJS.AES.encrypt(bonus_code, key).toString();
                     }
                     const embed = new MessageEmbed({
                         color: "FUCHSIA",
@@ -406,7 +417,9 @@ const command: SlashCommand = {
                                     await reply.react("🎉");
                                     if (updated.value.bonus_code) {
                                         await giveaways.deleteOne({ _id: updated.value._id });
-                                        const decrypted = CryptoJS.AES.decrypt(updated.value.bonus_code, process.env.HASH_SECRET);
+                                        const key = process.env.HASH_SECRET;
+                                        if (key === undefined) throw new Error("HASH_SECRET must be provided!");
+                                        const decrypted = CryptoJS.AES.decrypt(updated.value.bonus_code, key);
                                         await interaction.client.users.fetch(winnerId)
                                         .then(async user => {
                                             await user.send(`Here is your reward for winning ${Formatters.hyperlink("this", message.url)} giveaway: ${Formatters.spoiler(decrypted.toString(CryptoJS.enc.Utf8))}`)

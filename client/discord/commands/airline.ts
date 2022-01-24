@@ -27,7 +27,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 20,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: false,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -120,11 +120,11 @@ const command: SlashCommand = {
     },
     async execute(interaction, { database, rest, account, ephemeral, locale }) {
         await interaction.deferReply({ ephemeral });
-        const settings = database.settings.collection<Settings.user>('Users');
-        const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-        const memberCollection = database.am4.collection<AM4_Data.member>('Members');
-        const planeSettings = database.settings.collection<Settings.plane>('Planes');
         try {
+            const settings = database.settings.collection<Settings.user>('Users');
+            const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
+            const memberCollection = database.am4.collection<AM4_Data.member>('Members');
+            const planeSettings = database.settings.collection<Settings.plane>('Planes');
             const { training, options, salaries } = new User(interaction.user.id, await settings.findOne({ id: interaction.user.id }));
             const subCommand = interaction.options.getSubcommand();
             switch(subCommand) {
@@ -725,11 +725,6 @@ const command: SlashCommand = {
                                 name: '\u200B', 
                                 value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round(airline.gameMode === "Easy" ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
                                 inline: true 
-                            },
-                            { 
-                                name: '\u200B', 
-                                value: '\u200B', 
-                                inline: false 
                             },
                             { 
                                 name: Formatters.bold(Formatters.underscore("Profitability")), 

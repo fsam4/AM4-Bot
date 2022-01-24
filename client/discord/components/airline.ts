@@ -15,13 +15,13 @@ const component: Component<ButtonInteraction> = {
     cooldown: 25,
     customId: /airline:\d{1,}/,
     async execute(interaction, { rest, database, parsedCustomId, locale }) {
-        const airlineID = parseInt(parsedCustomId[0]);
         await interaction.deferReply({ ephemeral: true });
-        const settings = database.settings.collection<Settings.user>('Users');
-        const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-        const planeSettings = database.settings.collection<Settings.plane>('Planes');
-        const { training, options, salaries } = new User(interaction.user.id, await settings.findOne({ id: interaction.user.id }));
         try {
+            const airlineID = parseInt(parsedCustomId[0]);
+            const settings = database.settings.collection<Settings.user>('Users');
+            const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
+            const planeSettings = database.settings.collection<Settings.plane>('Planes');
+            const { training, options, salaries } = new User(interaction.user.id, await settings.findOne({ id: interaction.user.id }));
             const { status, airline, fleet, ipo, awards } = await rest.fetchAirline(airlineID);
             if (!status.success) throw new DiscordClientError(status.error);
             const planes = await planeCollection.aggregate<Aircraft>([

@@ -16,7 +16,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 10,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: false,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -108,8 +108,8 @@ const command: SlashCommand = {
         ]
     },
     async execute(interaction, { ephemeral }) {
+        await interaction.deferReply({ ephemeral });
         try {
-            await interaction.deferReply({ ephemeral });
             const query = new URLSearchParams();
             const fileName = interaction.options.get("name").value as string;
             if (!name_value.test(fileName)) throw new DiscordClientError("Invalid file name. The QR-code file name can only contain characters!");

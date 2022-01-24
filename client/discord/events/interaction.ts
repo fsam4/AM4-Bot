@@ -62,26 +62,23 @@ const event: Event = {
                     }
                     let command: ContextMenu | SlashCommand;
                     if (interaction.isCommand()) {
+                        options.ephemeral = false;
                         command = interaction.client.chatCommands.get(interaction.commandName);
-                        if (interaction.inGuild()) {
+                        if (interaction.inCachedGuild()) {
                             const servers = database.settings.collection<Settings.server>("Servers");
                             const server = await servers.findOne({ id: interaction.guildId });
                             if (server && interaction.channel) {
                                 let channelId = interaction.channelId;
                                 if (interaction.channel.isThread()) channelId = interaction.channel.parentId;
                                 options.ephemeral = (server.channels.whitelist.length && !server.channels.blacklist.length) ? !server.channels.whitelist.includes(channelId) : server.channels.blacklist.includes(channelId);
-                            } else {
-                                options.ephemeral = false;
                             }
-                            if (interaction.guild) {
-                                const permissions = interaction.guild.me.permissionsIn(<TextChannel>interaction.channel).missing(command.permissions);
-                                if (permissions.length > 0) {
-                                    await interaction.reply({
-                                        content: `The bot has ${Formatters.bold(permissions.length.toString())} permissions missing that it requires for this command:\n${permissions.map(s => `► ${s.toLowerCase().replace(/_/g, " ")}`).join('\n')}`,
-                                        ephemeral: options.ephemeral
-                                    });
-                                    return;
-                                }
+                            const permissions = interaction.guild.me.permissionsIn(<TextChannel>interaction.channel).missing(command.permissions);
+                            if (permissions.length > 0) {
+                                await interaction.reply({
+                                    content: `The bot has ${Formatters.bold(permissions.length.toString())} permissions missing that it requires for this command:\n${permissions.map(s => `► ${s.toLowerCase().replace(/_/g, " ")}`).join('\n')}`,
+                                    ephemeral: options.ephemeral
+                                });
+                                return;
                             }
                         }
                     } else if (interaction.isContextMenu()) {

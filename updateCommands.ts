@@ -26,16 +26,18 @@ const env = dotenv.config({ path: isDev ? ".env.local" : ".env" });
 dotenvExpand(env);
 
 const clientId = process.env.CLIENT_ID;
-const guildId = process.env.TEST_GUILD;
+if (clientId === undefined) throw new Error("CLIENT_ID must be provided!");
 
-const rest = new REST({ version: '9' }).setToken(process.env.BOT_TOKEN);
+const botToken = process.env.DISCORD_BOT_TOKEN;
+if (botToken === undefined) throw new Error("DISCORD_BOT_TOKEN must be provided!");
+const rest = new REST({ version: '9' }).setToken(botToken);
 
 void async function () {
 
 	for (const file of chatCommandFiles) {
 		const command: SlashCommand = await import(`./client/discord/commands/${file}`);
 		if (isDev && !command.data.defaultPermission) command.data.defaultPermission = true;
-		if (!isDev && !command.isPublic) continue;
+		if (!isDev && !command.isGlobal) continue;
 		const commandData = new ApplicationCommand(command.data);
 		commands.push(commandData);
 	}
@@ -43,16 +45,21 @@ void async function () {
 	for (const file of menuCommandFiles) {
 		const command: ContextMenu = await import(`./client/discord/context/${file}`);
 		if (isDev && !command.data.defaultPermission) command.data.defaultPermission = true;
-		if (!command.isPublic) continue;
+		if (!command.isGlobal) continue;
 		const commandData = new ApplicationCommand(command.data);
 		commands.push(commandData);
 	}
 
 	try {
 		console.log('Started refreshing application commands...');
-		const fullRoute = isDev 
-			? Routes.applicationGuildCommands(clientId, guildId) 
-			: Routes.applicationCommands(clientId);
+		let fullRoute: `/${string}`;
+		if (isDev) {
+			const guildId = process.env.TEST_GUILD_ID;
+			if (guildId === undefined) throw new Error("TEST_GUILD_ID must be provided!");
+			fullRoute = Routes.applicationGuildCommands(clientId, guildId);
+		} else {
+			fullRoute = Routes.applicationCommands(clientId);
+		}
 		const applicationCommands = await rest.put(fullRoute, { body: commands }) as APIApplicationCommand[];
 		console.log(chalk.green('Successfully reloaded application commands.'));
 		console.table(

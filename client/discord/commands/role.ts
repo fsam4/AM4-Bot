@@ -16,7 +16,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 30,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: true,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -220,10 +220,19 @@ const command: SlashCommand = {
         ]
     },
     async execute(interaction, { database, account }) {
-        if (!interaction.guild) return interaction.reply("This command requires the bot to be in this server...");
+        if (!interaction.inGuild() as boolean) {
+            await interaction.reply("This command can only be used in servers...");
+            return;
+        } else if (!interaction.inCachedGuild()) {
+            await interaction.reply({
+                content: "This command can only be used in servers where the bot is in...",
+                ephemeral: true
+            });
+            return;
+        }
         await interaction.deferReply({ ephemeral: true });
-        const panels = database.discord.collection<Discord.panel>("Panels");
         try {
+            const panels = database.discord.collection<Discord.panel>("Panels");
             const subCommand = interaction.options.getSubcommand(false);
             const group = interaction.options.getSubcommandGroup(false);
             switch(group || subCommand) {

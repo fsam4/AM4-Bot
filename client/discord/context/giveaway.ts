@@ -13,17 +13,20 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
     },
     cooldown: 5,
     isAdministrator: false,
-    isPublic: true,
+    isGlobal: true,
     data: {
         name: "View Giveaway",
         type: Constants.ApplicationCommandTypes.MESSAGE,
         defaultPermission: true
     },
     async execute(interaction, { database, locale }) {
-        if (interaction.channel.type === "DM") return interaction.reply("This command can only be used in servers...");
+        if (!interaction.inGuild()) {
+            await interaction.reply("This command can only be used in servers...");
+            return;
+        }
         await interaction.deferReply({ ephemeral: true });
-        const giveaways = database.discord.collection<Discord.giveaway>("Giveaways");
         try {
+            const giveaways = database.discord.collection<Discord.giveaway>("Giveaways");
             if (interaction.targetMessage.author.id !== interaction.client.user.id) throw new DiscordClientError("This command can only be used on giveaways created by AM4 Bot...");
             const isMessage = interaction.targetMessage instanceof Message;
             const giveaway = await giveaways.findOne({ message: interaction.targetId });

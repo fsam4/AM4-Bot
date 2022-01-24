@@ -21,7 +21,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
     },
     cooldown: 20,
     isAdministrator: false,
-    isPublic: false,
+    isGlobal: false,
     data: {
         name: "Compare Alliance Member",
         type: Constants.ApplicationCommandTypes.USER,
@@ -29,10 +29,10 @@ const command: ContextMenu<UserContextMenuInteraction> = {
     },
     async execute(interaction, { database, rest, account, locale }) {
         await interaction.deferReply();
-        const userCollection = database.discord.collection<Discord.user>("Users");
-        const allianceCollection = database.am4.collection<AM4_Data.alliance>("Alliances");
-        const memberCollection = database.am4.collection<AM4_Data.member>("Members");
         try {
+            const userCollection = database.discord.collection<Discord.user>("Users");
+            const allianceCollection = database.am4.collection<AM4_Data.alliance>("Alliances");
+            const memberCollection = database.am4.collection<AM4_Data.member>("Members");
             if (interaction.user.id === interaction.targetId) throw new DiscordClientError("You cannot compare yourself with yourself...");
             if (!account?.airlineID) throw new DiscordClientError("You need to save your airline via `/user login` to be able to use this command!");
             const targetUser = await userCollection.findOne({ id: interaction.targetId });

@@ -12,7 +12,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 0,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: false,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -25,10 +25,10 @@ const command: SlashCommand = {
         defaultPermission: true
     },
     async execute(interaction, { database, rest, guildLocale }) {
-        if (interaction.channel.type === "DM") {
+        if (!interaction.inGuild()) {
             await interaction.reply("This command can only be used in servers...");
             return;
-        };
+        }
         await interaction.deferReply({ ephemeral: true });
         if (!interaction.guild) {
             const invite = interaction.client.generateInvite({

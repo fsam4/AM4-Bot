@@ -31,12 +31,6 @@ import type * as Database from '@typings/database';
 process.on('unhandledRejection', error => console.error('Unhandled promise rejection:', error));
 
 const isDev = process.argv.includes("--dev");
-const rest = new AM4RestClient({
-    accessToken: {
-        am4: process.env.API_KEY,
-        tools: process.env.TOOLS_KEY
-    }
-});
 
 const isJavaScript = (fileName: string) => fileName.endsWith('.js');
 
@@ -74,7 +68,31 @@ if (cluster.isPrimary) {
 
     if (!isDev) {
 
-        const options = { discordWorker, telegramWorker };
+        const apiKey = process.env.AM4_ACCESS_TOKEN;
+        if (apiKey === undefined) throw new Error("AM4_ACCESS_TOKEN must be provided!");
+
+        const toolsKey = process.env.TOOLS_ACCESS_TOKEN;
+        if (toolsKey === undefined) throw new Error("TOOLS_ACCESS_TOKEN must be provided!");
+
+        const rest = new AM4RestClient({
+            accessToken: {
+                am4: apiKey,
+                tools: toolsKey
+            }
+        });
+
+        const logWebhookId = process.env.LOG_WEBHOOK_ID;
+        if (logWebhookId === undefined) throw new Error("LOG_WEBHOOK_ID must be provided!");
+        const logWebhookToken = process.env.LOG_WEBHOOK_TOKEN;
+        if (logWebhookToken === undefined) throw new Error("LOG_WEBHOOK_TOKEN must be provided!");
+
+        const options = { 
+            discordWorker, telegramWorker,
+            log: new Discord.WebhookClient({
+                id: logWebhookId,
+                token: logWebhookToken
+            }) 
+        };
         const events = new EventEmitter({ captureRejections: true });
         fs.readdir("./client/events", async (err, files) => {
             if (err) throw err;
@@ -108,8 +126,26 @@ if (cluster.isPrimary) {
 
 } else if (cluster.isWorker) {
 
-    const db = new MongoClient(process.env.DATABASE_URL);
-    const cooldowns = new Keyv(process.env.DATABASE_SECONDARY_URL, { namespace: 'cooldowns' });
+    const apiKey = process.env.AM4_ACCESS_TOKEN;
+    if (apiKey === undefined) throw new Error("AM4_ACCESS_TOKEN must be provided!");
+
+    const toolsKey = process.env.TOOLS_ACCESS_TOKEN;
+    if (toolsKey === undefined) throw new Error("TOOLS_ACCESS_TOKEN must be provided!");
+
+    const rest = new AM4RestClient({
+        accessToken: {
+            am4: apiKey,
+            tools: toolsKey
+        }
+    });
+
+    const databaseUrl = process.env.DATABASE_URL;
+    if (databaseUrl === undefined) throw new Error("DATABASE_URL must be provided!");
+    const db = new MongoClient(databaseUrl);
+
+    const databaseSecondaryUrl = process.env.DATABASE_SECONDARY_URL;
+    if (databaseSecondaryUrl === undefined) throw new Error("DATABASE_SECONDARY_URL must be provided!");
+    const cooldowns = new Keyv(databaseSecondaryUrl, { namespace: 'cooldowns' });
     cooldowns.on('error', err => console.error('Keyv connection error:', err));
 
     switch (cluster.worker.id) {
@@ -119,6 +155,9 @@ if (cluster.isPrimary) {
 
             const label = chalk.blue('Starting Discord client');
             console.time(label);
+
+            const botToken = process.env.DISCORD_BOT_TOKEN;
+            if (botToken === undefined) throw new Error("DISCORD_BOT_TOKEN must be provided!");
 
             const menuCommandFiles = fs.readdirSync("./client/discord/context").filter(isJavaScript);
             const chatCommandFiles = fs.readdirSync("./client/discord/commands").filter(isJavaScript);
@@ -142,6 +181,16 @@ if (cluster.isPrimary) {
                 client.on("warn", message => console.log(chalk.red(message)));
             }
 
+            const announcementWebhookId = process.env.ANNOUNCEMENT_WEBHOOK_ID;
+            if (announcementWebhookId === undefined) throw new Error("ANNOUNCEMENT_WEBHOOK_ID must be provided!");
+            const announcementWebhookToken = process.env.ANNOUNCEMENT_WEBHOOK_TOKEN;
+            if (announcementWebhookToken === undefined) throw new Error("ANNOUNCEMENT_WEBHOOK_TOKEN must be provided!");
+
+            const logWebhookId = process.env.LOG_WEBHOOK_ID;
+            if (logWebhookId === undefined) throw new Error("LOG_WEBHOOK_ID must be provided!");
+            const logWebhookToken = process.env.LOG_WEBHOOK_TOKEN;
+            if (logWebhookToken === undefined) throw new Error("LOG_WEBHOOK_TOKEN must be provided!");
+
             db.connect(async (err, database) => {
 
                 if (err) throw err;
@@ -151,12 +200,12 @@ if (cluster.isPrimary) {
                     timeouts: new Map(),
                     telegramWorker: cluster.workers[2],
                     webhook: new Discord.WebhookClient({
-                        id: process.env.ANNOUNCEMENT_WEBHOOK_ID,
-                        token: process.env.ANNOUNCEMENT_WEBHOOK_TOKEN
+                        id: announcementWebhookId,
+                        token: announcementWebhookToken
                     }),
                     log: new Discord.WebhookClient({
-                        id: process.env.LOG_WEBHOOK_ID,
-                        token: process.env.LOG_WEBHOOK_TOKEN
+                        id: logWebhookId,
+                        token: logWebhookToken
                     }),
                     database: {
                         am4: database.db("AM4-Data"),
@@ -193,7 +242,7 @@ if (cluster.isPrimary) {
                 }
 
                 console.timeLog(label);
-                await client.login(process.env.BOT_TOKEN);
+                await client.login(botToken);
                 console.timeEnd(label);
 
             });
@@ -237,8 +286,11 @@ if (cluster.isPrimary) {
             const label = chalk.blue('Starting Telegram client');
             console.time(label);
 
+            const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+            if (telegramToken === undefined) throw new Error("TELEGRAM_BOT_TOKEN must be provided!");
+
             const commandFiles = fs.readdirSync("./client/telegram/commands").filter(isJavaScript);
-            const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
+            const bot = new Telegraf(telegramToken);
             const lru = new QuickLRU({ maxSize: 200 });
             const keyv = new Keyv({ store: lru });
 

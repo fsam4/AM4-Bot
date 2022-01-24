@@ -21,7 +21,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 20,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: false,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -232,12 +232,12 @@ const command: SlashCommand = {
     },
     async execute(interaction, { database, rest, ephemeral, locale }) {
         await interaction.deferReply({ ephemeral });
-        const settings = database.settings.collection<Settings.user>('Users')
-        const planeSettings = database.settings.collection<Settings.plane>('Planes');
-        const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
-        const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-        const user = new Utils.User(interaction.user.id, await settings.findOne({ id: interaction.user.id }));
         try {
+            const settings = database.settings.collection<Settings.user>('Users')
+            const planeSettings = database.settings.collection<Settings.plane>('Planes');
+            const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
+            const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
+            const user = new Utils.User(interaction.user.id, await settings.findOne({ id: interaction.user.id }));
             const subCommand = interaction.options.getSubcommand();
             type GameMode = "realism" | "easy";
             switch(subCommand) {

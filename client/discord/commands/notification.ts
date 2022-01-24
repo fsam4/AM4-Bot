@@ -25,7 +25,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 30,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: false,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -123,13 +123,22 @@ const command: SlashCommand = {
         ]
     },
     async execute(interaction, { database, cooldowns, account, rest, guildLocale }) {
-        if (!interaction.guild) return interaction.reply("This command can only be used in servers!");
+        if (!interaction.inGuild() as boolean) {
+            await interaction.reply("This command can only be used in servers...");
+            return;
+        } else if (!interaction.inCachedGuild()) {
+            await interaction.reply({
+                content: "This command can only be used in servers where the bot is in...",
+                ephemeral: true
+            });
+            return;
+        }
         await interaction.deferReply({ ephemeral: true });
-        const users = database.discord.collection<Discord.user>("Users");
-        const notificationCollection = database.discord.collection<Discord.notification>("Notifications");
-        const webhookCollection = database.settings.collection<Settings.webhook>("Webhooks");
-        const webhooks = await webhookCollection.find({ id: { $type: "string" } }).toArray();
         try {
+            const users = database.discord.collection<Discord.user>("Users");
+            const notificationCollection = database.discord.collection<Discord.notification>("Notifications");
+            const webhookCollection = database.settings.collection<Settings.webhook>("Webhooks");
+            const webhooks = await webhookCollection.find({ id: { $type: "string" } }).toArray();
             const subCommand = interaction.options.getSubcommand();
             switch(subCommand) {
                 case "post": {
@@ -142,8 +151,10 @@ const command: SlashCommand = {
                             if (airline.logo) options.avatarURL = airline.logo;
                         }
                     }
+                    const key = process.env.HASH_SECRET;
+                    if (key === undefined) throw new Error("HASH_SECRET must be provided!");
                     const webhookClients = webhooks.map(webhook => {
-                        const decrypted = CryptoJS.AES.decrypt(webhook.token, process.env.HASH_SECRET);
+                        const decrypted = CryptoJS.AES.decrypt(webhook.token, key);
                         return new WebhookClient({ 
                             id: webhook.id, 
                             token: decrypted.toString(CryptoJS.enc.Utf8)
@@ -236,9 +247,11 @@ const command: SlashCommand = {
                             }
                         }
                     });
+                    const key = process.env.HASH_SECRET;
+                    if (key === undefined) throw new Error("HASH_SECRET must be provided!");
                     for (const channel of notification.webhooks) {
                         const webhook = webhooks.find(webhook => webhook._id.equals(channel.id));
-                        const decrypted = CryptoJS.AES.decrypt(webhook.token, process.env.HASH_SECRET);
+                        const decrypted = CryptoJS.AES.decrypt(webhook.token, key);
                         const webhookClient = new WebhookClient({
                             id: webhook.id,
                             token: decrypted.toString(CryptoJS.enc.Utf8)
@@ -279,9 +292,11 @@ const command: SlashCommand = {
                         }
                     }
                     await notificationCollection.deleteOne({ _id: notification._id });
+                    const key = process.env.HASH_SECRET;
+                    if (key === undefined) throw new Error("HASH_SECRET must be provided!");
                     for (const channel of notification.webhooks) {
                         const webhook = webhooks.find(webhook => webhook._id.equals(channel.id));
-                        const decrypted = CryptoJS.AES.decrypt(webhook.token, process.env.HASH_SECRET);
+                        const decrypted = CryptoJS.AES.decrypt(webhook.token, key);
                         const webhookClient = new WebhookClient({
                             id: webhook.id,
                             token: decrypted.toString(CryptoJS.enc.Utf8)

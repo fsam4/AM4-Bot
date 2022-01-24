@@ -1,5 +1,5 @@
-import { Formatters, WebhookClient } from 'discord.js';
 import { MongoClient } from 'mongodb';
+import { Formatters } from 'discord.js';
 import chalk from 'chalk';
 
 import addMonths from 'date-fns/addMonths';
@@ -15,20 +15,17 @@ interface Operation {
     members: Array<AnyBulkWriteOperation<AM4_Data.member>>;
 }
 
-const log = new WebhookClient({
-    id: process.env.LOG_WEBHOOK_ID, 
-    token: process.env.LOG_WEBHOOK_TOKEN,
-});
-
 const event: Event = {
     name: "dataUpdate",
     type: "master",
     once: true,
-    async execute(rest) {
+    async execute(rest, { log }) {
         let requestsRemaining: number;
         const label = chalk.yellow("Data update");
         console.time(label);
-        MongoClient.connect(process.env.DATABASE_URL, async (err, database) => {
+        const databaseUrl = process.env.DATABASE_URL;
+        if (databaseUrl === undefined) throw new Error("DATABASE_URL must be provided!");
+        MongoClient.connect(databaseUrl, async (err, database) => {
             if (err) throw err;
             const am4 = database.db('AM4-Data');
             const allianceCollection = am4.collection<AM4_Data.alliance>('Alliances');

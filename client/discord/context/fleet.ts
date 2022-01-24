@@ -16,7 +16,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
     },
     cooldown: 10,
     isAdministrator: false,
-    isPublic: true,
+    isGlobal: true,
     data: {
         name: "Get Airline Fleet",
         type: Constants.ApplicationCommandTypes.USER,
@@ -24,11 +24,11 @@ const command: ContextMenu<UserContextMenuInteraction> = {
     },
     async execute(interaction, { database, rest, locale }) {
         await interaction.deferReply();
-        const users = database.discord.collection<Discord.user>("Users");
-        const settings = database.settings.collection<Settings.user>('Users');
-        const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-        const planeSettings = database.settings.collection<Settings.plane>('Planes');
         try {
+            const users = database.discord.collection<Discord.user>("Users");
+            const settings = database.settings.collection<Settings.user>('Users');
+            const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
+            const planeSettings = database.settings.collection<Settings.plane>('Planes');
             const account = await users.findOne({ id: interaction.targetId });
             if (!account?.airlineID) throw new DiscordClientError(`${Formatters.userMention(interaction.targetId)} has not logged in...`);
             const { status, airline, fleet } = await rest.fetchAirline(account.airlineID);
@@ -136,11 +136,6 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                         name: '\u200B', 
                         value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round(airline.gameMode === "Easy" ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time}h\n**Pilots:** ${plane.staff.pilots} persons\n**Crew:** ${plane.staff.crew} persons\n**Engineers:** ${plane.staff.engineers} persons\n**Tech:** ${plane.staff.tech} persons`, 
                         inline: true 
-                    },
-                    { 
-                        name: '\u200B', 
-                        value: '\u200B', 
-                        inline: false 
                     },
                     { 
                         name: Formatters.bold(Formatters.underscore("Profitability")), 

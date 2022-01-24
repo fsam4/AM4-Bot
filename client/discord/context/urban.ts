@@ -33,7 +33,7 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
     },
     cooldown: 5,
     isAdministrator: false,
-    isPublic: true,
+    isGlobal: true,
     data: {
         name: "Search Urban Dictionary",
         type: Constants.ApplicationCommandTypes.MESSAGE,

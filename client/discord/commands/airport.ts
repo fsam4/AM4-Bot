@@ -31,7 +31,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 30,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: false,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -306,11 +306,11 @@ const command: SlashCommand = {
     },
     async execute(interaction, { database, client, ephemeral, locale }) {
         await interaction.deferReply({ ephemeral });
-        const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
-        const routeCollection = database.am4.collection<AM4_Data.route>('Routes');
-        const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-        const users = database.settings.collection<Settings.user>('Users');
         try {
+            const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
+            const routeCollection = database.am4.collection<AM4_Data.route>('Routes');
+            const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
+            const users = database.settings.collection<Settings.user>('Users');
             const subCommand = interaction.options.getSubcommand();
             const group = interaction.options.getSubcommandGroup(false);
             switch(group || subCommand) {

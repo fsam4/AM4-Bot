@@ -17,7 +17,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 10,
-    isPublic: false,
+    isGlobal: false,
     isAdministrator: true,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -109,14 +109,20 @@ const command: SlashCommand = {
         ]
     },
     async execute(interaction, { database }) {
-        if (!interaction.guild) {
-            await interaction.reply("This command requires the bot to be in this server...");
+        if (!interaction.inGuild() as boolean) {
+            await interaction.reply("This command can only be used in servers...");
+            return;
+        } else if (!interaction.inCachedGuild()) {
+            await interaction.reply({
+                content: "This command can only be used in servers where the bot is in...",
+                ephemeral: true
+            });
             return;
         }
         await interaction.deferReply({ ephemeral: true });
-        const planes = database.am4.collection<AM4_Data.plane>('Planes');
-        const achievements = database.am4.collection<AM4_Data.achievement>('Achievements');
         try {
+            const planes = database.am4.collection<AM4_Data.plane>('Planes');
+            const achievements = database.am4.collection<AM4_Data.achievement>('Achievements');
             const subCommand = interaction.options.getSubcommand();
             const group = interaction.options.getSubcommandGroup(false);
             if (interaction.guild.premiumTier === "NONE") {

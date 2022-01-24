@@ -10,6 +10,7 @@ import isFuture from 'date-fns/isFuture';
 import isPast from 'date-fns/isPast';
 
 import type { Discord, Quiz } from '@typings/database';
+import type { Filter } from 'mongodb';
 import type { Event } from '../types';
 
 const event: Event = {
@@ -55,7 +56,14 @@ const event: Event = {
                 }
             }
         }
-        const query = client.user.id !== config.clientId && { server: process.env.TEST_GUILD };
+        const key = process.env.HASH_SECRET;
+        if (key === undefined) throw new Error("HASH_SECRET must be provided!");
+        const query: Filter<Discord.giveaway> = {};
+        if (client.user.id !== config.clientId) {
+            const guildId = process.env.TEST_GUILD_ID;
+            if (guildId === undefined) throw new Error("TEST_GUILD_ID must be provided!");
+            query.server = guildId;
+        }
         const giveaways = await giveawayCollection.find(query).toArray();
         if (giveaways.length) {
             const triggerGiveaway = async (giveaway: Discord.giveaway) => {
@@ -99,7 +107,7 @@ const event: Event = {
                                 await reply.react("🎉");
                                 if (updated.value.bonus_code) {
                                     await giveawayCollection.deleteOne({ _id: updated.value._id });
-                                    const decrypted = CryptoJS.AES.decrypt(updated.value.bonus_code, process.env.HASH_SECRET);
+                                    const decrypted = CryptoJS.AES.decrypt(updated.value.bonus_code, key);
                                     await client.users.fetch(winner_id)
                                     .then(async user => {
                                         await user.send(`Here is your reward for winning ${Formatters.hyperlink("this", message.url)} giveaway: ${Formatters.spoiler(decrypted.toString(CryptoJS.enc.Utf8))}`)

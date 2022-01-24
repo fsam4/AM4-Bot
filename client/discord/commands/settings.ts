@@ -14,7 +14,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 30,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: true,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -433,8 +433,14 @@ const command: SlashCommand = {
         ]
     },
     async execute(interaction, { database, rest, guildLocale }) {
-        if (!interaction.guild) {
-            await interaction.reply("This command requires the bot to be in this server...");
+        if (!interaction.inGuild() as boolean) {
+            await interaction.reply("This command can only be used in servers...");
+            return;
+        } else if (!interaction.inCachedGuild()) {
+            await interaction.reply({
+                content: "This command can only be used in servers where the bot is in...",
+                ephemeral: true
+            });
             return;
         }
         await interaction.deferReply({ ephemeral: true });
@@ -590,7 +596,9 @@ const command: SlashCommand = {
                                 avatar: interaction.client.user.displayAvatarURL(),
                                 reason: `Notification webhook created by ${interaction.user.username}#${interaction.user.discriminator}`,
                             });
-                            const encrypted = CryptoJS.AES.encrypt(webhook.token, process.env.HASH_SECRET);
+                            const key = process.env.HASH_SECRET;
+                            if (key === undefined) throw new Error("HASH_SECRET must be provided!");
+                            const encrypted = CryptoJS.AES.encrypt(webhook.token, key);
                             await webhookCollection.insertOne({
                                 id: webhook.id,
                                 token: encrypted.toString(),

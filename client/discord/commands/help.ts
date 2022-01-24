@@ -15,7 +15,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 10,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: false,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -67,8 +67,8 @@ const command: SlashCommand = {
     },
     async execute(interaction, { database, ephemeral, guildLocale }) {
         await interaction.deferReply({ ephemeral });
-        const bot = await interaction.client.application.fetch();
         try {
+            const bot = await interaction.client.application.fetch();
             const category = interaction.options.getString("category") || "general";
             const select = new MessageSelectMenu({
                 customId: `help:${interaction.user.id}`,

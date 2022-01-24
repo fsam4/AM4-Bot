@@ -20,7 +20,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 10,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: false,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -42,12 +42,12 @@ const command: SlashCommand = {
         ]
     },
     async execute(interaction, { database, locale }) {
-        await interaction.deferReply({ ephemeral: interaction.inGuild() });
-        const users = database.settings.collection<Settings.user>('Users');
-        const achievements = database.am4.collection<AM4_Data.achievement>('Achievements');
-        const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
-        const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
+        await interaction.deferReply({ ephemeral: true });
         try {
+            const users = database.settings.collection<Settings.user>('Users');
+            const achievements = database.am4.collection<AM4_Data.achievement>('Achievements');
+            const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
+            const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
             const user = new Utils.User(interaction.user.id, await users.findOne({ id: interaction.user.id }));
             const input = interaction.options.getString("name", true).trim();
             const achievement = await achievements.findOne(createAchievementFilter(input));

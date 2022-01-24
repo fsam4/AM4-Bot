@@ -44,7 +44,7 @@ interface Command {
     get name(): string;
     set name(value: string);
     readonly cooldown: number;
-    readonly isPublic: boolean;
+    readonly isGlobal: boolean;
     readonly isAdministrator: boolean;
 }
 

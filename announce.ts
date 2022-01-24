@@ -8,14 +8,25 @@ const isTest = process.argv.includes("--test");
 
 dotenv.config({ path: isTest ? ".env.local" : ".env" });
 
-const rest = new REST({ version: '9' }).setToken(process.env.BOT_TOKEN);
+const botToken = process.env.DISCORD_BOT_TOKEN;
+if (botToken === undefined) throw new Error("DISCORD_BOT_TOKEN must be provided!");
+const rest = new REST({ version: '9' }).setToken(botToken);
 
 void async function () {
     try {
         console.log("Sending announcement...");
-        const fullRoute = isTest 
-            ? Routes.channelMessages(process.env.TEST_CHANNEL) 
-            : Routes.webhook(process.env.ANNOUNCEMENT_WEBHOOK_ID, process.env.ANNOUNCEMENT_WEBHOOK_TOKEN);
+        let fullRoute: `/${string}`;
+        if (isTest) {
+            const channelId = process.env.TEST_CHANNEL_ID;
+            if (channelId === undefined) throw new Error("TEST_CHANNEL_ID must be provided!");
+            fullRoute = Routes.channelMessages(channelId);
+        } else {
+            const webhookId = process.env.ANNOUNCEMENT_WEBHOOK_ID;
+            if (webhookId === undefined) throw new Error("ANNOUNCEMENT_WEBHOOK_ID must be provided!");
+            const webhookToken = process.env.ANNOUNCEMENT_WEBHOOK_TOKEN;
+            if (webhookToken === undefined) throw new Error("ANNOUNCEMENT_WEBHOOK_TOKEN must be provided!");
+            fullRoute = Routes.webhook(webhookId, webhookToken);
+        }
         const body = { embeds: updateContent };
         await rest.post(fullRoute, { body });
         console.log(chalk.green("Succesfully sent announcement!"));

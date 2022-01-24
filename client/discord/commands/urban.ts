@@ -32,7 +32,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 10,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: false,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS

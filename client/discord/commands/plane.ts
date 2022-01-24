@@ -21,7 +21,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 20,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: false,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -481,14 +481,14 @@ const command: SlashCommand = {
         ]
     },
     async execute(interaction, { database, account, ephemeral, locale }) {
-        const subCommand = interaction.options.getSubcommand();
         const group = interaction.options.getSubcommandGroup(false);
-        await interaction.deferReply({ ephemeral: (ephemeral || group === 'settings') });
-        const planeSettings = database.settings.collection<Settings.plane>('Planes');
-        const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-        const userCollection = database.settings.collection<Settings.user>('Users');
-        const user = new Utils.User(interaction.user.id, await userCollection.findOne({ id: interaction.user.id }));
+        await interaction.deferReply({ ephemeral: (ephemeral || group === 'settings') && interaction.inGuild() });
         try {
+            const subCommand = interaction.options.getSubcommand();
+            const planeSettings = database.settings.collection<Settings.plane>('Planes');
+            const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
+            const userCollection = database.settings.collection<Settings.user>('Users');
+            const user = new Utils.User(interaction.user.id, await userCollection.findOne({ id: interaction.user.id }));
             const options = {
                 salaries: user.salaries,
                 co2_price: user.options.co2_price,

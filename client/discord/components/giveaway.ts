@@ -10,9 +10,16 @@ const component: Component<ButtonInteraction> = {
     cooldown: 5,
     customId: /giveaway/,
     async execute(interaction, { database, guildLocale }) {
+        if (!interaction.inCachedGuild()) {
+            await interaction.reply({
+                content: "This command can only be used in servers where the bot is in...",
+                ephemeral: true
+            });
+            return;
+        }
         await interaction.deferReply({ ephemeral: true });
-        const giveaways = database.discord.collection<Discord.giveaway>("Giveaways");
         try {
+            const giveaways = database.discord.collection<Discord.giveaway>("Giveaways");
             const message = <Message>interaction.message;
             let giveaway = await giveaways.findOne({ message: message.id });
             if (interaction.user.id === giveaway.author) throw new DiscordClientError("You cannot join your own giveaway...");

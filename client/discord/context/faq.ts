@@ -15,7 +15,7 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
     },
     cooldown: 15,
     isAdministrator: false,
-    isPublic: true,
+    isGlobal: true,
     data: {
         name: "Search FAQ",
         type: Constants.ApplicationCommandTypes.MESSAGE,
@@ -23,19 +23,19 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
     },
     async execute(interaction, { database }) {
         const isMessage = interaction.targetMessage instanceof Message;
-        await interaction.deferReply({ ephemeral: isMessage });
-        const faqCollection = database.discord.collection<Discord.faq>("FAQ");
+        await interaction.deferReply({ ephemeral: isMessage && interaction.inGuild() });
         try {
+            const faqCollection = database.discord.collection<Discord.faq>("FAQ");
             if (!interaction.targetMessage.content) throw new DiscordClientError(`${isMessage ? Formatters.hyperlink("This message", interaction.targetMessage.url) : "This message"} has no content to search for...`);
             const content = interaction.targetMessage.content.match(/[0-9a-zA-Z'-? ]/g).join("");
             const filter: Filter<Discord.faq> = {
                 $text: { $search: content },
                 $or: [
                     { public: true },
-                    { server: interaction.guildId },
                     { author: { $exists: false } }
                 ]
             };
+            if (interaction.inGuild()) filter.$or.push({ server: interaction.guildId });
             const cursor = faqCollection.find(filter, {
                 sort: { score: { $meta: "textScore" } },
                 limit: 25

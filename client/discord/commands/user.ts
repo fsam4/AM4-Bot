@@ -17,7 +17,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 20,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: false,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -282,11 +282,11 @@ const command: SlashCommand = {
         ]
     },
     async execute(interaction, { database, account, rest, locale }) {
-        await interaction.deferReply({ ephemeral: true });
-        const users = database.discord.collection<Discord.user>('Users');
-        const settings = database.settings.collection<Settings.user>('Users');
-        const servers = database.settings.collection<Settings.server>('Servers');
+        await interaction.deferReply({ ephemeral: interaction.inGuild() });
         try {
+            const users = database.discord.collection<Discord.user>('Users');
+            const settings = database.settings.collection<Settings.user>('Users');
+            const servers = database.settings.collection<Settings.server>('Servers');
             const subCommand = interaction.options.getSubcommand();
             const group = interaction.options.getSubcommandGroup(false);
             switch(group || subCommand) {

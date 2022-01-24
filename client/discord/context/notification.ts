@@ -4,11 +4,6 @@ import DiscordClientError from '../error';
 import type { ContextMenu } from '../types';
 import type { Discord } from '@typings/database';
 
-const systemWebhooks = [
-    process.env.ANNOUNCEMENT_WEBHOOK_ID,
-    process.env.LOG_WEBHOOK_ID
-];
-
 const command: ContextMenu<MessageContextMenuInteraction> = {
     get name() {
         return this.data.name;
@@ -18,20 +13,29 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
     },
     cooldown: 5,
     isAdministrator: false,
-    isPublic: true,
+    isGlobal: true,
     data: {
         name: "View Notification",
         type: Constants.ApplicationCommandTypes.MESSAGE,
         defaultPermission: true
     },
-    async execute(interaction, { database, locale }) {
-        if (interaction.channel.type === "DM") return interaction.reply("This command can only be used in servers...");
-        if (!interaction.guild) return interaction.reply("This command requires the bot to be in this server...");
+    async execute(interaction, { database, locale, log, webhook }) {
+        if (!interaction.inGuild() as boolean) {
+            await interaction.reply("This command can only be used in servers...");
+            return;
+        } else if (!interaction.inCachedGuild()) {
+            await interaction.reply({
+                content: "This command can only be used in servers where the bot is in...",
+                ephemeral: true
+            });
+            return;
+        }
         await interaction.deferReply({ ephemeral: true });
-        const users = database.discord.collection<Discord.user>("Users");
-        const notifications = database.discord.collection<Discord.notification>("Notifications");
         try {
+            const users = database.discord.collection<Discord.user>("Users");
+            const notifications = database.discord.collection<Discord.notification>("Notifications");
             if (interaction.targetMessage instanceof Message) {
+                const systemWebhooks = [log.id, webhook.id];
                 if (!interaction.targetMessage.webhookId) throw new DiscordClientError("This command can only be used on notification messages sent by AM4 Bot notification webhooks!");
                 if (systemWebhooks.includes(interaction.targetMessage.webhookId)) throw new DiscordClientError("This command cannot be used on AM4 Bot system webhooks!");
                 await interaction.targetMessage.fetchWebhook()

@@ -19,7 +19,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 20,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: true,
     permissions: new Permissions([
         Permissions.FLAGS.MODERATE_MEMBERS,
@@ -195,7 +195,16 @@ const command: SlashCommand = {
         ]
     },
     async execute(interaction) {
-        if (!interaction.guild) return interaction.reply("This command requires the bot to be in this server...");
+        if (!interaction.inGuild() as boolean) {
+            await interaction.reply("This command can only be used in servers...");
+            return;
+        } else if (!interaction.inCachedGuild()) {
+            await interaction.reply({
+                content: "This command can only be used in servers where the bot is in...",
+                ephemeral: true
+            });
+            return;
+        }
         await interaction.deferReply({ ephemeral: true });
         try {
             const subCommand = interaction.options.getSubcommand(false);

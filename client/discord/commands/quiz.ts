@@ -26,7 +26,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 30,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: false,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS,
@@ -170,7 +170,7 @@ const command: SlashCommand = {
             type Difficulty = QuestionDifficulty | "normal";
             switch(subCommand) {
                 case "play": {
-                    if (!interaction.guild) throw new DiscordClientError("This command requires the bot to be in this server...");
+                    if (!interaction.inCachedGuild()) throw new DiscordClientError("This command can only be used in servers where the bot is in...");
                     const gameId = new ObjectId(interaction.options.getString("game", true).trim());
                     const mode = <Difficulty>(interaction.options.getString("difficulty")?.trim() || "normal");
                     const time = interaction.options.getInteger("time") || 20;

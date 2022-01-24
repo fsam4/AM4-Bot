@@ -21,7 +21,7 @@ const command: SlashCommand = {
         this.data.name = value;
     },
     cooldown: 10,
-    isPublic: true,
+    isGlobal: true,
     isAdministrator: true,
     permissions: new Permissions([
         Permissions.FLAGS.USE_APPLICATION_COMMANDS
@@ -122,9 +122,9 @@ const command: SlashCommand = {
     },
     async execute(interaction, { database, account, locale }) {
         const subCommand = interaction.options.getSubcommand(false);
-        await interaction.deferReply({ ephemeral: subCommand !== "search" });
-        const faqCollection = database.discord.collection<Discord.faq>("FAQ");
+        await interaction.deferReply({ ephemeral: subCommand !== "search" && interaction.inGuild() });
         try {
+            const faqCollection = database.discord.collection<Discord.faq>("FAQ");
             switch(subCommand) {
                 case "search": {
                     const query = interaction.options.getString("query", true);
