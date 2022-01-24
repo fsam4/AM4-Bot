@@ -240,7 +240,7 @@ const command: SlashCommand = {
                 case "timeout": {
                     switch(subCommand) {
                         case "set": {
-                            if (!member.manageable) throw new DiscordClientError('I cannot manage that member...');
+                            if (!member.moderatable) throw new DiscordClientError('I cannot moderate that member...');
                             const format = interaction.options.getString("format", true) as keyof typeof multipliers;
                             const time = interaction.options.getInteger("time", true);
                             const ms = time * multipliers[format];
@@ -249,7 +249,7 @@ const command: SlashCommand = {
                             break;
                         }
                         case "clear": {
-                            if (!member.manageable) throw new DiscordClientError('I cannot manage that member...');
+                            if (!member.moderatable) throw new DiscordClientError('I cannot moderate that member...');
                             if (member.isCommunicationDisabled() as boolean) {
                                 await member.timeout(null, reason);
                                 await interaction.editReply(`The timeout of ${Formatters.bold(`${member.user.username}#${member.user.discriminator}`)} has been cleared!`);
