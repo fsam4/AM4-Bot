@@ -2,8 +2,9 @@ import { Telegram as Utils } from '../../utils';
 import TelegramClientError from '../error';
 import { Markup, Scenes } from 'telegraf';
 import pug from 'pug';
+import fs from 'fs';
 
-import type { Command, DataCallbackQuery } from '../types';
+import type { Command, DataCallbackQuery } from '@telegram/types';
 import type { Message, User } from 'typegram';
 import type { AM4_Data } from '@typings/database';
 import type { Context } from 'telegraf';
@@ -31,7 +32,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
     name: 'airport',
     cooldown: 20,
     description: 'Search for airports',
-    help: "With this command you can search for airports. The command has 4 options which are: filter, search, sell plane and hubs. With filter you can filter for airports and the bot will return all airports that match your criteria. The option has 3 required arguments which are `<min_market>`, `<min_runway>` and `city/country`. `<min_market>` is the minimum market % of the airports, `<min_runway>` is the minimum runway length and ``city/country` is the city or country where the airports should be. The search option only has one required argument which is `<icao|iata>`. This is the ICAO or IATA code of the airport to search for. The sell plane option has two required arguments which are `<icao|iata>` and `<plane>`. This option can be used to search for the best airport to sell your plane. `<icao|iata>` is the ICAO or IATA code of the departure airport and `<plane>` is the name of the plane to sell. The last option is hubs which can be used to search for best hubs based on criteria. It has two required and two optional arguments: `<country>`, `<cargo|pax>`, `(market)`, `(runway)`. `<country>` is the country where the hubs are searched from, `<cargo|pax>` is for what plane type should the hubs mainly be for, `(market)` is the minimum market % of the airport and `(runway)` is the minimum runway length.",
+    helpFileContent: fs.readFileSync("./documents/markdown/airport.md", "utf8"),
     async execute(ctx, { timeouts }) {
         const keyboard = Markup.inlineKeyboard([
             Markup.button.callback('🔍 Filter', 'filter:airport'),
@@ -62,7 +63,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     const action_keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'delete')]);
                     await ctx.replyWithMarkdown('Type the market, runway and region sepearted by commas!\nFormat: `<min_market>, <min_runway>, <city/country>`\nExample: `90, 5000, brazil`', action_keyboard);
                 });
@@ -138,7 +139,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 });
                 this.scene.action('delete', async (ctx) => {
                     await ctx.answerCbQuery();
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     await ctx.scene.leave();
                 });
             }
@@ -149,7 +150,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     const action_keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'exit')]);
                     await ctx.replyWithMarkdown('Type the ICAO, IATA or id of the airport...\nFormat: `<icao|iata|id>`\nExample: `efhk`', action_keyboard);
                 });
@@ -179,7 +180,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 });
                 this.scene.action('exit', async (ctx) => {
                     await ctx.answerCbQuery();
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     await ctx.scene.leave();
                 });
             }
@@ -212,7 +213,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 this.scene.action(/realism|easy/, async (ctx) => {
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
                     await ctx.answerCbQuery();
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     const mode = (<DataCallbackQuery>ctx.callbackQuery).data as GameMode;
                     const locale = ctx.from.language_code || 'en';
                     await ctx.scene.leave();
@@ -269,7 +270,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 });
                 this.scene.action('exit', async (ctx) => {
                     await ctx.answerCbQuery();
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     await ctx.scene.leave();
                 })
             }

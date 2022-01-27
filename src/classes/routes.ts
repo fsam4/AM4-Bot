@@ -2,7 +2,7 @@ import Plane from '../lib/plane';
 import Status from './status';
 import Route from './route';
 
-import type * as AM4 from '@typings/api/am4';
+import type * as AM4 from '@typings/am4-api';
 
 interface FlightTime {
     hours: number;

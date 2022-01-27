@@ -2,8 +2,9 @@ import TelegramClientError from '../error';
 import { Markup, Scenes } from 'telegraf';
 import Route from '../../../src/classes/route';
 import pug from 'pug';
+import fs from 'fs';
 
-import type { Command, DataCallbackQuery } from '../types';
+import type { Command, DataCallbackQuery } from '@telegram/types';
 import type { AM4_Data, BaseDocument } from '@typings/database';
 import type { Message, User } from 'typegram';
 import type { Document } from 'mongodb';
@@ -20,10 +21,8 @@ interface RouteDocument extends BaseDocument {
     configuration: Record<SeatType, number>;
     demand: Record<SeatType, number>;
     arrival: AM4_Data.airport;
-    ticket: {
-        realism: Record<SeatType, number>;
-        easy: Record<SeatType, number>;
-    };
+    stopover?: AM4_Data.airport;
+    ticket: Record<SeatType, number>;
 }
 
 type GameMode = "realism" | "easy";
@@ -49,7 +48,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
     name: 'routes',
     cooldown: 30,
     description: 'Search for routes from a hub',
-    help: "This command can be used to search routes from a specified hub. The bot calculates the profits and configurations for every route and returns them sorted by profitability. The command has 2 required parameters and 2 optional parameters. The required parameters are `<icao|iata>` which is the ICAO or IATA code of the departure airport and `<plane>` which is the name/shortcut of the plane. The optional parameters are `(reputation)` which is the reputation to use in calculations and `(flights)` which can be used to define the flight amount of all returned routes.",
+    helpFileContent: fs.readFileSync("./documents/markdown/routes.md", "utf8"),
     async execute(ctx) {
         await ctx.scene.enter('routes');
     },
@@ -285,7 +284,30 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                         if (!routes.length) throw new TelegramClientError('Could not find any suitable routes with your criteria...');
                         const arrivalIds = new Set(routes.map(({ arrival }) => arrival._id));
                         routes = [...arrivalIds].map(arrivalId => routes.find(route => route.arrival._id.equals(arrivalId)));
-                        routes.forEach(route => {
+                        const airports = await airportCollection.find().toArray();
+                        routes.forEach(function (route, index) {
+                            const originalDistance = route.distance;
+                            if (route.distance > plane.range) {
+                                const centerPoint: [number, number] = [
+                                    (departure.location.coordinates[0] + route.arrival.location.coordinates[0]) / 2,
+                                    (departure.location.coordinates[1] + route.arrival.location.coordinates[1]) / 2
+                                ];
+                                const maxDistanceFromCenter = Route.preciseDistance(departure.location.coordinates, centerPoint).distance;
+                                const validAirports = airports.filter(airport => {
+                                    const distanceToCenter = Route.preciseDistance(airport.location.coordinates, centerPoint).distance;
+                                    return distanceToCenter <= maxDistanceFromCenter;
+                                });
+                                const stopovers = Route.findStopovers([departure, route.arrival], validAirports, plane, mode);
+                                if (!stopovers.length) {
+                                    delete this[index];
+                                    return;
+                                }
+                                const [stopover] = stopovers;
+                                route.distance = stopover.distance;
+                                const lastIndex = stopover.airports.length - 1;
+                                const [stopoverAirport] = stopover.airports.slice(1, lastIndex);
+                                route.stopover = stopoverAirport;
+                            }
                             const { preference, configuration } = Route.configure(plane, {
                                 route: {
                                     demand: route.demand, 
@@ -298,40 +320,28 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                                     reputation: rep 
                                 }
                             });
-                            const profit = Route.profit(plane, {
-                                route: {
-                                    configuration: configuration,
-                                    distance: route.distance,
-                                    flights: route.flights  
-                                },
+                            route.preference = preference;
+                            route.configuration = configuration;
+                            route.profit = Route.profit(plane, {
                                 options: {
+                                    activity: 18,
                                     fuel_price: 500,
                                     co2_price: 125,
-                                    activity: 18,
-                                    reputation: rep,
+                                    reputation: 100,
                                     mode: mode
+                                },
+                                route: {
+                                    configuration: configuration,
+                                    distance: originalDistance,
+                                    flights: route.flights
                                 }
                             }).profit;
-                            route.configuration = configuration;
-                            route.preference = preference;
-                            route.profit = profit;
-                            route.ticket = {
-                                realism: Route.ticket(route.distance, 'realism', plane.type === "vip"),
-                                easy: Route.ticket(route.distance, 'easy', plane.type === "vip")
-                            }
-                        });
+                            route.ticket = Route.ticket(originalDistance, mode, plane.type === "vip")
+                        }, routes);
+                        routes.filter(route => route !== undefined);
                         routes.sort((a, b) => b.profit - a.profit);
                         const compile = pug.compileFile('client/telegram/layouts/route.pug');
-                        const pages = routes.map(route => {
-                            return compile({
-                                ...route,
-                                departure: departure,
-                                config: route.configuration,
-                                ticket: route.ticket[mode],
-                                plane: plane,
-                                route: route
-                            });
-                        });
+                        const pages = routes.map(route => compile({ ...route, departure, plane }));
                         await ctx.answerCbQuery();
                         const markup = Markup.inlineKeyboard([
                             Markup.button.callback('▶️', 'next'),
@@ -373,11 +383,11 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                         parse_mode: 'HTML', 
                         reply_markup: markup.reply_markup
                     })
-                    .catch(() => undefined);
+                    .catch(() => void 0);
                 });
                 this.scene.action('delete', async (ctx) => {
                     await ctx.answerCbQuery();
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     await ctx.scene.leave();
                 });
             }

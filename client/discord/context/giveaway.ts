@@ -1,7 +1,7 @@
 import { MessageEmbed, Formatters, Constants, Message, type MessageContextMenuInteraction } from 'discord.js';
 import DiscordClientError from '../error';
 
-import type { ContextMenu } from '../types';
+import type { ContextMenu } from '@discord/types';
 import type { Discord } from '@typings/database';
 
 const command: ContextMenu<MessageContextMenuInteraction> = {

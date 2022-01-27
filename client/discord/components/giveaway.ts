@@ -2,7 +2,7 @@ import { Formatters, type ButtonInteraction, type Message } from 'discord.js';
 import formatDistanceToNowStrict from 'date-fns/formatDistanceToNowStrict';
 import DiscordClientError from '../error';
 
-import type { Component } from '../types';
+import type { Component } from '@discord/types';
 import type { Discord } from '@typings/database';
 
 const component: Component<ButtonInteraction> = {

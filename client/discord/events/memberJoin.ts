@@ -1,7 +1,7 @@
 import { Formatters, MessageActionRow, MessageButton, type RoleResolvable, type TextChannel } from 'discord.js';
 
 import type { Settings, Discord } from '@typings/database';
-import type { Event } from '../types';
+import type { Event } from '@discord/types';
 
 const event: Event = {
     name: 'guildMemberAdd',
@@ -39,7 +39,7 @@ const event: Event = {
                         }
                         if (roles.size) {
                             await member.roles.add([...roles], `Logged in as ${airline.name}`)
-                            .catch(() => undefined);
+                            .catch(() => void 0);
                         }
                     }
                     if (server.log_channel) {

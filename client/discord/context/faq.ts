@@ -2,7 +2,7 @@ import { Constants, Formatters, Message, MessageSelectMenu, MessageButton, Messa
 import DiscordClientError from '../error';
 import { emojis } from '../../../config.json';
 
-import type { ContextMenu } from '../types';
+import type { ContextMenu } from '@discord/types';
 import type { Discord } from '@typings/database';
 import type { Filter } from 'mongodb';
 

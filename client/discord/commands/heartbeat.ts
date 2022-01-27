@@ -1,7 +1,7 @@
 import { Permissions, MessageButton, MessageActionRow, Formatters, Constants, type TextChannel, type PermissionResolvable } from 'discord.js';
 import config from '../../../config.json';
 
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 import type { Settings } from '@typings/database';
 
 const command: SlashCommand = {
@@ -77,7 +77,7 @@ const command: SlashCommand = {
                 }
             } else if (server.log_channel) {
                 const channel: TextChannel = await interaction.guild.channels.fetch(server.log_channel, { force: true })
-                .catch(() => undefined);
+                .catch(() => void 0);
                 if (!channel) {
                     await interaction.editReply(`Your log channel does not seem to exist anymore. Please update it or reset it via \`/settings login\`.`);
                     return;

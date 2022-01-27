@@ -186,7 +186,6 @@ export namespace Telegram {
 
     interface user extends BaseDocument {
         id: number;
-        airline_id: number;
         admin_level: AdminLevel;
         commands: Array<{
             command: string,

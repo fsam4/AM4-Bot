@@ -1,4 +1,4 @@
-import type { Request } from '@typings/api/am4'
+import type { Request } from '@typings/am4-api'
 
 type APIStatus = Request["status"];
 

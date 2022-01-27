@@ -7,7 +7,7 @@ import Plane from '../../../src/lib/plane';
 
 import type { Settings, AM4_Data, BaseDocument } from '@typings/database';
 import type { Document, Filter } from 'mongodb';
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 
 type SeatType = "Y" | "J" | "F" | "L" | "H";
 
@@ -22,6 +22,7 @@ interface RouteDocument extends BaseDocument {
     configuration: Record<SeatType, number>;
     demand: Record<SeatType, number>;
     arrival: AM4_Data.airport;
+    stopover?: AM4_Data.airport;
     ticket: {
         realism: Record<SeatType, number>;
         easy: Record<SeatType, number>;
@@ -386,7 +387,30 @@ const command: SlashCommand = {
             if (!routes.length) throw new DiscordClientError('Could not find any suitable routes with your criteria...');
             const arrivalIds = new Set(routes.map(({ arrival }) => arrival._id));
             routes = [...arrivalIds].map(arrivalId => routes.find(route => route.arrival._id.equals(arrivalId)));
-            routes.forEach(route => {
+            const airports = await airportCollection.find().toArray();
+            routes.forEach(function (route, index) {
+                const originalDistance = route.distance;
+                if (route.distance > plane.range) {
+                    const centerPoint: [number, number] = [
+                        (departure.location.coordinates[0] + route.arrival.location.coordinates[0]) / 2,
+                        (departure.location.coordinates[1] + route.arrival.location.coordinates[1]) / 2
+                    ];
+                    const maxDistanceFromCenter = Route.preciseDistance(departure.location.coordinates, centerPoint).distance;
+                    const validAirports = airports.filter(airport => {
+                        const distanceToCenter = Route.preciseDistance(airport.location.coordinates, centerPoint).distance;
+                        return distanceToCenter <= maxDistanceFromCenter;
+                    });
+                    const stopovers = Route.findStopovers([departure, route.arrival], validAirports, plane, user.mode);
+                    if (!stopovers.length) {
+                        delete this[index];
+                        return;
+                    }
+                    const [stopover] = stopovers;
+                    route.distance = stopover.distance;
+                    const lastIndex = stopover.airports.length - 1;
+                    const [stopoverAirport] = stopover.airports.slice(1, lastIndex);
+                    route.stopover = stopoverAirport;
+                }
                 const { preference, configuration } = Route.configure(plane, {
                     options: {
                         activity: user.options.activity,
@@ -412,7 +436,7 @@ const command: SlashCommand = {
                     },
                     route: {
                         configuration: configuration,
-                        distance: route.distance,
+                        distance: originalDistance,
                         flights: route.flights
                     }
                 };
@@ -420,26 +444,26 @@ const command: SlashCommand = {
                 const estimatedSV = Route.estimatedShareValueGrowth(plane, options);
                 route.sv = estimatedSV / route.flights;
                 route.ticket = {
-                    realism: Route.ticket(route.distance, 'realism', plane.type === "vip"),
-                    easy: Route.ticket(route.distance, 'easy', plane.type === "vip")
+                    realism: Route.ticket(originalDistance, 'realism', plane.type === "vip"),
+                    easy: Route.ticket(originalDistance, 'easy', plane.type === "vip")
                 };
-            });
+            }, routes);
+            routes.filter(route => route !== undefined);
             routes.sort((a, b) => b.profit - a.profit);
             const image = new MessageAttachment(plane.image.buffer, "plane.jpg");
             const embeds = routes.map((route, i) => {
-                const { demand, ticket, arrival, flights, preference, configuration, profit } = route;
                 const per = { L: 0, H: 0 };
                 if (plane.type === 'cargo') {
-                    per.L = Math.round(Plane.largeToHeavy(configuration.L) / plane.capacity * 100);
-                    per.H = Math.round(configuration.H / plane.capacity * 100);
+                    per.L = Math.round(Plane.largeToHeavy(route.configuration.L) / plane.capacity * 100);
+                    per.H = Math.round(route.configuration.H / plane.capacity * 100);
                     const leftOver = 100 - (per.L + per.H);
                     per.L += leftOver;
                 }
                 const flightTime = Route.flightTime(route.distance, plane.speed).format("hh:mm:ss");
                 return new MessageEmbed({
                     color: "DARK_GREEN",
-                    title: `${arrival.city.capitalize()}, ${arrival.country.capitalize()} (${arrival.icao.toUpperCase()}/${arrival.iata.toUpperCase()})`,
-                    description: `**Class priority:** ${formatSeats(preference.join(' > '))}`,
+                    title: `${route.arrival.city.capitalize()}, ${route.arrival.country.capitalize()} (${route.arrival.icao.toUpperCase()}/${route.arrival.iata.toUpperCase()})`,
+                    description: `**Class priority:** ${formatSeats(route.preference.join(' > '))}`,
                     footer: {
                         text: `Route ${i + 1} of ${routes.length}`,
                         iconURL: interaction.client.user.displayAvatarURL()
@@ -450,27 +474,27 @@ const command: SlashCommand = {
                     fields: [
                         { 
                             name: Formatters.bold(Formatters.underscore("Route information")), 
-                            value: `**Departure:** ${departure.city.capitalize()}, ${departure.country.capitalize()} (${formatCode(departure, user.options.code)})\n**Arrival:** ${arrival.city.capitalize()}, ${arrival.country.capitalize()} (${formatCode(arrival, user.options.code)})\n**Distance:** ${route.distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${flightTime}\n**Flights:** ${flights}/day`, 
+                            value: `**Departure:** ${departure.city.capitalize()}, ${departure.country.capitalize()} (${formatCode(departure, user.options.code)})${route.stopover ? `\n**Stopover:** ${route.stopover.city.capitalize()}, ${route.stopover.country.capitalize()} (${formatCode(route.stopover, user.options.code)})\n` : "\n"}**Arrival:** ${route.arrival.city.capitalize()}, ${route.arrival.country.capitalize()} (${formatCode(route.arrival, user.options.code)})\n**Distance:** ${route.distance.toLocaleString(locale)}km\n**Market:** ${route.arrival.market}%\n**Runway:** ${route.arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${flightTime}\n**Flights:** ${flights}/day`, 
                             inline: false 
                         },
                         { 
                             name: Formatters.bold(Formatters.underscore("Route demand")), 
-                            value: `${Formatters.formatEmoji(emojis.first_seat)} ${demand.F.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.business_seat)} ${demand.J.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.economy_seat)} ${demand.Y.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.large_load)} ${demand.L.toLocaleString(locale)} lbs\n${Formatters.formatEmoji(emojis.heavy_load)} ${demand.H.toLocaleString(locale)} lbs`, 
+                            value: `${Formatters.formatEmoji(emojis.first_seat)} ${route.demand.F.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.business_seat)} ${route.demand.J.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.economy_seat)} ${route.demand.Y.toLocaleString(locale)}\n${Formatters.formatEmoji(emojis.large_load)} ${route.demand.L.toLocaleString(locale)} lbs\n${Formatters.formatEmoji(emojis.heavy_load)} ${route.demand.H.toLocaleString(locale)} lbs`, 
                             inline: true 
                         },
                         { 
                             name: Formatters.bold(Formatters.underscore("Ticket prices")), 
-                            value: `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[user.mode].F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[user.mode].J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[user.mode].Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[user.mode].L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[user.mode].H}`, 
+                            value: `${Formatters.formatEmoji(emojis.first_seat)} $${route.ticket[user.mode].F}\n${Formatters.formatEmoji(emojis.business_seat)} $${route.ticket[user.mode].J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${route.ticket[user.mode].Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${route.ticket[user.mode].L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${route.ticket[user.mode].H}`, 
                             inline: true 
                         },
                         { 
                             name: Formatters.bold(Formatters.underscore("Configuration")), 
-                            value: `${Formatters.formatEmoji(emojis.first_seat)} ${configuration.F}\n${Formatters.formatEmoji(emojis.business_seat)} ${configuration.J}\n${Formatters.formatEmoji(emojis.economy_seat)} ${configuration.Y}\n${Formatters.formatEmoji(emojis.cargo_small)} ${per.L}%\n${Formatters.formatEmoji(emojis.cargo_big)} ${per.H}%`, 
+                            value: `${Formatters.formatEmoji(emojis.first_seat)} ${route.configuration.F}\n${Formatters.formatEmoji(emojis.business_seat)} ${route.configuration.J}\n${Formatters.formatEmoji(emojis.economy_seat)} ${route.configuration.Y}\n${Formatters.formatEmoji(emojis.cargo_small)} ${per.L}%\n${Formatters.formatEmoji(emojis.cargo_big)} ${per.H}%`, 
                             inline: true 
                         },
                         { 
                             name: Formatters.bold(Formatters.underscore("Profitability")), 
-                            value: `**Per flight:** $${Math.round(profit / flights).toLocaleString(locale)}\n**Per day:** $${Math.round(profit).toLocaleString(locale)}\n**Share value:** $${route.sv.toFixed(2)}/flight`, 
+                            value: `**Per flight:** $${Math.round(route.profit / flights).toLocaleString(locale)}\n**Per day:** $${Math.round(route.profit).toLocaleString(locale)}\n**Share value:** $${route.sv.toFixed(2)}/flight`, 
                             inline: false 
                         }
                     ]
@@ -510,12 +534,6 @@ const command: SlashCommand = {
                 new MessageActionRow({
                     components: [
                         new MessageButton({
-                            label: "Search for a stopover",
-                            style: "SECONDARY",
-                            customId: "stopover",
-                            emoji: emojis.routeMarker
-                        }),
-                        new MessageButton({
                             customId: "plane",
                             label: "View plane",
                             style: "SECONDARY",
@@ -531,119 +549,67 @@ const command: SlashCommand = {
             }) as Message;
             for (const options of followups) {
                 await interaction.followUp(options)
-                .catch(() => undefined);
+                .catch(() => void 0);
             }
             const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
             const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000, componentType: "BUTTON" });
             collector.on("collect", async interaction => {
-                if (interaction.isButton()) {
-                    switch(interaction.customId) {
-                        case "stopover": {
-                            await interaction.deferUpdate();
-                            const [arrivalICAO] = currentEmbed.title.match(/\w{4}(?=[/]\w{3})/);
-                            const { stopover: sp, route, status } = await rest.fetchStopover({
-                                type: plane.type === "cargo" ? plane.type : "pax",
-                                model: plane.name,
-                                departure: departure.icao,
-                                arrival: arrivalICAO
-                            });
-                            const message = <Message>interaction.message;
-                            message.components[1].components[0].setDisabled(true);
-                            if (status.success) {
-                                const stopover = sp[user.mode];
-                                if (typeof stopover === "string") {
-                                    await interaction.editReply({ 
-                                        components: message.components,
-                                        embeds: [currentEmbed]
-                                    });
-                                    await interaction.followUp({
-                                        content: route.distance < plane.range ? "The distance of this route is within the plane's range." : "Could not find a suitable stopover for this route.",
-                                        ephemeral: true
-                                    });
-                                } else {
-                                    const field = currentEmbed.fields.shift();
-                                    const [line, ...lines] = field.value.split('\n');
-                                    lines[1] += ` (+${stopover.difference.toFixed(3)}km)`;
-                                    lines.unshift(line, `**Stopover:** ${stopover.city}, ${stopover.country} (${formatCode(stopover, user.options.code)})`);
-                                    field.value = lines.join('\n');
-                                    currentEmbed.fields.unshift(field);
-                                    await interaction.editReply({ 
-                                        components: message.components,
-                                        embeds: [currentEmbed]
-                                    });
-                                }
-                            } else {
-                                await interaction.editReply({
-                                    components: message.components,
-                                    embeds: [currentEmbed]
-                                });
-                                await interaction.followUp({
-                                    content: status.error,
-                                    ephemeral: true
-                                });
+                if (interaction.customId === "plane") {
+                    await interaction.deferReply({ ephemeral: true });
+                    const embed = new MessageEmbed({
+                        color: "WHITE",
+                        timestamp: plane._id.getTimestamp(),
+                        description: `**Plane type:** ${plane.type === "vip" ? plane.type.toUpperCase() : plane.type}`,
+                        image: {
+                            url: `attachment://${image.name}`
+                        },
+                        author: {
+                            name: plane.name,
+                            iconURL: plane.manufacturer.icon
+                        },
+                        footer: {
+                            text: `engine: ${engineName || "none"}`,
+                            iconURL: interaction.client.user.displayAvatarURL()
+                        },
+                        fields: [
+                            { 
+                                name: Formatters.bold(Formatters.underscore("General statistics")), 
+                                value: `**Speed:** ${Math.round(plane.speed).toLocaleString(locale)} km/h\n**Fuel usage:** ${plane.fuel.toFixed(2)} lbs/km\n**Co2 usage:** ${plane.co2.toFixed(2)} kg/${plane.type === "cargo" ? "1k": "pax"}/km\n**Runway:** ${plane.runway.toLocaleString(locale)} ft\n**Range:** ${plane.range.toLocaleString(locale)} km\n**Capacity:** ${plane.capacity.toLocaleString(locale)} ${plane.type === "cargo" ? "lbs" : "seats"}`, 
+                                inline: true 
+                            },
+                            { 
+                                name: '\u200B', 
+                                value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round(plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
+                                inline: true 
                             }
-                            break;
-                        }
-                        case "plane": {
-                            await interaction.deferReply({ ephemeral: true });
-                            const embed = new MessageEmbed({
-                                color: "WHITE",
-                                timestamp: plane._id.getTimestamp(),
-                                description: `**Plane type:** ${plane.type === "vip" ? plane.type.toUpperCase() : plane.type}`,
-                                image: {
-                                    url: `attachment://${image.name}`
-                                },
-                                author: {
-                                    name: plane.name,
-                                    iconURL: plane.manufacturer.icon
-                                },
-                                footer: {
-                                    text: `engine: ${engineName || "none"}`,
-                                    iconURL: interaction.client.user.displayAvatarURL()
-                                },
-                                fields: [
-                                    { 
-                                        name: Formatters.bold(Formatters.underscore("General statistics")), 
-                                        value: `**Speed:** ${Math.round(plane.speed).toLocaleString(locale)} km/h\n**Fuel usage:** ${plane.fuel.toFixed(2)} lbs/km\n**Co2 usage:** ${plane.co2.toFixed(2)} kg/${plane.type === "cargo" ? "1k": "pax"}/km\n**Runway:** ${plane.runway.toLocaleString(locale)} ft\n**Range:** ${plane.range.toLocaleString(locale)} km\n**Capacity:** ${plane.capacity.toLocaleString(locale)} ${plane.type === "cargo" ? "lbs" : "seats"}`, 
-                                        inline: true 
-                                    },
-                                    { 
-                                        name: '\u200B', 
-                                        value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round(plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
-                                        inline: true 
-                                    }
-                                ]
-                            });
-                            if (plane.price) {
-                                const values = currentEmbed.fields[4].value.match(/[0-9,]{1,}/g);
-                                const profit = parseInt(values[1].replace(/,/g, ""));
-                                const profitability = Math.round(plane.price / profit);
-                                const purchaseSV = Plane.estimatedShareValueFromPurchase(plane.price);
-                                embed.description += `\n**Profitability:** ${profitability > 0 ? `in ${profitability.toLocaleString(locale)} days` : "never"}\n**SV from purchase:** $${purchaseSV.toFixed(2)}`;
-                            }
-                            await interaction.editReply({
-                                embeds: [embed],
-                                files: [image]
-                            });
-                            break;
-                        }
-                        default: {
-                            const [action, value] = interaction.customId.split(":");
-                            currentEmbed = pages.next(action === "prev" ? -Number(value) : Number(value)).value;
-                            const hasStopover = currentEmbed.fields[0].value.includes("Stopover");
-                            components[1].components[1].setDisabled(hasStopover);
-                            await interaction.update({ 
-                                embeds: [currentEmbed],
-                                components: components
-                            });
-                        }
+                        ]
+                    });
+                    if (plane.price) {
+                        const values = currentEmbed.fields[4].value.match(/[0-9,]{1,}/g);
+                        const profit = parseInt(values[1].replace(/,/g, ""));
+                        const profitability = Math.round(plane.price / profit);
+                        const purchaseSV = Plane.estimatedShareValueFromPurchase(plane.price);
+                        embed.description += `\n**Profitability:** ${profitability > 0 ? `in ${profitability.toLocaleString(locale)} days` : "never"}\n**SV from purchase:** $${purchaseSV.toFixed(2)}`;
                     }
+                    await interaction.editReply({
+                        embeds: [embed],
+                        files: [image]
+                    });
+                } else {
+                    const [action, value] = interaction.customId.split(":");
+                    currentEmbed = pages.next(action === "prev" ? -Number(value) : Number(value)).value;
+                    const hasStopover = currentEmbed.fields[0].value.includes("Stopover");
+                    components[1].components[1].setDisabled(hasStopover);
+                    await interaction.update({ 
+                        embeds: [currentEmbed],
+                        components: components
+                    });
                 }
             });
             collector.once('end', async collected => {
                 const reply = collected.last() || interaction;
                 for (const row of components) row.components.forEach(component => component.setDisabled(true));
-                await reply.editReply({ components }).catch(() => undefined);
+                await reply.editReply({ components }).catch(() => void 0);
             });
         }
         catch(error) {
@@ -730,13 +696,13 @@ const command: SlashCommand = {
                 }));
             }
             await interaction.respond(choices ?? [])
-            .catch(() => undefined);
+            .catch(() => void 0);
         }
         catch(error) {
             console.error("Error while autocompleting:", error);
             if (!interaction.responded) {
                 interaction.respond([])
-                .catch(() => undefined);
+                .catch(() => void 0);
             };
         }
     }

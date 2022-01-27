@@ -9,7 +9,7 @@ import differenceInDays from 'date-fns/differenceInDays';
 import format from 'date-fns/format';
 
 import type { AM4_Data, Settings, Discord } from '@typings/database';
-import type { ContextMenu } from '../types';
+import type { ContextMenu } from '@discord/types';
 
 type AllianceMember = AM4_Data.member & { left: Date, alliance: AM4_Data.alliance };
 
@@ -519,7 +519,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
             collector.once("end", async collected => {
                 row.setComponents(select.setDisabled(true));
                 const reply = collected.last() || interaction;
-                await reply.editReply({ components: [row] }).catch(() => undefined);
+                await reply.editReply({ components: [row] }).catch(() => void 0);
             });
         }
         catch(error) {

@@ -1,10 +1,11 @@
 import { Markup, Scenes } from 'telegraf';
+import matter from 'gray-matter';
 import path from 'path';
 import fs from 'fs';
 
 import type { Message, User } from 'typegram';
 import type { Context } from 'telegraf';
-import type { Command } from '../types';
+import type { Command } from '@telegram/types';
 
 interface SceneSession extends Scenes.SceneSessionData {
     message: Message.TextMessage;
@@ -14,45 +15,30 @@ interface SceneSession extends Scenes.SceneSessionData {
 type BaseSceneOptions = ConstructorParameters<typeof Scenes.BaseScene>[1];
 type SceneContext = Scenes.SceneContext<SceneSession>;
 
+const documentDirectory = path.join(process.cwd(), "documents", "markdown");
+
 const keyboard = Markup.inlineKeyboard([
     Markup.button.callback('🔍 Command', 'help:command'),
-    Markup.button.callback('📰 News', 'help:news')
+    Markup.button.callback('📰 News', 'help:news'),
+    Markup.button.callback('👮 Privacy Policy', 'help:privacy')
 ]);
-
-const text = [
-    '🔍: Get help with an invidual command',
-    '📰: Read news about the latest update',
-    '\n*Using commands:*',
-    'When using commands',
-    '• `<...>`: stands for a required argument',
-    '• `(...)`: stands for an optional argument',
-    '• `,...`: stands for several arguments of same type seperated by commas',
-    '• Seperate every argument with a comma!',
-    '• Every command has an exmaple. Try that if you have problems.',
-    '\n*Useful links:*',
-    '• AM4 Bot\'s official Discord: https://discord.gg/f8WHuRX',
-    '• AM4 Bot\'s Telegram group chat: https://t.me/joinchat/mWoOI4FP6PcxMTRk'
-];
-
-const news = [
-    '*AM4 Telegram Bot V2.5*',
-    '• /contributed has been changed to /member',
-    '• Charts have been updated and improved',
-    '• You can now use /remaining to check the amount of AM4 API requests remaining for today',
-    '• Many other minor improvements have been made everywhere',
-    '• /joke has been removed due to it being broken'
-];
 
 const command: Command<Context, Scenes.SceneContext, SceneContext> = {
     name: 'help',
     cooldown: 0,
     description: 'Get help with using the bot & commands',
     async execute(ctx) {
-        await ctx.replyWithMarkdown(`*AM4 Telegram Bot*\n${text.join('\n')}`, keyboard)
+        const fullPath = path.join(documentDirectory, "help-menu.md");
+        const fileContents = fs.readFileSync(fullPath, "utf8");
+        const matterResult = matter(fileContents);
+        await ctx.replyWithMarkdown(`*${matterResult.data.title}*\n${matterResult.content}`, {
+            parse_mode: matterResult.data.parse_mode,
+            ...keyboard
+        });
     },
     actions: [
         {
-            value: /help(?=:(command|news|menu))/,
+            value: /help(?=:(command|news|menu|privacy))/,
             async execute(ctx) {
                 const [_, section] = ctx.callbackQuery.data.split(":");
                 await ctx.answerCbQuery();
@@ -61,19 +47,26 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                         await ctx.scene.enter('commands');
                         break;
                     }
+                    case "privacy":
                     case "news": {
                         const button = Markup.button.callback('🏠 Back to menu', 'help:menu');
                         const options = Markup.inlineKeyboard([button]);
-                        await ctx.editMessageText(news.join('\n'), { 
-                            parse_mode: 'Markdown',
-                            reply_markup: options.reply_markup
+                        const fullPath = path.join(documentDirectory, section === "news" ? "update.md" : "privacy-policy.md");
+                        const fileContents = fs.readFileSync(fullPath, "utf8");
+                        const matterResult = matter(fileContents);
+                        await ctx.editMessageText(`*${matterResult.data.title}*\n${matterResult.content}`, { 
+                            parse_mode: matterResult.data.parse_mode,
+                            ...options
                         });
                         break;
                     }
                     default: {
-                        await ctx.editMessageText(`*AM4 Telegram Bot*\n${text.join('\n')}`, {
-                            parse_mode: 'Markdown',
-                            reply_markup: keyboard.reply_markup
+                        const fullPath = path.join(documentDirectory, "help-menu.md");
+                        const fileContents = fs.readFileSync(fullPath, "utf8");
+                        const matterResult = matter(fileContents);
+                        await ctx.replyWithMarkdown(`*${matterResult.data.title}*\n${matterResult.content}`, {
+                            parse_mode: matterResult.data.parse_mode,
+                            ...keyboard
                         });
                     }
                 }
@@ -84,22 +77,24 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('commands', <BaseSceneOptions>{ ttl: 60000 }),
             async register() {
-                const files = fs.readdirSync(path.join(process.cwd(), 'client', 'telegram', 'commands')).filter(file => file.endsWith('.js'));
                 const markup = Markup.inlineKeyboard([Markup.button.callback('🏠 Back to menu', 'back')]);
+                const commandDirectory = path.join(process.cwd(), "client", "telegram", "commands");
+                const fileNames = fs.readdirSync(commandDirectory).filter(fileName => fileName.endsWith(".js"));
                 this.scene.use(async (ctx, next) => {
                     ctx.scene.session.user ||= ctx.from;
                     return next();
                 });
-                for await (const file of files) {
-                    const command: Command = await import(`./${file}`);
+                for (const fileName of fileNames) {
+                    const command: Command = await import(`./${fileName}`);
                     this.scene.command(command.name, async (ctx) => {
                         if (ctx.scene.session.user.id !== ctx.from.id) return;
-                        if (!command.help) return ctx.reply('Could not find any help for this command...');
-                        await ctx.deleteMessage().catch(() => undefined);
+                        if (!command.helpFileContent) return ctx.reply('Could not find any help section for this command...');
+                        await ctx.deleteMessage().catch(() => void 0);
+                        const matterResult = matter(command.helpFileContent);
                         const message = ctx.scene.session.message;
-                        await ctx.tg.editMessageText(message.chat.id, message.message_id, message.forward_signature, `/${command.name}\n${command.help}`, {
-                            reply_markup: markup.reply_markup,
-                            parse_mode: 'Markdown'
+                        await ctx.tg.editMessageText(message.chat.id, message.message_id, message.forward_signature, `/${matterResult.data.commandName}\n${matterResult.content}`, {
+                            parse_mode: "MarkdownV2",
+                            ...markup
                         });
                         await ctx.scene.leave();
                     });
@@ -107,17 +102,17 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 this.scene.enter(async (ctx) => {
                     const commands = await ctx.telegram.getMyCommands();
                     const content = `*Click the command that you would like to get help with.*\n${commands.map(({ command, description }) => `/${command} - ${description}`).join('\n')}`;
-                    ctx.scene.session.message = await ctx.editMessageText(content, {
-                        reply_markup: markup.reply_markup,
-                        parse_mode: 'Markdown'
-                    }) as Message.TextMessage;
+                    ctx.scene.session.message = await ctx.editMessageText(content, { ...markup, parse_mode: 'Markdown' }) as Message.TextMessage;
                 });
                 this.scene.action('back', async (ctx) => {
                     await ctx.scene.leave();
                     await ctx.answerCbQuery();
-                    await ctx.editMessageText(`*AM4 Telegram Bot*\n${text.join('\n')}`, {
-                        parse_mode: 'Markdown',
-                        reply_markup: keyboard.reply_markup
+                    const fullPath = path.join(documentDirectory, "help-menu.md");
+                    const fileContents = fs.readFileSync(fullPath, "utf8");
+                    const matterResult = matter(fileContents);
+                    await ctx.editMessageText(`*${matterResult.data.title}*\n${matterResult.content}`, {
+                        parse_mode: matterResult.data.parse_mode,
+                        ...keyboard
                     });
                 });
             }

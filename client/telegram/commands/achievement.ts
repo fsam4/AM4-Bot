@@ -2,10 +2,11 @@ import TelegramClientError from '../error';
 import { Markup, Scenes } from 'telegraf';
 import addMonths from 'date-fns/addMonths';
 import pug from 'pug';
+import fs from 'fs';
 
 import type { Telegram, AM4_Data } from '@typings/database';
 import type { Message, User } from 'typegram';
-import type { Command } from '../types';
+import type { Command } from '@telegram/types';
 
 interface SceneSession extends Scenes.SceneSessionData {
     message: Message.TextMessage;
@@ -21,7 +22,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
     name: commandName,
     cooldown: 10,
     description: 'Seach for an achievement',
-    help: "With this command you can search for information about achievements. The command has one option and it's only required achievement is `<achievement>` which is the name of the achievement. This command can only be used in direct messages with the bot!",
+    helpFileContent: fs.readFileSync("./documents/markdown/achievement.md", "utf8"),
     async execute(ctx) {
         if (ctx.chat.type !== 'private') {
             await ctx.reply('This command can only be used in DMs...');

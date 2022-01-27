@@ -12,8 +12,8 @@ import isFuture from 'date-fns/isFuture';
 import isPast from 'date-fns/isPast';
 
 import type { Settings, Discord } from '@typings/database';
+import type { SlashCommand } from '@discord/types';
 import type { APIMessage } from 'discord-api-types/v9';
-import type { SlashCommand } from '../types';
 
 const { nextPricePeriod } = Utils;
 
@@ -268,7 +268,7 @@ const command: SlashCommand = {
                                 content += `co2 is ${Formatters.bold(`$${co2.toLocaleString(locale)}`)}`;
                             }
                             await webhookClient.editMessage(channel.message, content)
-                            .catch(() => undefined);
+                            .catch(() => void 0);
                         }
                     }
                     console.log(`Notification edited by ${interaction.user.id}`);
@@ -302,7 +302,7 @@ const command: SlashCommand = {
                             token: decrypted.toString(CryptoJS.enc.Utf8)
                         });
                         await webhookClient.deleteMessage(channel.message)
-                        .catch(() => undefined);
+                        .catch(() => void 0);
                     }
                     console.log(`Notification deleted by ${interaction.user.id}`);
                     await interaction.editReply("The notification has been deleted!");

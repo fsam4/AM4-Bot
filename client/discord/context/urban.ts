@@ -2,7 +2,7 @@ import { MessageEmbed, Formatters, Constants, MessageActionRow, MessageButton, M
 import DiscordClientError from '../error';
 import fetch from 'node-fetch';
 
-import type { ContextMenu } from '../types';
+import type { ContextMenu } from '@discord/types';
 
 interface Definition {
     list: Array<{

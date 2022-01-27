@@ -68,18 +68,9 @@ if (cluster.isPrimary) {
 
     if (!isDev) {
 
-        const apiKey = process.env.AM4_ACCESS_TOKEN;
-        if (apiKey === undefined) throw new Error("AM4_ACCESS_TOKEN must be provided!");
-
-        const toolsKey = process.env.TOOLS_ACCESS_TOKEN;
-        if (toolsKey === undefined) throw new Error("TOOLS_ACCESS_TOKEN must be provided!");
-
-        const rest = new AM4RestClient({
-            accessToken: {
-                am4: apiKey,
-                tools: toolsKey
-            }
-        });
+        const accessToken = process.env.AM4_ACCESS_TOKEN;
+        if (accessToken === undefined) throw new Error("AM4_ACCESS_TOKEN must be provided!");
+        const rest = new AM4RestClient(accessToken);
 
         const logWebhookId = process.env.LOG_WEBHOOK_ID;
         if (logWebhookId === undefined) throw new Error("LOG_WEBHOOK_ID must be provided!");
@@ -126,18 +117,9 @@ if (cluster.isPrimary) {
 
 } else if (cluster.isWorker) {
 
-    const apiKey = process.env.AM4_ACCESS_TOKEN;
-    if (apiKey === undefined) throw new Error("AM4_ACCESS_TOKEN must be provided!");
-
-    const toolsKey = process.env.TOOLS_ACCESS_TOKEN;
-    if (toolsKey === undefined) throw new Error("TOOLS_ACCESS_TOKEN must be provided!");
-
-    const rest = new AM4RestClient({
-        accessToken: {
-            am4: apiKey,
-            tools: toolsKey
-        }
-    });
+    const accessToken = process.env.AM4_ACCESS_TOKEN;
+    if (accessToken === undefined) throw new Error("AM4_ACCESS_TOKEN must be provided!");
+    const rest = new AM4RestClient(accessToken);
 
     const databaseUrl = process.env.DATABASE_URL;
     if (databaseUrl === undefined) throw new Error("DATABASE_URL must be provided!");
@@ -337,7 +319,7 @@ if (cluster.isPrimary) {
                         description: command.description
                     });
                     bot.command(command.name, async (ctx) => {
-                        const users = database.db('Telegram').collection<Database.Telegram.user>('Users');
+                        const users = options.database.telegram.collection<Database.Telegram.user>('Users');
                         const user = await users.findOne({ id: ctx.from.id });
                         if (user && !user.admin_level) {
                             const cooldown = await cooldowns.get(ctx.from.id.toString());
@@ -346,7 +328,7 @@ if (cluster.isPrimary) {
                                 .then(msg => {
                                     setTimeout(() => {
                                         ctx.deleteMessage(msg.message_id)
-                                        .catch(() => undefined);
+                                        .catch(() => void 0);
                                     }, 10000);
                                 });
                                 return;
@@ -356,35 +338,36 @@ if (cluster.isPrimary) {
                             }
                         }
                         await command.execute(ctx, { ...options, account: user })
-                        if (!user) {
-                            await users.insertOne({
-                                id: ctx.from.id,
-                                airline_id: null,
-                                admin_level: 0,
-                                commands: [{ command: command.name, uses: 1 }],
-                            });
-                        } else {
-                            if (!user.commands.some(({ command: command_name }) => command_name === command.name)) {
-                                await users.updateOne({ id: ctx.from.id }, {
-                                    $push: {
-                                        commands: {
-                                            command: command.name,
-                                            uses: 1
-                                        }
-                                    }
+                        if (!["start", "help"].includes(command.name)) {
+                            if (!user) {
+                                await users.insertOne({
+                                    id: ctx.from.id,
+                                    admin_level: 0,
+                                    commands: [{ command: command.name, uses: 1 }],
                                 });
                             } else {
-                                await users.updateOne({ id: ctx.from.id }, 
-                                    {
-                                        $inc: {
-                                            "commands.$[element].uses": 1
+                                if (!user.commands.some(({ command: command_name }) => command_name === command.name)) {
+                                    await users.updateOne({ id: ctx.from.id }, {
+                                        $push: {
+                                            commands: {
+                                                command: command.name,
+                                                uses: 1
+                                            }
                                         }
-                                    }, 
-                                    {
-                                        upsert: true,
-                                        arrayFilters: [{ "element.command": command.name }]
-                                    }
-                                );
+                                    });
+                                } else {
+                                    await users.updateOne({ id: ctx.from.id }, 
+                                        {
+                                            $inc: {
+                                                "commands.$[element].uses": 1
+                                            }
+                                        }, 
+                                        {
+                                            upsert: true,
+                                            arrayFilters: [{ "element.command": command.name }]
+                                        }
+                                    );
+                                }
                             }
                         }
                     });

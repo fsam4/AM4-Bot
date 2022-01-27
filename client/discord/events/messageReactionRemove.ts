@@ -1,5 +1,5 @@
 import type { Discord } from '@typings/database';
-import type { Event } from '../types';
+import type { Event } from '@discord/types';
 
 const event: Event = {
     name: "messageReactionRemove",
@@ -28,7 +28,7 @@ const event: Event = {
             await reaction.message.guild.members.fetch(user.id)
             .then(async member => {
                 const reason = `Removed via reaction role by ${reaction.message.author.username}#${reaction.message.author.discriminator}`;
-                await member.roles.remove(role, reason).catch(() => undefined);
+                await member.roles.remove(role, reason).catch(() => void 0);
             })
             .catch(console.error)
         }

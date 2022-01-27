@@ -2,7 +2,7 @@ import { Formatters } from 'discord.js';
 import chalk from 'chalk';
 
 import type { Settings, Discord } from '@typings/database';
-import type { Event } from '../types';
+import type { Event } from '@discord/types';
 
 const locale = "en";
 
@@ -18,14 +18,14 @@ const event: Event = {
         await database.discord.collection<Discord.panel>("Panels").deleteMany(query);
         await database.discord.collection<Discord.notification>("Notifications").deleteMany(query);
         await database.discord.collection<Discord.giveaway>("Giveaways").deleteMany(query);
-        await guild.commands.permissions.set({ fullPermissions: [] }).catch(() => undefined);
+        await guild.commands.permissions.set({ fullPermissions: [] }).catch(() => void 0);
         await guild.commands.fetch()
         .then(async commands => {
             if (commands.size) {
                 await guild.commands.set([]);
             }
         })
-        .catch(() => undefined);
+        .catch(() => void 0);
         client.user.setPresence({
             activities: [{
                 type: "WATCHING",

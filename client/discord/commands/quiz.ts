@@ -5,7 +5,7 @@ import { promisify } from 'util';
 import config from '../../../config.json';
 
 import type { Quiz, Discord, QuestionDifficulty } from '@typings/database';
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 
 const quizCooldowns = new Set<string>();
 const eventMultiplier = 1;

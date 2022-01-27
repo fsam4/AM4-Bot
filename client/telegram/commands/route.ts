@@ -1,9 +1,11 @@
+import { MongoDB as Utils } from '../../utils';
 import TelegramClientError from '../error';
 import { Markup, Scenes } from 'telegraf';
 import Route from '../../../src/classes/route';
 import pug from 'pug';
+import fs from 'fs';
 
-import type { Command, DataCallbackQuery } from '../types';
+import type { Command, DataCallbackQuery } from '@telegram/types';
 import type { Message, User } from 'typegram';
 import type { AM4_Data } from '@typings/database';
 
@@ -19,11 +21,13 @@ interface SceneSession extends Scenes.SceneSessionData {
 type BaseSceneOptions = ConstructorParameters<typeof Scenes.BaseScene>[1];
 type SceneContext = Scenes.SceneContext<SceneSession>;
 
+const { createLocationSphere } = Utils;
+
 const command: Command<Scenes.SceneContext, never, SceneContext> = {
     name: 'route',
     cooldown: 25,
     description: "Search for a route and it's stopover, config, ticket prices...",
-    help: "This command can be used to search for a route and it's ticket prices, stopover, configuration, demand, etc. The command has two required parameters and three optional parameters. The required parameters are `<icao|iata>, <icao|iata>` which are the ICAO or IATA codes of the departure and arrival airports. The three optional parameters are `(plane)` which can be used to define the plane to use on this route, `(reputation)` which can be used to define the reputation used in the calculations and `(flights)` which can be used to define the flights per day of the route. If flights is not defined it will calculate it.",
+    helpFileContent: fs.readFileSync("./documents/markdown/route.md", "utf8"),
     async execute(ctx) {
         await ctx.scene.enter('route');
     },
@@ -32,8 +36,8 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('route', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database, rest }) {
-                const planes = database.am4.collection<AM4_Data.plane>('Planes');
-                const airports = database.am4.collection<AM4_Data.airport>('Airports');
+                const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
+                const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
                 this.scene.use((ctx, next) => {
                     ctx.scene.session.user ||= ctx.from;
                     return next();
@@ -63,14 +67,14 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                         if (input.length < 2) throw new TelegramClientError('You need to define both departure and arrival airports!');
                         type args = [string, string, string, number, number];
                         let [dep, arr, plane_input, rep=99, flights] = input.map((string, i) => i > 2 ? Number(string) : string) as args;
-                        const departure = await airports.findOne({
+                        const departure = await airportCollection.findOne({
                             $or: [
                                 { icao: dep.toLowerCase() },
                                 { iata: dep.toLowerCase() }
                             ]
                         });
                         if (!departure) throw new TelegramClientError('That is not a valid departure airport...');
-                        const arrival = await airports.findOne({
+                        const arrival = await airportCollection.findOne({
                             $or: [
                                 { icao: arr.toLowerCase() },
                                 { iata: arr.toLowerCase() }
@@ -83,9 +87,13 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                         });
                         if (!status.success) throw new TelegramClientError(status.error);
                         const compile = pug.compileFile('client/telegram/layouts/route.pug');
-                        let options: object = { departure, arrival, route, ticket: ticket[mode].default, demand, locale };
+                        let options: { [key: string]: any } = { 
+                            departure, arrival, demand, locale,
+                            distance: route.distance, 
+                            ticket: ticket[mode].default 
+                        };
                         if (plane_input) {
-                            const plane = await planes.findOne({ $text: { $search: `"${plane_input}"` } });
+                            const plane = await planeCollection.findOne({ $text: { $search: `"${plane_input}"` } });
                             if (!plane) throw new TelegramClientError(`No plane was found with *${plane_input}*...`);
                             if (mode === "easy") {
                                 plane.A_check.price /= 2;
@@ -104,13 +112,24 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                                     reputation: rep 
                                 }
                             });
-                            options = { ...options, config: configuration, flights, plane };
+                            options = { ...options, configuration, flights, plane };
                             if (route.distance > plane.range) {
-                                if (plane.type === "vip") throw new TelegramClientError("Currently it is not possible to fetch a stopover for a VIP plane...");
-                                const { stopover, status } = await route.findStopover(plane.name, plane.type);
-                                if (!status.success) throw new TelegramClientError(status.error.replace('long route for this aircraft', 'No suitable stopover could be found for this route...'));
-                                if (typeof stopover[mode] === 'string') throw new TelegramClientError(<string>stopover[mode]);
-                                options = { ...options, stopover: stopover[mode] };
+                                const airports = await airportCollection.find({
+                                    location: {
+                                        $geoWithin: {
+                                            $centerSphere: createLocationSphere(
+                                                departure.location.coordinates, 
+                                                arrival.location.coordinates
+                                            )
+                                        }
+                                    }
+                                }).toArray();
+                                const stopovers = Route.findStopovers([departure, arrival], airports, plane, mode);
+                                if (!stopovers.length) throw new TelegramClientError("No suitable stopover could be found for this route...");
+                                const [stopover] = stopovers;
+                                const lastIndex = stopovers.length - 1;
+                                const [stopoverAirport] = stopover.airports.slice(1, lastIndex);
+                                options = { ...options, stopover: stopoverAirport };
                             }
                         }
                         await ctx.answerCbQuery();
@@ -128,7 +147,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                 });
                 this.scene.action('exit', async (ctx) => {
                     await ctx.answerCbQuery();
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     await ctx.scene.leave();
                 });
             }

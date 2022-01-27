@@ -3,6 +3,7 @@ import TelegramClientError from '../error';
 import { Markup, Scenes } from 'telegraf';
 import QuickChart from 'quickchart-js';
 import pug from 'pug';
+import fs from 'fs';
 
 import formatDistanceToNowStrict from 'date-fns/formatDistanceToNowStrict';
 import differenceInDays from 'date-fns/differenceInDays';
@@ -11,7 +12,7 @@ import addMonths from 'date-fns/addMonths';
 import format from 'date-fns/format';
 
 import type { Message, User, InputMediaPhoto } from 'typegram';
-import type { Command, DataCallbackQuery } from '../types';
+import type { Command, DataCallbackQuery } from '@telegram/types';
 import type { Telegram, AM4_Data } from '@typings/database';
 import type { Member } from '@source/classes/alliance';
 import type { Context } from 'telegraf';
@@ -54,7 +55,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
     name: commandName,
     cooldown: 10,
     description: 'Search or compare alliances',
-    help: "This command can be used to search for an alliance and it's members or to compare alliances. The command has three choices which are search, members and compare. The search option has one required argument which is the name of the alliance. The members option has three required arguments: `<name>`, `<offline|contr_today|contr_total|sv>`, `<ascending|descending>`. `<name>` is the name of the alliance, `<offline|contr_today|contr_total|sv>` is the statistic to sort the members by and `<ascending|descending>` is the order to sort by. The last option is compare which can be used to compare alliances. It requires 2-5 alliance names that must be seperated by a comma.",
+    helpFileContent: fs.readFileSync("./documents/markdown/alliance.md", "utf8"),
     async execute(ctx, { timeouts }) {
         const keyboard = Markup.inlineKeyboard([
             Markup.button.callback('🔍 Search', 'search:alliance'),
@@ -87,7 +88,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 const memberCollection = database.am4.collection<AM4_Data.member>("Members");
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     const keyboard = await keyboards.findOne({ id: ctx.from.id, command: commandName });
                     const content: Parameters<typeof ctx.replyWithMarkdown> = ['Type the name of the alliance...\nFormat: `<name>`\nExample: `air france klm`'];
                     if (keyboard) {
@@ -341,7 +342,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 ];
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     const keyboard = await keyboards.findOne({ id: ctx.from.id, command: commandName });
                     const content: Parameters<typeof ctx.replyWithMarkdown> = ['Type the name of the alliance...\nFormat: `<name>`\nExample: `air france klm`'];
                     if (keyboard) {
@@ -470,7 +471,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 });
                 this.scene.action('delete', async (ctx) => {
                     await ctx.answerCbQuery();
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     await ctx.scene.leave();
                 });
             }
@@ -481,7 +482,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 const allianceCollection = database.am4.collection<AM4_Data.alliance>('Alliances');
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     const action_keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'exit')]);
                     await ctx.replyWithMarkdown('Type the names of the alliances seperated by commas...\nFormat: `<name>,...`\nExample: `air france klm, starfleet, jetstar`', action_keyboard)
                 })
@@ -885,7 +886,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 });
                 this.scene.action('leave', async (ctx) => {
                     await ctx.answerCbQuery();
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     await ctx.scene.leave();
                 });
             }

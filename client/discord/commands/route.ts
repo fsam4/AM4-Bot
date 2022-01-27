@@ -8,9 +8,9 @@ import Route from '../../../src/classes/route';
 import Plane from '../../../src/lib/plane';
 
 import type { Settings, AM4_Data } from '@typings/database';
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 
-const { createAirportFilter, createPlaneFilter } = Utils.MongoDB;
+const { createAirportFilter, createPlaneFilter, createLocationSphere } = Utils.MongoDB;
 const { formatCode, formatSeats } = Utils.Discord;
 
 const command: SlashCommand = {
@@ -233,7 +233,7 @@ const command: SlashCommand = {
     async execute(interaction, { database, rest, ephemeral, locale }) {
         await interaction.deferReply({ ephemeral });
         try {
-            const settings = database.settings.collection<Settings.user>('Users')
+            const settings = database.settings.collection<Settings.user>('Users');
             const planeSettings = database.settings.collection<Settings.plane>('Planes');
             const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
             const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
@@ -326,11 +326,9 @@ const command: SlashCommand = {
                         if (interaction.options.getBoolean("4x")) plane.speed *= 4;
                         if (stopoverCode) {
                             const stopover = await airportCollection.findOne(createAirportFilter(stopoverCode));
-                            const locations = [departure, stopover, arrival].map(airport => ({
-                                longitude: airport.location.coordinates[0],
-                                latitude: airport.location.coordinates[1]
-                            }));
-                            const { distance, distances } = Route.distance(...locations);
+                            const locations = [departure, stopover, arrival].map(airport => airport.location.coordinates);
+                            type Locations = Parameters<typeof Route.distance>;
+                            const { distance, distances } = Route.distance(...locations as Locations);
                             if (!flights) flights = Route.flights(distance, plane.speed, user.options.activity);
                             const { configuration, preference } = Route.configure(plane, {
                                 options: {
@@ -397,7 +395,7 @@ const command: SlashCommand = {
                             embed.addFields([
                                 { 
                                     name: Formatters.bold(Formatters.underscore("Route information")), 
-                                    value: `**Departure:** ${route.departure.airport} (${formatCode(departure, user.options.code)})\n**Stopover:** ${stopover.city.capitalize()}, ${stopover.country.capitalize()} (${formatCode(stopover, user.options.code)})\n**Arrival:** ${route.arrival.airport} (${formatCode(arrival, user.options.code)})\n**Distance:** ${distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights.toLocaleString(locale)}/day`, 
+                                    value: `**Departure:** ${route.departure} (${formatCode(departure, user.options.code)})\n**Stopover:** ${stopover.city.capitalize()}, ${stopover.country.capitalize()} (${formatCode(stopover, user.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user.options.code)})\n**Distance:** ${distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights.toLocaleString(locale)}/day`, 
                                     inline: false 
                                 },
                                 { 
@@ -477,7 +475,7 @@ const command: SlashCommand = {
                                     ephemeral: true
                                 });
                             }
-                            const ticketType = plane.type === "vip" ? "vip" : "default";
+                            const ticketType = plane.type === "vip" ? plane.type : "default";
                             const estimatedSV = Route.estimatedShareValueGrowth(plane, options) / flights;
                             embed.addFields([
                                 { 
@@ -497,27 +495,38 @@ const command: SlashCommand = {
                                 }
                             ]);
                             if (route.distance > plane.range) {
-                                if (plane.type === "vip") throw new DiscordClientError("Currently it is not possible to fetch a stopover for a VIP plane...");
-                                const { status, stopover } = await route.findStopover(plane.name, plane.type);
-                                if (!status.success) followups.push('**Warning:** no suitable stopover could be found for this route!');
-                                if (status.success && typeof stopover[user.mode] !== 'string') {
-                                    embed.fields.unshift({ 
+                                const airports = await airportCollection.find({
+                                    location: {
+                                        $geoWithin: {
+                                            $centerSphere: createLocationSphere(
+                                                departure.location.coordinates,
+                                                arrival.location.coordinates
+                                            )
+                                        }
+                                    }
+                                }).toArray();
+                                const stopovers = Route.findStopovers([departure, arrival], airports, plane, user.mode);
+                                if (stopovers.length) followups.push('⚠️ No suitable stopover could be found for this route!');
+                                if (stopovers.length) {
+                                    const [stopoverRoute] = stopovers;
+                                    const lastIndex = stopoverRoute.airports.length;
+                                    const [stopover] = stopoverRoute.airports.slice(1, lastIndex);
+                                    embed.fields.unshift(                                { 
                                         name: Formatters.bold(Formatters.underscore("Route information")), 
-                                        // @ts-expect-error: stopover type is always correct at runtime
-                                        value: `**Departure:** ${route.departure.airport} (${formatCode(departure, user.options.code)})\n**Stopover:** ${stopover[user.mode].city}, ${stopover[user.mode].country} (${formatCode(stopover[user.mode], user.options.code)})\n**Arrival:** ${route.arrival.airport} (${formatCode(arrival, user.options.code)}\n**Distance:** ${route.distance.toLocaleString(locale)}km (+${stopover[user.mode].difference.toFixed(3)}km)\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights}/day`, 
+                                        value: `**Departure:** ${route.departure} (${formatCode(departure, user.options.code)})\n**Stopover:** ${stopover.city.capitalize()}, ${stopover.country.capitalize()} (${formatCode(stopover, user.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user.options.code)})\n**Distance:** ${stopoverRoute.distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights.toLocaleString(locale)}/day`, 
                                         inline: false 
                                     });
                                 } else {
                                     embed.fields.unshift({ 
                                         name: Formatters.bold(Formatters.underscore("Route information")), 
-                                        value: `**Departure:** ${route.departure.airport} (${formatCode(departure, user.options.code)})\n**Arrival:** ${route.arrival.airport} (${formatCode(arrival, user.options.code)})\n**Distance:** ${route.distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights}/day`, 
+                                        value: `**Departure:** ${route.departure} (${formatCode(departure, user.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user.options.code)})\n**Distance:** ${route.distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights}/day`, 
                                         inline: false 
                                     });
                                 }
                             } else {
                                 embed.fields.unshift({ 
                                     name: Formatters.bold(Formatters.underscore("Route information")), 
-                                    value: `**Departure:** ${route.departure.airport} (${formatCode(departure, user.options.code)})\n**Arrival:** ${route.arrival.airport} (${formatCode(arrival, user.options.code)})\n**Distance:** ${route.distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights}/day`, 
+                                    value: `**Departure:** ${route.departure} (${formatCode(departure, user.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user.options.code)})\n**Distance:** ${route.distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights}/day`, 
                                     inline: false 
                                 });
                             }  
@@ -533,20 +542,18 @@ const command: SlashCommand = {
                     } else {
                         if (stopoverCode) {
                             const stopover = await airportCollection.findOne(createAirportFilter(stopoverCode));
-                            const locations = [departure, stopover, arrival].map(airport => ({
-                                longitude: airport.location.coordinates[0],
-                                latitude: airport.location.coordinates[1]
-                            }));
-                            const { distance } = Route.distance(...locations);
+                            const locations = [departure, stopover, arrival].map(airport => airport.location.coordinates);
+                            type Locations = Parameters<typeof Route.distance>;
+                            const { distance } = Route.distance(...locations as Locations);
                             embed.fields.unshift({ 
                                 name: Formatters.bold(Formatters.underscore("Route information")), 
-                                value: `**Departure:** ${route.departure.airport} (${formatCode(departure, user.options.code)})\n**Stopover:** ${stopover.city.capitalize()}, ${stopover.country.capitalize()} (${formatCode(stopover, user.options.code)})\n**Arrival:** ${route.arrival.airport} (${formatCode(arrival, user.options.code)})\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Distance:** ${distance.toLocaleString(locale)}km`, 
+                                value: `**Departure:** ${route.departure} (${formatCode(departure, user.options.code)})\n**Stopover:** ${stopover.city.capitalize()}, ${stopover.country.capitalize()} (${formatCode(stopover, user.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user.options.code)})\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Distance:** ${distance.toLocaleString(locale)}km`, 
                                 inline: false 
                             });
                         } else {
                             embed.fields.unshift({ 
                                 name: Formatters.bold(Formatters.underscore("Route information")), 
-                                value: `**Departure:** ${route.departure.airport} (${formatCode(departure, user.options.code)})\n**Arrival:** ${route.arrival.airport} (${formatCode(arrival, user.options.code)})\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Distance:** ${route.distance.toLocaleString(locale)}km`, 
+                                value: `**Departure:** ${route.departure} (${formatCode(departure, user.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user.options.code)})\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Distance:** ${route.distance.toLocaleString(locale)}km`, 
                                 inline: false 
                             });
                         }
@@ -564,14 +571,10 @@ const command: SlashCommand = {
                             })
                         ]);
                     }
-                    const reply = await interaction.editReply({
-                        embeds: [embed],
-                        components: [row],
-                        files: files
-                    }) as Message;
+                    const reply = await interaction.editReply({ embeds: [embed], components: [row], files }) as Message;
                     for (const options of followups) {
                         await interaction.followUp(options)
-                        .catch(() => undefined);
+                        .catch(() => void 0);
                     }
                     const filter = ({ user, customId }: MessageComponentInteraction) => customId === "plane" || user.id === interaction.user.id;
                     const collector = reply.createMessageComponentCollector({ filter, time: 10 * 60 * 1000 });
@@ -638,7 +641,7 @@ const command: SlashCommand = {
                     collector.once("end", async collected => {
                         row.components.forEach(component => component.setDisabled(true));
                         const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(() => undefined);
+                        await reply.editReply({ components: [row] }).catch(() => void 0);
                     });
                     break;
                 }
@@ -647,10 +650,10 @@ const command: SlashCommand = {
                     if (mode) user.mode = <GameMode>mode;
                     if (!user.mode) throw new DiscordClientError('You need to define the game mode or save it by logging in with `/user login`...');
                     const departure_code = interaction.options.getString("departure", true).trim();
-                    const dep_airport = await airportCollection.findOne(createAirportFilter(departure_code));
-                    if (!dep_airport) throw new DiscordClientError('That is not a valid departure airport...');
+                    const departure = await airportCollection.findOne(createAirportFilter(departure_code));
+                    if (!departure) throw new DiscordClientError('That is not a valid departure airport...');
                     const { status, routes } = await rest.fetchRoute('research', {
-                        dep_icao: dep_airport.icao,
+                        dep_icao: departure.icao,
                         min_runway: interaction.options.getInteger("min_runway") || 0,
                         max_distance: interaction.options.getInteger("max_distance", true)
                     });
@@ -711,7 +714,7 @@ const command: SlashCommand = {
                     collector.once('end', async collected => {
                         row.setComponents(select.setDisabled(true));
                         const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(() => undefined);
+                        await reply.editReply({ components: [row] }).catch(() => void 0);
                     });
                     break;
                 }
@@ -750,7 +753,7 @@ const command: SlashCommand = {
                                         'Large load (k)'
                                     ],
                                     datasets: routes.map(({ demand, route }) => ({
-                                        label: route.arrival.airport,
+                                        label: route.arrival,
                                         data: [ 
                                             demand.Y, 
                                             demand.J, 
@@ -815,7 +818,7 @@ const command: SlashCommand = {
                             data: {
                                 type: 'horizontalBar',
                                 data: {
-                                    labels: routes.map(({ route }) => route.arrival.airport),
+                                    labels: routes.map(({ route }) => route.arrival),
                                     datasets: [
                                         {
                                             label: 'Distance',
@@ -939,7 +942,7 @@ const command: SlashCommand = {
                                             }
                                         });
                                         return {
-                                            label: route.arrival.airport,
+                                            label: route.arrival,
                                             data: [ profit, expenses, income ],
                                             borderWidth: 1,
                                         }
@@ -1051,7 +1054,7 @@ const command: SlashCommand = {
                         collector.once("end", async collected => {
                             row.setComponents(select.setDisabled(true));
                             const reply = collected.last() || interaction;
-                            await reply.editReply({ components: [row] }).catch(() => undefined);
+                            await reply.editReply({ components: [row] }).catch(() => void 0);
                         });
                         break;
                     }
@@ -1072,84 +1075,142 @@ const command: SlashCommand = {
         const focused = interaction.options.getFocused(true);
         try {
             let choices: ApplicationCommandOptionChoice[];
-            if (focused.name === "plane") {
-                const value = (<string>focused.value)?.slice(0, 15).match(/(\w|-|\s){1,}/g)?.join("");
-                const planes = database.am4.collection<AM4_Data.plane>("Planes");
-                const pipeline: Document[] = [
-                    {
-                        $limit: 25
-                    },
-                    {
-                        $addFields: {
-                            value: {
-                                $toString: "$_id"
-                            }
-                        }
-                    },
-                    {
-                        $project: {
-                            _id: false,
-                            name: true,
-                            value: true
-                        }
-                    }
-                ];
-                if (value) {
-                    pipeline.unshift({
-                        $match: {
-                            name: { 
-                                $regex: `.*${value}.*`,
-                                $options: "ix" 
-                            }
-                        }
-                    });
-                } else {
-                    pipeline.unshift({
-                        $sort: {
-                            name: 1
-                        }
-                    });
-                }
-                const cursor = planes.aggregate<ApplicationCommandOptionChoice>(pipeline, { maxTimeMS: 2800 });
-                choices = await cursor.toArray();
-            } else {
-                const value = (<string>focused.value)?.slice(0, 10).match(/[a-zA-Z]/g)?.join("");
-                const airports = database.am4.collection<AM4_Data.airport>("Airports");
-                const query: Filter<AM4_Data.airport> = value && {
-                    $or: [
-                        { 
-                            icao: { 
-                                $regex: `.*${value.slice(0, 4)}.*`,
-                                $options: "i" 
-                            } 
+            switch(focused.name) {
+                case "plane": {
+                    const value = (<string>focused.value)?.slice(0, 15).match(/(\w|-|\s){1,}/g)?.join("");
+                    const planes = database.am4.collection<AM4_Data.plane>("Planes");
+                    const pipeline: Document[] = [
+                        {
+                            $limit: 25
                         },
-                        { 
-                            iata: { 
-                                $regex: `.*${value.slice(0, 3)}.*`,
-                                $options: "i" 
-                            } 
+                        {
+                            $addFields: {
+                                value: {
+                                    $toString: "$_id"
+                                }
+                            }
+                        },
+                        {
+                            $project: {
+                                _id: false,
+                                name: true,
+                                value: true
+                            }
                         }
-                    ]
-                };
-                const cursor = airports.find(query, {
-                    maxTimeMS: 2800,
-                    limit: 25
-                });
-                if (!value) cursor.sort({ country: 1 });
-                const results = await cursor.toArray();
-                choices = results.map(airport => ({
-                    name: `${airport.city.capitalize()}, ${airport.country_code.toUpperCase()} (${airport.iata.toUpperCase()}/${airport.icao.toUpperCase()})`,
-                    value: airport._id.toHexString()
-                }));
+                    ];
+                    if (value) {
+                        pipeline.unshift({
+                            $match: {
+                                name: { 
+                                    $regex: `.*${value}.*`,
+                                    $options: "ix" 
+                                }
+                            }
+                        });
+                    } else {
+                        pipeline.unshift({
+                            $sort: {
+                                name: 1
+                            }
+                        });
+                    }
+                    const cursor = planes.aggregate<ApplicationCommandOptionChoice>(pipeline, { maxTimeMS: 2800 });
+                    choices = await cursor.toArray();
+                    break;
+                }
+                case "stopover": {
+                    const planeValue = interaction.options.getString("plane");
+                    if (planeValue) {
+                        const airportCollection = database.am4.collection<AM4_Data.airport>("Airports");
+                        const planeCollection = database.am4.collection<AM4_Data.plane>("Planes");
+                        const departure = interaction.options.getString("departure");
+                        const arrival = interaction.options.getString("arrival");
+                        const route = await airportCollection.find({ 
+                            $or: [
+                                createAirportFilter(departure),
+                                createAirportFilter(arrival)
+                            ] 
+                        }).toArray();
+                        type Coordinates = Parameters<typeof createLocationSphere>;
+                        let query: Filter<AM4_Data.airport> = {
+                            location: {
+                                $geoWithin: {
+                                    $centerSphere: createLocationSphere(...route.map(airport => airport.location.coordinates) as Coordinates)
+                                }
+                            }
+                        };
+                        const value = (<string>focused.value)?.slice(0, 10).match(/[a-zA-Z]/g)?.join("");
+                        if (value) query = {
+                            ...query,
+                            $or: [
+                                { 
+                                    icao: { 
+                                        $regex: `.*${value.slice(0, 4)}.*`,
+                                        $options: "i" 
+                                    } 
+                                },
+                                { 
+                                    iata: { 
+                                        $regex: `.*${value.slice(0, 3)}.*`,
+                                        $options: "i" 
+                                    } 
+                                }
+                            ]
+                        };
+                        const airports = await airportCollection.find(query).toArray();
+                        const plane = await planeCollection.findOne(createPlaneFilter(planeValue));
+                        const stopovers = Route.filterStopovers(route, airports, plane);
+                        choices = stopovers.map(stopover => {
+                            const lastIndex = stopover.airports.length - 1;
+                            const [airport] = stopover.airports.slice(1, lastIndex);
+                            return {
+                                name: `${airport.city.capitalize()}, ${airport.country_code.toUpperCase()} (${airport.iata.toUpperCase()}/${airport.icao.toUpperCase()})`,
+                                value: airport._id.toHexString()
+                            };
+                        });
+                        break;
+                    }
+                    // Fall through to default if plane isn't specified
+                }
+                default: {
+                    const value = (<string>focused.value)?.slice(0, 10).match(/[a-zA-Z]/g)?.join("");
+                    const airports = database.am4.collection<AM4_Data.airport>("Airports");
+                    const query: Filter<AM4_Data.airport> = value && {
+                        $or: [
+                            { 
+                                icao: { 
+                                    $regex: `.*${value.slice(0, 4)}.*`,
+                                    $options: "i" 
+                                } 
+                            },
+                            { 
+                                iata: { 
+                                    $regex: `.*${value.slice(0, 3)}.*`,
+                                    $options: "i" 
+                                } 
+                            }
+                        ]
+                    };
+                    const cursor = airports.find(query, {
+                        maxTimeMS: 2800,
+                        limit: 25
+                    });
+                    if (!value) cursor.sort({ country: 1 });
+                    const results = await cursor.toArray();
+                    choices = results.map(airport => ({
+                        name: `${airport.city.capitalize()}, ${airport.country_code.toUpperCase()} (${airport.iata.toUpperCase()}/${airport.icao.toUpperCase()})`,
+                        value: airport._id.toHexString()
+                    }));
+                }
             }
             await interaction.respond(choices ?? [])
-            .catch(() => undefined);
+            .catch(() => void 0);
         }
         catch(error) {
             console.error("Error while autocompleting:", error);
             if (!interaction.responded) {
                 interaction.respond([])
-                .catch(() => undefined);
+                .catch(() => void 0);
             };
         }
     }

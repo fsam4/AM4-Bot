@@ -1,27 +1,27 @@
 import Plane from '../lib/plane';
 import Status from './status';
-import Stopover from './stopover';
-import Airport from './airport';
 import fetch from 'node-fetch';
 
 import type { AM4_Data } from '@typings/database';
-import type * as Tools from '@typings/api/tools';
-import type * as AM4 from '@typings/api/am4';
+import type * as AM4 from '@typings/am4-api';
 import type AM4Client from '@source/index';
 
 type CargoLoadType = "L" | "H";
 type PaxSeatType = "Y" | "J" | "F";
 type SeatType = CargoLoadType | PaxSeatType;
+type GameMode = "realism" | "easy";
 
 type CargoConfiguration = Record<CargoLoadType, number>;
 type PaxConfiguration = Record<PaxSeatType, number>;
+
+type Coordinates = [number, number];
 
 interface ProfitOptions {
     options: {
         fuel_price: number;
         co2_price: number;
         activity: number;
-        mode: 'realism' | 'easy';
+        mode: GameMode;
         reputation: number;
     }
     route: {
@@ -48,7 +48,7 @@ interface ConfigurationOptions {
         reputation?: number;
         flights: number;
         activity: number;
-        mode: 'realism' | 'easy';
+        mode: GameMode;
     }
 }
 
@@ -57,7 +57,7 @@ interface SearchQuery {
     arr_icao: string; 
 }
 
-const toolsBaseUrl = "https://api.am4tools.com";
+const R = 6371 * (Math.pow(10, 3));
 
 function padNumber(number: number, padding: number) {
     let str = number.toString();
@@ -69,7 +69,7 @@ function padNumber(number: number, padding: number) {
  * Represents a route
  * @constructor
  * @param route - The raw API data of the route
- * @param client - The AM4 client that was used
+ * @param client - The AM4 rest client that was used
  * @param searchQuery - The given options for this route
  */
 
@@ -77,16 +77,9 @@ export default class Route extends Status {
     protected _route: AM4.Route["route"];
     protected _demand: AM4.Route["demand"];
     public readonly route?: {
-        departure: {
-            airport: string,
-            fetch(): Promise<Airport>
-        }
-        arrival: {
-            airport: string,
-            fetch(): Promise<Airport>
-        }
+        departure: string;
+        arrival: string;
         distance: number;
-        findStopover(plane: string, type: 'pax' | 'cargo'): Promise<Stopover>
     }
     public readonly demand?: Record<SeatType, number> & {
         total: {
@@ -110,58 +103,9 @@ export default class Route extends Status {
         this._demand = demand;
         if (this.status.success) {
             this.route = {
-                departure: {
-                    airport: route.departure,
-                    async fetch() {
-                        if (!client.tools) throw new Error("Missing access key");
-                        const query = new URLSearchParams({
-                            mode: 'normal',
-                            code: searchQuery.dep_icao
-                        });
-                        const response = await fetch(`${toolsBaseUrl}/airport/search?${query}`, {
-                            headers: {
-                                "x-access-token": this.tools.accessToken
-                            }
-                        });
-                        const body: Tools.Airports = await response.json();
-                        return new Airport(body);
-                    }
-                },
-                arrival: {
-                    airport: route.arrival,
-                    async fetch() {
-                        if (!client.tools) throw new Error("Missing access key");
-                        const query = new URLSearchParams({
-                            mode: 'normal',
-                            code: searchQuery.arr_icao
-                        });
-                        const response = await fetch(`${toolsBaseUrl}/airport/search?${query}`, {
-                            headers: {
-                                "x-access-token": this.tools.accessToken
-                            }
-                        });
-                        const body: Tools.Airports = await response.json();
-                        return new Airport(body);
-                    }
-                },
-                distance: route.distance,
-                async findStopover(plane, type) {
-                    if (!client.tools) throw new Error("Missing access key");
-                    const query = new URLSearchParams({
-                        type: type,
-                        mode: 'normal', 
-                        departure: searchQuery.dep_icao,
-                        arrival: searchQuery.arr_icao,
-                        model: plane
-                    });
-                    const response = await fetch(`${toolsBaseUrl}/route/stopover?${query}`, {
-                        headers: {
-                            "x-access-token": this.tools.accessToken
-                        }
-                    });
-                    const body: Tools.Stopover = await response.json();
-                    return new Stopover(body);
-                }
+                departure: route.departure,
+                arrival: route.arrival,
+                distance: route.distance
             }
             this.demand = {
                 F: demand.first_class_demand,
@@ -292,20 +236,19 @@ export default class Route extends Status {
      * @copyright Prestige Wings
      */
 
-    static preciseDistance(...gps: Array<{ longitude: number, latitude: number }>) {
+    static preciseDistance(...gps: [departure: Coordinates, second: Coordinates, ...rest: Coordinates[]]) {
         if (gps.length < 2) throw new Error('Atleast 2 locations have to be provided for distance calculations...');
         let i = 0, distance = 0, distances: number[] = [];
-        const R = 6371 * (Math.pow(10, 3));
         while(i < gps.length) {
             const dep = gps[i++], arr = gps[i];
             if(!dep || !arr) break;
-            dep.latitude *= (Math.PI / 180);
-            dep.longitude *= (Math.PI / 180);
-            arr.latitude *= (Math.PI / 180);
-            arr.longitude *= (Math.PI / 180);
-            const y = arr.latitude - dep.latitude;
-            const dlamb = arr.longitude - dep.longitude;
-            const x = dlamb * Math.cos((dep.latitude + arr.latitude) / 2);
+            const depLat = dep[1] * (Math.PI / 180);
+            const depLon = dep[0] * (Math.PI / 180);
+            const arrLat = arr[1] * (Math.PI / 180);
+            const arrLon = arr[0] * (Math.PI / 180);
+            const y = arrLat - depLat;
+            const dlamb = arrLon - depLon;
+            const x = dlamb * Math.cos((depLat + arrLat) / 2);
             const d = R * Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
             distance += d;
             distances.push(d);
@@ -323,19 +266,18 @@ export default class Route extends Status {
      * @copyright Prestige Wings
      */
 
-    static distance(...gps: Array<{ longitude: number, latitude: number }>) {
+    static distance(...gps: [departure: Coordinates, second: Coordinates, ...rest: Coordinates[]]) {
         if (gps.length < 2) throw new Error('Atleast 2 locations have to be provided for distance calculations...');
         let i = 0, distance = 0, distances: number[] = [];
-        const R = 6371 * (Math.pow(10, 3));
         while(i < gps.length) {
             const dep = gps[i++], arr = gps[i];
             if (!dep || !arr) break;
-            dep.latitude *= (Math.PI / 180);
-            dep.longitude *= (Math.PI / 180);
-            arr.latitude *= (Math.PI / 180);
-            arr.longitude *= (Math.PI / 180);
-            const dlamb = arr.longitude - dep.longitude;
-            const d = R * Math.acos(Math.sin(dep.latitude) * Math.sin(arr.latitude) + Math.cos(dep.latitude) * Math.cos(arr.latitude) * Math.cos(dlamb));
+            const depLat = dep[1] * (Math.PI / 180);
+            const depLon = dep[0] * (Math.PI / 180);
+            const arrLat = arr[1] * (Math.PI / 180);
+            const arrLon = arr[0] * (Math.PI / 180);
+            const dlamb = arrLon - depLon;
+            const d = R * Math.acos(Math.sin(depLat) * Math.sin(arrLat) + Math.cos(depLat) * Math.cos(arrLat) * Math.cos(dlamb));
             distance += d;
             distances.push(d);
         }
@@ -479,4 +421,59 @@ export default class Route extends Status {
         const growth = income / 40000000;
         return growth - decrease;
     }
+
+    /**
+     * A function for filtering all possible stopovers from an array of airports
+     * @param route An array of the route's airports (in order from departure to arrival and stopovers inbetween, if the route has any yet)
+     * @param airports The airports to filter the stopover from. Recommended to prefilter useless airports out to increase the speed.
+     * @param plane The plane to use on the route
+     * @param amount The amount of stopovers to add to the route, by default 1. This algorithm scales pretty quickly so be careful!
+     * @returns All possible stopovers out of the given airports
+     */
+
+    static filterStopovers(route: AM4_Data.airport[], airports: AM4_Data.airport[], plane: AM4_Data.plane, amount = 1) {
+        const stopovers: Array<{ distance: number, airports: AM4_Data.airport[] }> = [];
+        for (const airport of airports) {
+            const currentRoute = [...route];
+            const destination = currentRoute.pop();
+            currentRoute.push(airport, destination);
+            type Locations = Parameters<typeof Route.distance>;
+            const locations = currentRoute.map(airport => airport.location.coordinates);
+            const { distances, distance } = Route.distance(...locations as Locations);
+            if (distances.some(distance => distance > plane.range)) continue;
+            if (amount > 1) {
+                const availableAirports = airports.filter(({ _id: airportID }) => !airportID.equals(airport._id));
+                const stopoverCombinations = Route.filterStopovers(currentRoute, availableAirports, plane, amount - 1);
+                stopovers.push(...stopoverCombinations);
+            } else {
+                stopovers.push({
+                    distance,
+                    airports: currentRoute
+                });
+            }
+        }
+        return stopovers;
+    }
+
+    /**
+     * A function for finding the best stopovers for a route
+     * @param route An array of the route's airports (in order from departure to arrival and stopovers inbetween, if the route has any yet)
+     * @param airports The airports to filter the stopover from. Recommended to prefilter useless airports out to increase the speed.
+     * @param plane The plane to use on the route
+     * @param mode The game mode to use for the calculations
+     * @param amount The amount of stopovers to add to the route, by default 1. This algorithm scales pretty quickly so be careful!
+     * @returns An array of the stopovers from best to worst with the new route distance and an array of the route's airports in order from departure to arrival
+     */
+
+    static findStopovers(route: AM4_Data.airport[], airports: AM4_Data.airport[], plane: AM4_Data.plane, mode: GameMode, amount?: number) {
+        if (mode === "realism") airports = airports.filter(airport => airport.runway >= plane.runway);
+        const locations = route.map(airport => airport.location.coordinates);
+        type Locations = Parameters<typeof Route.distance>;
+        const { distances, distance } = Route.distance(...locations as Locations);
+        if (distances.length > 1 ? distances.some(distance => distance > plane.range) : (distance > (plane.range * 2))) return [];
+        const stopovers = Route.filterStopovers(route, airports, plane, amount);
+        stopovers.sort((a, b) => a.distance - b.distance);
+        return stopovers;
+    }
+
 }

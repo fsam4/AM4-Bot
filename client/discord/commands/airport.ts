@@ -1,13 +1,14 @@
 import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, MessageSelectMenu, Formatters, Constants, type Message, type MessageComponentInteraction, type ApplicationCommandOptionChoice } from 'discord.js';
 import { ObjectId, type GeoNear, type Filter, type Document } from 'mongodb';
-import { MongoDB as Utils } from '../../utils';
+import * as Utils from '../../utils';
 import DiscordClientError from '../error';
 import QuickChart from 'quickchart-js';
 import { emojis } from '../../../config.json';
+import Route from '../../../src/classes/route';
 import Plane from '../../../src/lib/plane';
 
 import type { AM4_Data, Settings } from '@typings/database';
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 
 interface Airport extends AM4_Data.airport {
     totalPax: number,
@@ -21,7 +22,12 @@ interface Airport extends AM4_Data.airport {
     }
 }
 
-const { createAirportFilter, createPlaneFilter } = Utils;
+const { createAirportFilter, createPlaneFilter, createLocationBox, createLocationSphere } = Utils.MongoDB;
+const { formatCode } = Utils.Discord;
+
+type SphereCoordinates = Parameters<typeof createLocationSphere>;
+type BoxCoordinates = Parameters<typeof createLocationBox>;
+type GameMode = "realism" | "easy";
 
 const command: SlashCommand = {
     get name() {
@@ -119,6 +125,58 @@ const command: SlashCommand = {
                         type: Constants.ApplicationCommandOptionTypes.INTEGER,
                         minValue: 0,
                         maxValue: 90,
+                        required: false
+                    },
+                    {
+                        name: 'mode',
+                        description: "The game mode to use for the calculations. By default your airline's game mode.",
+                        type: Constants.ApplicationCommandOptionTypes.STRING,
+                        required: false,
+                        choices: [
+                            {
+                                name: "Realism",
+                                value: "realism"
+                            },
+                            {
+                                name: "Easy",
+                                value: "easy"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                name: 'stopovers',
+                description: 'Find best stopover airports between two airports',
+                type: Constants.ApplicationCommandOptionTypes.SUB_COMMAND,
+                options: [
+                    {
+                        name: 'departure',
+                        description: 'The departure airport',
+                        type: Constants.ApplicationCommandOptionTypes.STRING,
+                        autocomplete: true,
+                        required: true
+                    },
+                    {
+                        name: 'arrival',
+                        description: 'The arrival airport',
+                        type: Constants.ApplicationCommandOptionTypes.STRING,
+                        autocomplete: true,
+                        required: true
+                    },
+                    {
+                        name: 'plane',
+                        description: 'The plane to use between the two airports',
+                        type: Constants.ApplicationCommandOptionTypes.STRING,
+                        autocomplete: true,
+                        required: true
+                    },
+                    {
+                        name: 'amount',
+                        description: 'The amount of stopovers between the airports (1-3). By default 1.',
+                        type: Constants.ApplicationCommandOptionTypes.INTEGER,
+                        minValue: 1,
+                        maxValue: 3,
                         required: false
                     },
                     {
@@ -365,10 +423,13 @@ const command: SlashCommand = {
                             { country: country.toLowerCase() },
                         ]
                     };
-                    const found_airports = airportCollection.find(query);
-                    const amount = await found_airports.count();
-                    const airports = await found_airports.limit(limit).toArray();
-                    if (!airports.length) throw new DiscordClientError('No airports could be found with that criteria...');
+                    const cursor = airportCollection.find(query);
+                    const amount = await cursor.count();
+                    if (!amount) {
+                        cursor.close();
+                        throw new DiscordClientError('No airports could be found with that criteria...');
+                    }
+                    const airports = await cursor.limit(limit).toArray();
                     const embeds = airports.map((airport, i) => new MessageEmbed({
                         color: "BLUE",
                         title: `${airport.city.capitalize()}, ${airport.country_code.toUpperCase()}`,
@@ -443,13 +504,12 @@ const command: SlashCommand = {
                         collector.once('end', async collected => {
                             const reply = collected.last() || interaction;
                             for (const row of components) row.components.forEach(component => component.setDisabled(true));
-                            await reply.editReply({ components }).catch(() => undefined);
+                            await reply.editReply({ components }).catch(() => void 0);
                         });
                     }
                     break;
                 }
                 case "sell_plane": {
-                    type GameMode = "realism" | "easy";
                     const code = interaction.options.getString("hub", true).trim();
                     const plane_input = interaction.options.getString("plane", true).trim();
                     const market = interaction.options.getInteger("market") ?? 89;
@@ -484,7 +544,10 @@ const command: SlashCommand = {
                         }
                     ]);
                     const hasAirport = await cursor.hasNext();
-                    if (!hasAirport) throw new DiscordClientError(`No suitable airport could be found to sell this plane with a market of at least ${market}%...`);
+                    if (!hasAirport) {
+                        cursor.close();
+                        throw new DiscordClientError(`No suitable airport could be found to sell this plane with a market of at least ${market}%...`);
+                    }
                     const airport = await cursor.next();
                     const image = new MessageAttachment(plane.image.buffer, "plane.jpg");
                     const embed = new MessageEmbed({
@@ -508,6 +571,114 @@ const command: SlashCommand = {
                         embeds: [embed],
                         files: [image]
                     });
+                    break;
+                }
+                case "stopovers": {
+                    const departureCode = interaction.options.getString("departure", true).trim();
+                    const arrivalCode = interaction.options.getString("arrival", true).trim();
+                    const departure = await airportCollection.findOne(createAirportFilter(departureCode));
+                    if (!departure) throw new DiscordClientError("Unknown departure airport");
+                    const arrival = await airportCollection.findOne(createAirportFilter(arrivalCode));
+                    if (!arrival) throw new DiscordClientError("Unknown arrival airport");
+                    const route = [departure, arrival];
+                    const locations = route.map(airport => airport.location.coordinates);
+                    type Locations = Parameters<typeof Route.distance>;
+                    const { distance: originalDistance } = Route.distance(...locations as Locations);
+                    const query: Filter<AM4_Data.airport> = {
+                        location: {
+                            $geoWithin: {
+                                $centerSphere: createLocationSphere(...locations as SphereCoordinates)
+                            }
+                        }
+                    };
+                    let gameMode = <GameMode>interaction.options.getString("mode");
+                    if (!gameMode) {
+                        const user = await users.findOne({ id: interaction.user.id });
+                        if (user) gameMode = user.mode;
+                    }
+                    if (!gameMode) throw new DiscordClientError('You need to either login with `/user login` or define the game mode option!');
+                    const planeInput = interaction.options.getString("plane", true).trim();
+                    const plane = await planeCollection.findOne(createPlaneFilter(planeInput));
+                    if (gameMode === "realism") query.runway = { $gte: plane.runway };
+                    const cursor = airportCollection.find(query);
+                    const amount = await cursor.count();
+                    if (!amount) {
+                        cursor.close();
+                        throw new DiscordClientError("No airports exist between these two airports...");
+                    }
+                    const airports = await cursor.toArray();
+                    const stopoverAmount = interaction.options.getInteger("amount") || 1;
+                    const stopovers = Route.findStopovers(route, airports, plane, gameMode, stopoverAmount);
+                    if (!stopovers.length) throw new DiscordClientError("No suitable stopovers could be found between these two routes...");
+                    const settings = database.settings.collection<Settings.user>('Users')
+                    const user = new Utils.User(interaction.user.id, await settings.findOne({ id: interaction.user.id }));
+                    const embeds = stopovers.map((stopover, i) => {
+                        const lastIndex = stopover.airports.length - 1;
+                        const stopoverAirports = stopover.airports.slice(1, lastIndex);
+                        return new MessageEmbed({
+                            color: "BLUE",
+                            title: `${formatCode(departure, user.options.code)} to ${formatCode(arrival, user.options.code)}`,
+                            description: `**Additional distance:** ${(stopover.distance - originalDistance).toLocaleString(locale)} km`,
+                            thumbnail: {
+                                url: "https://i.ibb.co/rpHM4Jm/hq.png"
+                            },
+                            footer: {
+                                text: `Stopover combination ${i + 1} of ${stopovers.length}`,
+                                iconURL: client.user.displayAvatarURL()
+                            },
+                            fields: stopoverAirports.map(airport => ({
+                                name: `${airport.city.capitalize()}, ${airport.country_code.toUpperCase()}`,
+                                value: `**City:** ${airport.city.capitalize()}\n**Country:** ${airport.country.capitalize()} (${airport.country_code.toUpperCase()})\n**ICAO:** ${airport.icao.toUpperCase()}\n**IATA:** ${airport.iata.toUpperCase()}\n**Market:** ${airport.market}%\n**Runway:** ${airport.runway.toLocaleString(locale)} ft`
+                            }))
+                        });
+                    });
+                    const pages = embeds.toGenerator();
+                    let currentEmbed = pages.next(1).value;
+                    const components = [
+                        new MessageActionRow({
+                            components: [
+                                new MessageButton({
+                                    style: "PRIMARY",
+                                    customId: "prev:10",
+                                    emoji: "⏪",
+                                    disabled: embeds.length < 10
+                                }),
+                                new MessageButton({
+                                    style: "PRIMARY",
+                                    customId: "prev:1",
+                                    emoji: "⬅️",
+                                    disabled: embeds.length < 2
+                                }),
+                                new MessageButton({
+                                    style: "PRIMARY",
+                                    customId: "next:1",
+                                    emoji: "➡️",
+                                    disabled: embeds.length < 2
+                                }),
+                                new MessageButton({
+                                    style: "PRIMARY",
+                                    customId: "next:10",
+                                    emoji: "⏩",
+                                    disabled: embeds.length < 10
+                                })
+                            ]
+                        })
+                    ];
+                    const message = await interaction.editReply({ embeds: [currentEmbed], components }) as Message;
+                    if (embeds.length) {
+                        const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
+                        const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                        collector.on("collect", async interaction => {
+                            const [action, value] = interaction.customId.split(":");
+                            currentEmbed = pages.next(action === "prev" ? -Number(value) : Number(value)).value;
+                            await interaction.update({ embeds: [currentEmbed] });
+                        });
+                        collector.once('end', async collected => {
+                            const reply = collected.last() || interaction;
+                            for (const row of components) row.components.forEach(component => component.setDisabled(true));
+                            await reply.editReply({ components }).catch(() => void 0);
+                        });
+                    }
                     break;
                 }
                 case "geo": {
@@ -546,7 +717,7 @@ const command: SlashCommand = {
                             const found_airports = airportCollection.find({
                                 location: {
                                     $geoWithin: {
-                                        $box: locations.map(location => location.coordinates)
+                                        $box: createLocationBox(...locations.map(location => location.coordinates) as BoxCoordinates)
                                     }
                                 }
                             });
@@ -967,7 +1138,7 @@ const command: SlashCommand = {
                     collector.once("end", async collected => {
                         row.setComponents(select.setDisabled(true));
                         const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(() => undefined);
+                        await reply.editReply({ components: [row] }).catch(() => void 0);
                     });
                     break;
                 }
@@ -1057,13 +1228,13 @@ const command: SlashCommand = {
                 }));
             }
             await interaction.respond(choices ?? [])
-            .catch(() => undefined);
+            .catch(() => void 0);
         }
         catch(error) {
             console.error("Error while autocompleting:", error);
             if (!interaction.responded) {
                 interaction.respond([])
-                .catch(() => undefined);
+                .catch(() => void 0);
             };
         }
     }

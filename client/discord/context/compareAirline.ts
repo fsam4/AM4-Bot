@@ -5,7 +5,7 @@ import QuickChart from 'quickchart-js';
 import Airline from '../../../src/classes/airline';
 
 import type { Discord, AM4_Data } from '@typings/database';
-import type { ContextMenu } from '../types';
+import type { ContextMenu } from '@discord/types';
 
 type GameMode = "realism" | "easy";
 type Aircraft = AM4_Data.plane & { amount: number };
@@ -456,7 +456,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
             collector.on("end", async collected => {
                 row.setComponents(select.setDisabled(true));
                 const reply = collected.last() || interaction;
-                await reply.editReply({ components: [row] }).catch(() => undefined);
+                await reply.editReply({ components: [row] }).catch(() => void 0);
             });
         }
         catch(error) {

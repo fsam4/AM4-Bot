@@ -8,7 +8,7 @@ import compareAsc from 'date-fns/compareAsc';
 import differenceInDays from 'date-fns/differenceInDays';
 import differenceInWeeks from 'date-fns/differenceInWeeks';
 
-import type * as AM4 from '@typings/api/am4';
+import type * as AM4 from '@typings/am4-api';
 import type AM4Client from '@source/index';
 
 type APIMember = AM4.Alliance['members'][number];
@@ -48,7 +48,7 @@ export class Member {
             name: member.company,
             async fetch() {
                 const query = new URLSearchParams({ 
-                    access_token: client.am4.accessToken,
+                    access_token: client.accessToken,
                     user: member.company
                 });
                 const response: AM4.Airline = await fetch(`${AM4BaseUrl}?${query}`).then(response => response.json());

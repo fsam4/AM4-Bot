@@ -1,7 +1,7 @@
 import { Formatters, MessageActionRow, MessageButton, type TextChannel } from 'discord.js';
 
 import type { Settings, Discord } from '@typings/database';
-import type { Event } from '../types';
+import type { Event } from '@discord/types';
 
 const event: Event = {
     name: "guildMemberRemove",

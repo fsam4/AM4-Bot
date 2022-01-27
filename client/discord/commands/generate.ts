@@ -2,7 +2,7 @@ import { Permissions, Constants } from 'discord.js';
 import DiscordClientError from '../error';
 import fetch from 'node-fetch';
 
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 
 interface fact {
     id: string;

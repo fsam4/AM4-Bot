@@ -5,9 +5,10 @@ import QuickChart from 'quickchart-js';
 import addMonths from 'date-fns/addMonths';
 import Plane from '../../../src/lib/plane';
 import pug from 'pug';
+import fs from 'fs';
 
 import type { Message, User, InlineKeyboardMarkup, InputMediaPhoto } from 'typegram';
-import type { Command, DataCallbackQuery } from '../types';
+import type { Command, DataCallbackQuery } from '@telegram/types';
 import type { Telegram, AM4_Data } from '@typings/database';
 import type { Context } from 'telegraf';
 
@@ -45,7 +46,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
     name: commandName,
     cooldown: 20,
     description: 'Search or compare planes',
-    help: 'This command can be used to search planes or compare planes. When searching planes the only required parameter is the plane name or shortcut. For a list of shortcuts use this command and choose shortcuts. When comparing planes you need to define 2-5 planes seperated by a comma.',
+    helpFileContent: fs.readFileSync("./documents/markdown/plane.md", "utf8"),
     async execute(ctx, { timeouts }) {
         const keyboard = Markup.inlineKeyboard([
             Markup.button.callback('🔍 Search', 'search:plane'),
@@ -76,7 +77,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 const keyboards = database.telegram.collection<Telegram.keyboard>('Keyboards');
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     const keyboard = await keyboards.findOne({ id: ctx.from.id, command: commandName });
                     const content: Parameters<typeof ctx.replyWithMarkdown> = ['Type the plane shortcut or name...\nFormat: `<plane>`\nExample: `cessna 172`'];
                     if (keyboard) {
@@ -189,7 +190,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
                 this.scene.use(sessionHandler);
                 this.scene.enter(async ctx => {
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     const keyboard = Markup.inlineKeyboard([
                         Markup.button.callback("Realism", "realism"),
                         Markup.button.callback("Easy", "easy"),

@@ -12,7 +12,7 @@ b <u>Route information</u>
         | <b>Arrival:</b> #{arrival.city.capitalize()}, #{arrival.country.capitalize()} (#{arrival.icao.toUpperCase()}/#{arrival.iata.toUpperCase()})
 
 |
-| <b>Distance:</b> #{route.distance.toLocaleString(locale)} km 
+| <b>Distance:</b> #{distance.toLocaleString(locale)} km 
 | <b>Market: </b> #{arrival.market}%
 | <b>Runway: </b> #{arrival.runway.toLocaleString(locale)} ft 
 |
@@ -39,9 +39,9 @@ b <u>Route information</u>
                 |
                 b <u>Configuration</u>
                 |
-                | <b>Economy:</b> #{config.Y}
-                | <b>Business:</b> #{config.J}
-                | <b>First:</b> #{config.F}
+                | <b>Economy:</b> #{configuration.Y}
+                | <b>Business:</b> #{configuration.J}
+                | <b>First:</b> #{configuration.F}
             when 'cargo'
                 | <b>Flights:</b> #{flights}
                 |
@@ -60,8 +60,8 @@ b <u>Route information</u>
                 |
                 b <u>Configuration</u>
                 |
-                | <b>Large:</b> #{Math.round((config.L * (10 / 7)) / plane.capacity * 100)}%
-                | <b>Heavy:</b> #{Math.round(config.H / plane.capacity * 100)}%
+                | <b>Large:</b> #{Math.round((configuration.L * (10 / 7)) / plane.capacity * 100)}%
+                | <b>Heavy:</b> #{Math.round(configuration.H / plane.capacity * 100)}%
     else 
         |
         |

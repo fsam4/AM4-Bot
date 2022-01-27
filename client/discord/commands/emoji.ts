@@ -2,7 +2,7 @@ import { Permissions, MessageEmbed, Formatters, Constants, type ApplicationComma
 import { MongoDB as Utils } from '../../utils';
 import DiscordClientError from '../error';
 
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 import type { AM4_Data } from '@typings/database';
 import type { Document } from 'mongodb';
 
@@ -292,13 +292,13 @@ const command: SlashCommand = {
                 choices = await cursor.toArray();
             }
             await interaction.respond(choices ?? [])
-            .catch(() => undefined);
+            .catch(() => void 0);
         }
         catch(error) {
             console.error("Error while autocompleting:", error);
             if (!interaction.responded) {
                 interaction.respond([])
-                .catch(() => undefined);
+                .catch(() => void 0);
             };
         }
     }

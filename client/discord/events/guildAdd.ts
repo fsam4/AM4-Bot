@@ -1,7 +1,7 @@
 import { Formatters, type ApplicationCommandPermissionData } from 'discord.js';
 import chalk from 'chalk';
 
-import type { Event } from '../types';
+import type { Event } from '@discord/types';
 
 const locale = "en";
 

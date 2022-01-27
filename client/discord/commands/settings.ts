@@ -3,7 +3,7 @@ import DiscordClientError from '../error';
 import CryptoJS from 'crypto-js';
 
 import type { TextChannel, GuildMember, Webhook, Message, MessageComponentInteraction } from 'discord.js';
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 import type { Settings } from '@typings/database';
 
 const command: SlashCommand = {
@@ -679,7 +679,7 @@ const command: SlashCommand = {
                             const webhookId = interaction.options.getString("id", true).trim();
                             const res = await webhookCollection.findOneAndDelete({ id: webhookId, server: interaction.guild.id });
                             if (!res.ok) throw new DiscordClientError("Could not delete a notification webhook with that ID...");
-                            const webhook = await interaction.client.fetchWebhook(webhookId).catch(() => undefined) as Webhook;
+                            const webhook = await interaction.client.fetchWebhook(webhookId).catch(() => void 0) as Webhook;
                             if (webhook) await webhook.delete(`Notification webhook deleted by ${interaction.user.username}#${interaction.user.discriminator}`);
                             await interaction.editReply("The notification webhook has been deleted!");
                             const commands = await interaction.client.application.commands.fetch();
@@ -746,7 +746,7 @@ const command: SlashCommand = {
                                 collector.once('end', async collected => {
                                     const reply = collected.last() || interaction;
                                     for (const row of components) row.components.forEach(component => component.setDisabled(true));
-                                    await reply.editReply({ components }).catch(() => undefined);
+                                    await reply.editReply({ components }).catch(() => void 0);
                                 });
                             }
                             break;

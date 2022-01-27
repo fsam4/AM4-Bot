@@ -10,7 +10,7 @@ import isFuture from 'date-fns/isFuture';
 import addDays from 'date-fns/addDays';
 
 import type { Discord, AM4_Data } from '@typings/database';
-import type { Event } from '../types';
+import type { Event } from '@discord/types';
 
 const requiredLevel = {
     data: 5,
@@ -120,7 +120,7 @@ const event: Event = {
                             if (args.length < 2) throw new DiscordClientError("You need to specify the user ID and reason for this warning!");
                             const [userId, ...content] = args;
                             reason = content.join(" ");
-                            user = await client.users.fetch(userId).catch(() => undefined);
+                            user = await client.users.fetch(userId).catch(() => void 0);
                         }
                         if (!user) throw new DiscordClientError("Invalid user...");
                         const res = await users.findOneAndUpdate(
@@ -176,7 +176,7 @@ const event: Event = {
                             const [userId, value, ...content] = args;
                             days = parseInt(value);
                             reason = content.join(" ");
-                            user = await client.users.fetch(userId).catch(() => undefined);
+                            user = await client.users.fetch(userId).catch(() => void 0);
                         }
                         if (!user) throw new DiscordClientError("Invalid user...");
                         if (isNaN(days)) throw new DiscordClientError("That is an invalid number...");
@@ -223,7 +223,7 @@ const event: Event = {
                             if (args.length < 2) throw new DiscordClientError("You need to specify the user ID and time in seconds for this cooldown!");
                             const [userId, value] = args;
                             seconds = parseInt(value);
-                            user = await client.users.fetch(userId).catch(() => undefined);
+                            user = await client.users.fetch(userId).catch(() => void 0);
                         }
                         if (!user) throw new DiscordClientError("Invalid user...");
                         if (isNaN(seconds)) throw new DiscordClientError("That is an invalid number...");

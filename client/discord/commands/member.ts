@@ -2,7 +2,7 @@ import { Permissions, Formatters, Constants, type GuildMember, type BanOptions }
 import DiscordClientError from '../error';
 import isFuture from 'date-fns/isFuture';
 
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 
 const multipliers = {
     s: 1000,

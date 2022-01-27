@@ -8,7 +8,7 @@ import differenceInMilliseconds from 'date-fns/differenceInMilliseconds';
 
 import type { AM4_Data } from '@typings/database';
 import type { AnyBulkWriteOperation } from 'mongodb';
-import type { Event } from '../types';
+import type { Event } from '@client/types';
 
 interface Operation {
     alliances: Array<AnyBulkWriteOperation<AM4_Data.alliance>>;

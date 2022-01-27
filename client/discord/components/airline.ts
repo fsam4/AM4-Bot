@@ -6,7 +6,7 @@ import Airline from '../../../src/classes/airline';
 import format from 'date-fns/format';
 
 import type { AM4_Data, Settings } from '@typings/database';
-import type { Component } from '../types';
+import type { Component } from '@discord/types';
 
 type Aircraft = AM4_Data.plane & { amount?: number };
 

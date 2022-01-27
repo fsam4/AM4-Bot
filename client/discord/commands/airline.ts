@@ -14,7 +14,7 @@ import subMonths from 'date-fns/subMonths';
 import format from 'date-fns/format';
 
 import type { AM4_Data, Settings } from '@typings/database';
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 
 type AllianceMember = AM4_Data.member & { left: Date, alliance: AM4_Data.alliance };
 type Aircraft = AM4_Data.plane & { amount?: number };
@@ -614,7 +614,7 @@ const command: SlashCommand = {
                         select.setDisabled(true);
                         row.components[0] = select;
                         const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(() => undefined);
+                        await reply.editReply({ components: [row] }).catch(() => void 0);
                     });
                     break;
                 }
@@ -791,7 +791,7 @@ const command: SlashCommand = {
                     collector.on("end", async collected => {
                         row.setComponents(select.setDisabled(true));
                         const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(() => undefined);
+                        await reply.editReply({ components: [row] }).catch(() => void 0);
                     });
                     if (fleet.planes.length > 25) await interaction.followUp({
                         content: `Due to the amount of different plane models of this airline's fleet the bot will only display 25 out of ${fleet.size} planes.`,
@@ -1223,7 +1223,7 @@ const command: SlashCommand = {
                     collector.once("end", async collected => {
                         row.setComponents(select.setDisabled(true));
                         const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(() => undefined);
+                        await reply.editReply({ components: [row] }).catch(() => void 0);
                     });
                     break;
                 }

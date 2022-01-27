@@ -1,4 +1,4 @@
-import type { Event } from '../types';
+import type { Event } from '@discord/types';
 
 const event: Event = {
     name: "guildUpdate",

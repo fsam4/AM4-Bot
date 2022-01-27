@@ -3,7 +3,7 @@ import { Scenes } from 'telegraf';
 import fetch from 'node-fetch';
 
 import type { Message, User } from 'typegram';
-import type { Command } from '../types';
+import type { Command } from '@telegram/types';
 
 interface Definition {
     list: Array<{
@@ -37,7 +37,6 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
     name: 'urban',
     cooldown: 10,
     description: 'Search the urban dictionary',
-    help: "This command can be used to look up a sentence, phrase or a word from the urban dictionary. After using the command type whatever you would like to search for. The bot returns the most popular result.",
     async execute(ctx) {
         await ctx.scene.enter('urban');
     },

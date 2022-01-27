@@ -4,7 +4,7 @@ import fetch from 'node-fetch';
 import AM4APIError from './error';
 import Alliance, { Member } from './alliance';
 
-import type * as AM4 from '@typings/api/am4';
+import type * as AM4 from '@typings/am4-api';
 import type { AM4_Data } from '@typings/database';
 import type AM4Client from '@source/index';
 
@@ -121,7 +121,7 @@ export default class Airline extends Status {
                 name: user.alliance,
                 async fetch() {
                     const query = new URLSearchParams({
-                        access_token: client.am4.accessToken,
+                        access_token: client.accessToken,
                         search: user.alliance
                     });
                     const response: AM4.Alliance = await fetch(`${AM4BaseUrl}?${query}`).then(response => response.json());
@@ -130,7 +130,7 @@ export default class Airline extends Status {
                 },
                 async fetchMember() {
                     const query = new URLSearchParams({
-                        access_token: client.am4.accessToken,
+                        access_token: client.accessToken,
                         search: user.alliance
                     });
                     const response: AM4.Alliance = await fetch(`${AM4BaseUrl}?${query}`).then(response => response.json());
@@ -146,10 +146,7 @@ export default class Airline extends Status {
             this.fleet = {
                 size: user.fleet,
                 routes: user.routes,
-                planes: fleet.map(object => ({ 
-                    name: object.aircraft, 
-                    amount: object.amount 
-                }))
+                planes: fleet.map(({ aircraft: name, amount }) => ({ name, amount }))
             }
             this.ipo = {
                 has: Boolean(user.ipo),

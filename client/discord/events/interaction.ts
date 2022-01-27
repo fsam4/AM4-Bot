@@ -3,7 +3,7 @@ import formatDistanceToNowStrict from 'date-fns/formatDistanceToNowStrict';
 import addSeconds from 'date-fns/addSeconds';
 import isFuture from 'date-fns/isFuture';
 
-import type { Event, ComponentOptions, CommandOptions, ContextMenu, SlashCommand } from '../types';
+import type { Event, ComponentOptions, CommandOptions, ContextMenu, SlashCommand } from '@discord/types';
 import type { Discord, Settings } from '@typings/database';
 
 const event: Event = {
@@ -33,13 +33,13 @@ const event: Event = {
                 if (interaction.isAutocomplete()) {
                     if (user.mute && isFuture(user.mute)) {
                         await interaction.respond([])
-                        .catch(() => undefined);
+                        .catch(() => void 0);
                         return;
                     }
                     const command = interaction.client.chatCommands.get(interaction.commandName);
                     if (!command.autocomplete) {
                         await interaction.respond([])
-                        .catch(() => undefined);
+                        .catch(() => void 0);
                         return;
                     }
                     type AutoCompleteOptions = Omit<CommandOptions, "ephemeral">;

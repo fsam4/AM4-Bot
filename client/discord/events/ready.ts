@@ -11,7 +11,7 @@ import isPast from 'date-fns/isPast';
 
 import type { Discord, Quiz } from '@typings/database';
 import type { Filter } from 'mongodb';
-import type { Event } from '../types';
+import type { Event } from '@discord/types';
 
 const event: Event = {
     name: 'ready',
@@ -115,14 +115,14 @@ const event: Event = {
                                             console.error("Failed to DM giveaway reward", err);
                                             const author = await client.users.fetch(updated.value.author);
                                             await author.send(`Failed to DM ${Formatters.bold(`${user.username}#${user.discriminator}`)} the reward for winning ${Formatters.hyperlink("this", message.url)} giveaway. Please DM the reward to the user manually: ${Formatters.spoiler(decrypted.toString(CryptoJS.enc.Utf8))}`)
-                                            .catch(() => undefined);
+                                            .catch(() => void 0);
                                         });
                                     })
                                     .catch(async err => {
                                         console.error("Failed to DM giveaway reward", err);
                                         const author = await client.users.fetch(updated.value.author);
                                         await author.send(`Failed to DM the winner of ${Formatters.hyperlink("this", message.url)} giveaway the reward. Please DM the reward to the user manually: ${Formatters.spoiler(decrypted.toString(CryptoJS.enc.Utf8))}`)
-                                        .catch(() => undefined);
+                                        .catch(() => void 0);
                                     });
                                 }
                             } else {

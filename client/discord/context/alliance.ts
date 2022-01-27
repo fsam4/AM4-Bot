@@ -8,7 +8,7 @@ import compareAsc from 'date-fns/compareAsc';
 import addDays from 'date-fns/addDays';
 
 import type { AM4_Data, Discord } from '@typings/database';
-import type { ContextMenu } from '../types';
+import type { ContextMenu } from '@discord/types';
 
 interface AllianceMember extends AM4_Data.member {
     daysOffline: number;
@@ -455,7 +455,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                 collector.once("end", async collected => {
                     row.setComponents(select.setDisabled(true));
                     const reply = collected.last() || interaction;
-                    await reply.editReply({ components: [row] }).catch(() => undefined);;
+                    await reply.editReply({ components: [row] }).catch(() => void 0);;
                 });
             } else {
                 await interaction.editReply({ embeds: [embed] });

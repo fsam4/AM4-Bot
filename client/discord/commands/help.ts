@@ -5,7 +5,7 @@ import updateEmbed from '../../../documents/json/update.json';
 import config from '../../../config.json';
 
 import type { Quiz, Settings } from '@typings/database';
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 
 const command: SlashCommand = {
     get name() {
@@ -183,7 +183,7 @@ const command: SlashCommand = {
                         timestamp: bot.createdTimestamp,
                         footer: {
                             text: `Commands: ${commands.size.toLocaleString(guildLocale)}`,
-                            icon_url: interaction.client.user.displayAvatarURL(),
+                            iconURL: interaction.client.user.displayAvatarURL()
                         }
                     });
                     break;
@@ -216,7 +216,7 @@ const command: SlashCommand = {
                         timestamp: bot.createdTimestamp,
                         footer: {
                             text: `Active webhooks: ${amount.toLocaleString(guildLocale)}`,
-                            icon_url: interaction.client.user.displayAvatarURL(),
+                            iconURL: interaction.client.user.displayAvatarURL()
                         }
                     });
                     break;
@@ -250,7 +250,7 @@ const command: SlashCommand = {
                         timestamp: bot.createdTimestamp,
                         footer: {
                             text: `Total players: ${amount.toLocaleString(guildLocale)}`,
-                            icon_url: interaction.client.user.displayAvatarURL(),
+                            iconURL: interaction.client.user.displayAvatarURL()
                         }
                     });
                     if (!config.tournament?.enabled) embeds[0].fields.shift();
@@ -279,7 +279,7 @@ const command: SlashCommand = {
                         timestamp: bot.createdTimestamp,
                         footer: {
                             text: `Used in ${interaction.client.guilds.cache.size} servers`,
-                            icon_url: interaction.client.user.displayAvatarURL(),
+                            iconURL: interaction.client.user.displayAvatarURL()
                         }
                     });
                     break;
@@ -303,16 +303,16 @@ const command: SlashCommand = {
                         timestamp: bot.createdTimestamp,
                         footer: {
                             text: `Used in ${interaction.client.guilds.cache.size} servers`,
-                            icon_url: interaction.client.user.displayAvatarURL(),
+                            iconURL: interaction.client.user.displayAvatarURL()
                         }
                     })
                     break;
                 }
                 case 'update': {
-                    embeds = updateEmbed.map(object => new MessageEmbed(object));
-                    embeds[0].setTitle("Latest update");
-                    embeds.last().setTimestamp(new Date("2021-08-22T17:38:43Z"));
-                    embeds.last().setFooter({
+                    embeds[0] = new MessageEmbed(updateEmbed)
+                    .setTitle("Latest update")
+                    .setTimestamp(new Date("2021-08-22T17:38:43Z"))
+                    .setFooter({
                         text: `Used in ${interaction.client.guilds.cache.size} servers`, 
                         iconURL: interaction.client.user.displayAvatarURL()
                     });
@@ -344,7 +344,7 @@ const command: SlashCommand = {
                         timestamp: bot.createdTimestamp,
                         footer: {
                             text: `Used in ${interaction.client.guilds.cache.size} servers`,
-                            icon_url: interaction.client.user.displayAvatarURL(),
+                            iconURL: interaction.client.user.displayAvatarURL()
                         }
                     });
                     if (interaction.client.application.botPublic) {

@@ -3,7 +3,7 @@ import { ObjectId, type Filter } from 'mongodb';
 import DiscordClientError from '../error';
 import { emojis } from '../../../config.json';
 
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 import type { Discord } from '@typings/database';
 
 const q = /^[0-9a-zA-Z'-]{1,}\?$/g;
@@ -268,7 +268,7 @@ const command: SlashCommand = {
                         filter.server = interaction.guildId;
                     } else {
                         await interaction.respond([])
-                        .catch(() => undefined);
+                        .catch(() => void 0);
                         return;
                     }
                     break;
@@ -315,13 +315,13 @@ const command: SlashCommand = {
             const cursor = faqCollection.aggregate<ApplicationCommandOptionChoice>(pipeline, { maxTimeMS: 2800 });
             const choices = await cursor.toArray();
             await interaction.respond(choices ?? [])
-            .catch(() => undefined);
+            .catch(() => void 0);
         }
         catch(error) {
             console.error("Error while autocompleting:", error);
             if (!interaction.responded) {
                 interaction.respond([])
-                .catch(() => undefined);
+                .catch(() => void 0);
             };
         }
     }

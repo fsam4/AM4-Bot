@@ -3,6 +3,7 @@ import TelegramClientError from '../error';
 import { Markup, Scenes } from 'telegraf';
 import QuickChart from 'quickchart-js';
 import pug from 'pug';
+import fs from 'fs';
 
 import formatDistanceToNowStrict from 'date-fns/formatDistanceToNowStrict';
 import differenceInDays from 'date-fns/differenceInDays';
@@ -12,7 +13,7 @@ import format from 'date-fns/format';
 import type { Message, User, InputMediaPhoto } from 'typegram';
 import type { Telegram, AM4_Data } from '@typings/database';
 import type { Context } from 'telegraf';
-import type { Command } from '../types';
+import type { Command } from '@telegram/types';
 import type { Member } from '@source/classes/alliance';
 
 interface SceneSession extends Scenes.SceneSessionData {
@@ -34,7 +35,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
     name: commandName,
     cooldown: 10,
     description: 'Search or compare alliance members',
-    help: 'This command can be used to search for a specific alliance member and their contribution statistics. You can also compare several members and their statistics. The only required argument is the usernmae/ID. If you cannot find the user by username and you are sure that the user is in an alliance use the ID.',
+    helpFileContent: fs.readFileSync("./documents/markdown/member.md", "utf8"),
     async execute(ctx, { timeouts }) {
         const keyboard = Markup.inlineKeyboard([
             Markup.button.callback('🔍 Search', 'search:member'),
@@ -66,7 +67,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 const allianceCollection = database.am4.collection<AM4_Data.alliance>("Alliances");
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     const keyboard = await keyboards.findOne({ id: ctx.from.id, command: commandName });
                     const content: Parameters<typeof ctx.replyWithMarkdown> = ['Type the name or the ID of the member...\nFormat: `<name|id>`\nExample: `prestige wings`'];
                     if (keyboard) {
@@ -242,7 +243,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 const allianceCollection = database.am4.collection<AM4_Data.alliance>("Alliances");
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
-                    ctx.deleteMessage().catch(() => undefined);
+                    ctx.deleteMessage().catch(() => void 0);
                     const action_keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'exit')]);
                     await ctx.replyWithMarkdown('Type the names or IDs of the members seperated by commas...\nFormat: `<name|id>,...`\nExample: `prestige wings, ambe airlines, world express airlines`', action_keyboard)
                 });

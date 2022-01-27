@@ -36,7 +36,7 @@ export interface Command<CommandContext extends Context = Context, ActionContext
     name: string;
     cooldown?: number;
     description: string;
-    help?: string;
+    readonly helpFileContent?: string;
     execute: (this: this, ctx: CommandContext, options: CommandOptions) => Promise<void>;
     actions: Action<ActionContext>[];
     scenes: Scene<SceneContext>[];

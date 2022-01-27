@@ -10,7 +10,7 @@ import differenceInDays from 'date-fns/differenceInDays';
 import compareAsc from 'date-fns/compareAsc';
 import addDays from 'date-fns/addDays';
 
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 import type { AM4_Data } from '@typings/database';
 import type { Member } from '@source/classes/alliance';
 import type Alliance from '@source/classes/alliance';
@@ -682,7 +682,7 @@ const command: SlashCommand = {
                         collector.once("end", async collected => {
                             row.setComponents(select.setDisabled(true));
                             const reply = collected.last() || interaction;
-                            await reply.editReply({ components: [row] }).catch(() => undefined);;
+                            await reply.editReply({ components: [row] }).catch(() => void 0);;
                         });
                     } else {
                         await interaction.editReply({ embeds: [embed] });
@@ -1103,7 +1103,7 @@ const command: SlashCommand = {
                     collector.once("end", async collected => {
                         row.setComponents(select.setDisabled(true));
                         const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(() => undefined);
+                        await reply.editReply({ components: [row] }).catch(() => void 0);
                     });
                     break;
                 }
@@ -1296,7 +1296,7 @@ const command: SlashCommand = {
                                 sortRow.setComponents(sortSelect.setDisabled(true));
                                 orderRow.setComponents(orderSelect.setDisabled(true));
                                 await reply.editReply({ components: [sortRow, orderRow] })
-                                .catch(() => undefined);
+                                .catch(() => void 0);
                             });
                             break;
                         }
@@ -1604,7 +1604,7 @@ const command: SlashCommand = {
                                 collector.once("end", async collected => {
                                     row.setComponents(select.setDisabled(true));
                                     const reply = collected.last() || interaction;
-                                    await reply.editReply({ components: [row] }).catch(() => undefined);
+                                    await reply.editReply({ components: [row] }).catch(() => void 0);
                                 });
                             } else {
                                 await interaction.editReply({ embeds: [embed] });
@@ -2132,7 +2132,7 @@ const command: SlashCommand = {
                             collector.once("end", async collected => {
                                 row.setComponents(select.setDisabled(true));
                                 const reply = collected.last() || interaction;
-                                await reply.editReply({ components: [row] }).catch(() => undefined);
+                                await reply.editReply({ components: [row] }).catch(() => void 0);
                             });
                             break;
                         }

@@ -2,7 +2,7 @@ import { Permissions, MessageAttachment, Constants } from 'discord.js';
 import DiscordClientError from '../error';
 import fetch from 'node-fetch';
 
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 
 const url = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w]*))?)/;
 const hex = /[\#]([a-fA-F\d]{6}|[a-fA-F\d]{3})/gm;

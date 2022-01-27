@@ -4,7 +4,7 @@ import { ObjectId } from 'bson';
 import QuickChart from 'quickchart-js';
 
 import type { AM4_Data, Discord } from '@typings/database';
-import type { ContextMenu } from '../types';
+import type { ContextMenu } from '@discord/types';
 import type Alliance from '@source/classes/alliance';
 
 type AllianceData = Alliance & { data?: AM4_Data.alliance };
@@ -451,7 +451,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                 select.setDisabled(true);
                 row.components[0] = select;
                 const reply = collected.last() || interaction;
-                await reply.editReply({ components: [row] }).catch(() => undefined);
+                await reply.editReply({ components: [row] }).catch(() => void 0);
             });
         }
         catch(error) {

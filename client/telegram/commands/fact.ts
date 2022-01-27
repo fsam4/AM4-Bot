@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 
-import type { Command } from '../types';
+import type { Command } from '@telegram/types';
 
 interface fact {
     id: string;

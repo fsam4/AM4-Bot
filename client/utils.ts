@@ -1,6 +1,7 @@
 import { ObjectId, type Filter } from 'mongodb';
 import { Formatters } from 'discord.js';
 import { emojis } from '../config.json';
+import Route from '../src/classes/route';
 
 import type * as TelegramClientTypes from '@telegram/types';
 import type { Settings, AM4_Data } from '@typings/database';
@@ -147,7 +148,7 @@ export namespace Telegram {
     export function deleteMessage(ctx: Context, message: Message.TextMessage, timeouts: Map<number, NodeJS.Timeout>) {
         timeouts.delete(message.message_id);
         ctx.telegram.deleteMessage(message.chat.id, message.message_id)
-        .catch(() => undefined);
+        .catch(() => void 0);
     }
 
     /**
@@ -167,6 +168,8 @@ export namespace Telegram {
     }
 
 }
+
+type Coordinates = [number, number];
 
 /**
  * A namespace containing utility functions for MongoDB
@@ -226,6 +229,52 @@ export namespace MongoDB {
                     $search: `"${query}"` 
                 }
             };
+        }
+    }
+
+    /**
+     * Create a location sphere from a pair of coordinates
+     * @param a The first coordinates
+     * @param b The second coordinates
+     * @returns The center point of the coordinates with the radians of the sphere
+     */
+
+    export function createLocationSphere(a: Coordinates, b: Coordinates) {
+        const centerPoint: Coordinates = [
+            (a[0] + b[0]) / 2,
+            (a[1] + b[1]) / 2
+        ];
+        const { distance } = Route.preciseDistance(centerPoint, a);
+        const radians = distance / 6378.1;
+        return [centerPoint, radians];
+    }
+
+    /**
+     * Create location box upper left and bottom right coordinates
+     * @param a The first coordinates
+     * @param b The second coordinates
+     * @returns The upper left coordinate first and the bottom right coordinate second
+     */
+
+    export function createLocationBox(a: Coordinates, b: Coordinates) {
+        if (a[0] > b[0]) {
+            if (a[1] < b[1]) {
+                return [a, b];
+            } else {
+                return [
+                    [a[0], b[1]],
+                    [b[0], a[1]]
+                ];
+            }
+        } else {
+            if (b[1] < a[1]) {
+                return [b, a];
+            } else {
+                return [
+                    [b[0], a[1]],
+                    [a[0], b[1]]
+                ];
+            }
         }
     }
     

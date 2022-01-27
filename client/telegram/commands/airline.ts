@@ -5,6 +5,7 @@ import QuickChart from 'quickchart-js';
 import Airline from '../../../src/classes/airline';
 import Plane from '../../../src/lib/plane';
 import pug from 'pug';
+import fs from 'fs';
 
 import addMonths from 'date-fns/addMonths';
 import subHours from 'date-fns/subHours';
@@ -13,7 +14,7 @@ import format from 'date-fns/format';
 import type { Message, User, InputMediaPhoto } from 'typegram';
 import type { Telegram, AM4_Data } from '@typings/database';
 import type { Context } from 'telegraf';
-import type { Command } from '../types';
+import type { Command } from '@telegram/types';
 
 interface SceneSession extends Scenes.SceneSessionData {
     message: Message.TextMessage;
@@ -35,7 +36,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
     name: commandName,
     cooldown: 10,
     description: 'Search or compare airlines',
-    help: "With this command you can search or compare airlines. When searcing for an airline there is one required argument which is `<name|id>`. This mean you need to either type the name or the ID of that airline. If you cannot find the right airline by username then try ID as that gives more accurate results. When comparing airlines you need to type 2-5 airlines seperated by commas. So for example if you want to compare Prestige Wings and AMBE Airlines use `prestige wings, ambe airlines`.",
+    helpFileContent: fs.readFileSync("./documents/markdown/airline.md", "utf8"),
     async execute(ctx, { timeouts }) {
         const keyboard = Markup.inlineKeyboard([
             Markup.button.callback('🔍 Search', 'search:airline'),
@@ -66,7 +67,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     const keyboard = await keyboards.findOne({ id: ctx.from.id, command: commandName });
                     const content: Parameters<typeof ctx.replyWithMarkdown> = ['Type the name or the ID of the airline...\nFormat: `<name|id>`\nExample: `prestige wings`'];
                     if (keyboard) {
@@ -318,7 +319,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 });
                 this.scene.action('exit', async (ctx) => {
                     await ctx.answerCbQuery();
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     await ctx.scene.leave();
                 });
             }
@@ -329,7 +330,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 const aircrafts = database.am4.collection<AM4_Data.plane>('Planes');
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     const action_keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'exit')]);
                     await ctx.replyWithMarkdown('Type the names or IDs of the airlines seperated by commas...\nFormat: `<name|id>,...`\nExample: `prestige wings, ambe airlines, world express airlines`', action_keyboard)
                 });
@@ -821,7 +822,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 });
                 this.scene.action('exit', async (ctx) => {
                     await ctx.answerCbQuery();
-                    await ctx.deleteMessage().catch(() => undefined);
+                    await ctx.deleteMessage().catch(() => void 0);
                     await ctx.scene.leave();
                 });
             }

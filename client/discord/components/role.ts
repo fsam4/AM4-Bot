@@ -1,7 +1,7 @@
 import { Formatters, type ButtonInteraction, type GuildMember } from 'discord.js';
 import DiscordClientError from '../error';
 
-import type { Component } from '../types';
+import type { Component } from '@discord/types';
 
 const component: Component<ButtonInteraction> = {
     name: "role",

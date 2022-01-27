@@ -7,7 +7,7 @@ import * as Utils from '../../utils';
 import Plane from '../../../src/lib/plane';
 
 import type { AM4_Data, Settings } from '@typings/database';
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 
 type Aircraft = AM4_Data.plane & { engine_name: string };
 
@@ -761,7 +761,7 @@ const command: SlashCommand = {
                                 new MessageActionRow({ components: [modSelect.setDisabled(true)] })
                             ]
                         })
-                        .catch(() => undefined);
+                        .catch(() => void 0);
                     });
                     break;
                 }
@@ -961,7 +961,7 @@ const command: SlashCommand = {
                         collector.once('end', async collected => {
                             const reply = collected.last() || interaction;
                             for (const row of components) row.components.forEach(component => component.setDisabled(true));
-                            await reply.editReply({ components }).catch(() => undefined);
+                            await reply.editReply({ components }).catch(() => void 0);
                         });
                     }
                     break;
@@ -1475,7 +1475,7 @@ const command: SlashCommand = {
                     collector.once("end", async collected => {
                         row.setComponents(select.setDisabled(true));
                         const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(() => undefined);
+                        await reply.editReply({ components: [row] }).catch(() => void 0);
                     });
                     break;
                 }
@@ -1673,13 +1673,13 @@ const command: SlashCommand = {
                 choices = await cursor.toArray();
             }
             await interaction.respond(choices ?? [])
-            .catch(() => undefined);
+            .catch(() => void 0);
         }
         catch(error) {
             console.error("Error while autocompleting:", error);
             if (!interaction.responded) {
                 interaction.respond([])
-                .catch(() => undefined);
+                .catch(() => void 0);
             };
         }
     }

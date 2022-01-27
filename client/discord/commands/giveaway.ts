@@ -4,7 +4,7 @@ import { ObjectId } from 'bson';
 import CryptoJS from 'crypto-js';
 import dateFNS from 'date-fns';
 
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 import type { Discord } from '@typings/database';
 
 const fullDateFormat = /\d{2}\/\d{2}\/\d{4} \d{2}.\d{2}/;
@@ -253,10 +253,10 @@ const command: SlashCommand = {
                     }
                     await interaction.guild.channels.fetch(res.value.channel)
                     .then((channel: TextChannel) => channel.messages.delete(res.value.message))
-                    .catch(() => undefined);
+                    .catch(() => void 0);
                     if (res.value.event) {
                         await interaction.guild.scheduledEvents.edit(res.value.event, { status: "CANCELED" })
-                        .catch(() => undefined);
+                        .catch(() => void 0);
                     }
                     await interaction.editReply("Your giveaway has been deleted! This means that the giveaway does not exist anymore and will not trigger.");
                     break;
@@ -397,7 +397,7 @@ const command: SlashCommand = {
                                 components: [row],
                                 embeds: [embed] 
                             })
-                            .catch(() => undefined);
+                            .catch(() => void 0);
                             const updated = await giveaways.findOneAndUpdate({ _id: res.insertedId }, {
                                     $set: {
                                         finished: true
@@ -427,14 +427,14 @@ const command: SlashCommand = {
                                                 console.error("Failed to DM giveaway reward", err);
                                                 const author = await interaction.client.users.fetch(updated.value.author);
                                                 await author.send(`Failed to DM ${Formatters.bold(`${user.username}#${user.discriminator}`)} the reward for winning ${Formatters.hyperlink("this", message.url)} giveaway. Please DM the reward to the user manually: ${Formatters.spoiler(decrypted.toString(CryptoJS.enc.Utf8))}`)
-                                                .catch(() => undefined);
+                                                .catch(() => void 0);
                                             });
                                         })
                                         .catch(async err => {
                                             console.error("Failed to DM giveaway reward", err);
                                             const author = await interaction.client.users.fetch(updated.value.author);
                                             await author.send(`Failed to DM the winner of ${Formatters.hyperlink("this", message.url)} the reward. Please DM the reward to the user manually: ${Formatters.spoiler(decrypted.toString(CryptoJS.enc.Utf8))}`)
-                                            .catch(() => undefined);
+                                            .catch(() => void 0);
                                         });
                                     }
                                 } else {

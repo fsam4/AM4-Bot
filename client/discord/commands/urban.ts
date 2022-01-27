@@ -2,7 +2,7 @@ import { MessageEmbed, Permissions, Formatters, Constants, MessageActionRow, Mes
 import DiscordClientError from '../error';
 import fetch from 'node-fetch';
 
-import type { SlashCommand } from '../types';
+import type { SlashCommand } from '@discord/types';
 
 interface Definition {
     list: Array<{

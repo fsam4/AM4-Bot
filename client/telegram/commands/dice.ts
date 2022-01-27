@@ -1,4 +1,4 @@
-import type { Command } from '../types';
+import type { Command } from '@telegram/types';
 
 const command: Command = {
     name: 'dice',

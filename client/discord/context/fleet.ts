@@ -5,7 +5,7 @@ import { User } from '../../utils';
 import Plane from '../../../src/lib/plane';
 
 import type { AM4_Data, Settings, Discord } from '@typings/database';
-import type { ContextMenu } from '../types';
+import type { ContextMenu } from '@discord/types';
 
 const command: ContextMenu<UserContextMenuInteraction> = {
     get name() {
@@ -203,7 +203,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                 select.setDisabled(true);
                 row.components[0] = select;
                 const reply = collected.last() || interaction;
-                await reply.editReply({ components: [row] }).catch(() => undefined);
+                await reply.editReply({ components: [row] }).catch(() => void 0);
             });
             if (fleet.planes.length > 25) await interaction.followUp({
                 content: `Due to the amount of different plane models of this airline's fleet the bot will only display 25 out of ${fleet.size} planes.`,
