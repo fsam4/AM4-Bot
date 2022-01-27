@@ -598,12 +598,7 @@ const command: SlashCommand = {
                 } else {
                     const [action, value] = interaction.customId.split(":");
                     currentEmbed = pages.next(action === "prev" ? -Number(value) : Number(value)).value;
-                    const hasStopover = currentEmbed.fields[0].value.includes("Stopover");
-                    components[1].components[1].setDisabled(hasStopover);
-                    await interaction.update({ 
-                        embeds: [currentEmbed],
-                        components: components
-                    });
+                    await interaction.update({ embeds: [currentEmbed], components });
                 }
             });
             collector.once('end', async collected => {

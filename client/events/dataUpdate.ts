@@ -10,10 +10,8 @@ import type { AM4_Data } from '@typings/database';
 import type { AnyBulkWriteOperation } from 'mongodb';
 import type { Event } from '@client/types';
 
-interface Operation {
-    alliances: Array<AnyBulkWriteOperation<AM4_Data.alliance>>;
-    members: Array<AnyBulkWriteOperation<AM4_Data.member>>;
-}
+type AllianceBulkWriteOperation = AnyBulkWriteOperation<AM4_Data.alliance>;
+type MemberBulkWriteOperation = AnyBulkWriteOperation<AM4_Data.member>;
 
 const event: Event = {
     name: "dataUpdate",
@@ -30,7 +28,6 @@ const event: Event = {
             const am4 = database.db('AM4-Data');
             const allianceCollection = am4.collection<AM4_Data.alliance>('Alliances');
             const memberCollection = am4.collection<AM4_Data.member>('Members');
-            const operation: Operation = { alliances: [], members: [] };
             type AllianceDocument = AM4_Data.alliance & { members: AM4_Data.member[] };
             const alliances = await allianceCollection.aggregate<AllianceDocument>([
                 {
@@ -51,12 +48,14 @@ const event: Event = {
             ]).toArray();
             const today = new Date();
             const expireDate = addMonths(today, 3);
+            const allianceOperations: AllianceBulkWriteOperation[] = [];
+            const memberOperations: MemberBulkWriteOperation[] = [];
             for (const allianceDocument of alliances) {
                 if (allianceDocument.archived) continue;
                 const { members, alliance, status } = await rest.fetchAlliance(allianceDocument.name);
                 requestsRemaining = status.requestsRemaining;
                 if (status.success) {
-                    operation.alliances.push({
+                    allianceOperations.push({
                         updateOne: {
                             filter: { _id: allianceDocument._id },
                             update: {
@@ -78,13 +77,16 @@ const event: Event = {
                         if (memberDocument) {
                             if (isFirstDayOfMonth(today)) {
                                 if (memberDocument.offline.length >= 4) memberDocument.offline.shift();
-                                memberDocument.offline = [ ...memberDocument.offline, {
-                                    date: today,
-                                    value: 0
-                                }];
+                                memberDocument.offline = [ 
+                                    ...memberDocument.offline, 
+                                    {
+                                        date: today,
+                                        value: 0
+                                    }
+                                ];
                             }
                             if (onlineMS > 86400000) memberDocument.offline.last().value++;
-                            operation.members.push({
+                           memberOperations.push({
                                 updateOne: {
                                     filter: { _id: memberDocument._id },
                                     update: {
@@ -114,7 +116,7 @@ const event: Event = {
                                 }
                             });
                         } else {
-                            operation.members.push({
+                            memberOperations.push({
                                 insertOne: {
                                     document: {
                                         name: member.airline.name,
@@ -138,8 +140,8 @@ const event: Event = {
                         }
                     }
                 } else {
-                    console.error(chalk.red(`Failed to update the data of ${allianceDocument.name}`), status);
-                    operation.alliances.push({
+                    console.error(chalk.red(`Failed to update the data of ${allianceDocument.name}`), JSON.stringify(status, undefined, 4));
+                    allianceOperations.push({
                         updateOne: {
                             filter: { _id: allianceDocument._id },
                             update: {
@@ -151,11 +153,13 @@ const event: Event = {
                     });
                 }
             }
-            const allianceOperation = await allianceCollection.bulkWrite(operation.alliances);
-            const memberOperation = await memberCollection.bulkWrite(operation.members);
+            if (allianceOperations.length) {
+                const allianceBulkWriteResult = await allianceCollection.bulkWrite(allianceOperations);
+                const memberBulkWriteResult = await memberCollection.bulkWrite(memberOperations);
+                await log.send(`Updated the data of ${Formatters.bold(allianceBulkWriteResult.modifiedCount.toLocaleString('en'))} alliances and ${Formatters.bold(memberBulkWriteResult.modifiedCount.toLocaleString('en'))} members. Inserted ${Formatters.bold(memberBulkWriteResult.insertedCount.toLocaleString('en'))} new members.`);
+            }
             console.timeEnd(label);
             console.info(`Requests remaining: ${requestsRemaining}`);
-            await log.send(`Updated the data of ${Formatters.bold(allianceOperation.modifiedCount.toLocaleString('en'))} alliances and ${Formatters.bold(memberOperation.modifiedCount.toLocaleString('en'))} members. Inserted ${Formatters.bold(memberOperation.insertedCount.toLocaleString('en'))} new members.`);
             await database.close();
         });
     }
