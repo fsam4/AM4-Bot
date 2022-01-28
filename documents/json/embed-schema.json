@@ -1,0 +1,195 @@
+{
+    "$schema": "http://json-schema.org/schema",
+    "type": "object",
+    "properties": {
+        "title": {
+            "type": "string",
+            "description": "The title of this embed",
+            "maxLength": 256
+        },
+        "description": {
+            "type": "string",
+            "description": "The description of this embed",
+            "maxLength": 4096
+        },
+        "url": {
+            "type": "string",
+            "description": "The URL of this embed"
+        },
+        "timestamp": {
+            "type": "integer",
+            "description": "The timestamp of this embed"
+        },
+        "color": {
+            "description": "The color of this embed",
+            "oneOf": [
+                {
+                    "type": "integer"
+                },
+                {
+                    "type": "array",
+                    "minLength": 3,
+                    "maxLength": 3,
+                    "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 255
+                    }
+                },
+                {
+                    "type": "string",
+                    "enum": [
+                        "DEFAULT",
+                        "WHITE",
+                        "AQUA",
+                        "GREEN",
+                        "BLUE",
+                        "YELLOW",
+                        "PURPLE",
+                        "LUMINOUS_VIVID_PINK",
+                        "FUCHSIA",
+                        "GOLD",
+                        "ORANGE",
+                        "RED",
+                        "GREY",
+                        "NAVY",
+                        "DARK_AQUA",
+                        "DARK_GREEN",
+                        "DARK_BLUE",
+                        "DARK_PURPLE",
+                        "DARK_VIVID_PINK",
+                        "DARK_GOLD",
+                        "DARK_ORANGE",
+                        "DARK_RED",
+                        "DARK_GREY",
+                        "DARKER_GREY",
+                        "LIGHT_GREY",
+                        "DARK_NAVY",
+                        "BLURPLE",
+                        "GREYPLE",
+                        "DARK_BUT_NOT_BLACK",
+                        "NOT_QUITE_BLACK",
+                        "RANDOM"
+                    ]
+                }
+            ]
+        },
+        "fields": {
+            "type": "array",
+            "description": "The fields of this embed",
+            "maxItems": 25,
+            "items": {
+                "type": "object",
+                "required": ["name", "value"],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "The name of this field",
+                        "maxLength": 256
+                    },
+                    "value": {
+                        "type": "string",
+                        "description": "The value of this field",
+                        "maxLength": 1024
+                    },
+                    "inline": {
+                        "type": "boolean",
+                        "description": "If this field will be displayed inline"
+                    }
+                }
+            }
+        },
+        "author": {
+            "type": "object",
+            "description": "The author of this embed",
+            "required": ["name"],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "The name of this author",
+                    "maxLength": 256
+                },
+                "url": {
+                    "type": "string",
+                    "description": "URL of this author"
+                },
+                "iconURL": {
+                    "type": "string",
+                    "description": "URL of the icon for this author"
+                },
+                "proxyIconURL": {
+                    "type": "string",
+                    "description": "Proxied URL of the icon for this author"
+                }
+            }
+        },
+        "thumbnail": {
+            "type": "object",
+            "description": "The thumbnail of this embed",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "URL for this thumbnail"
+                },
+                "proxyURL": {
+                    "type": "string",
+                    "description": "ProxyURL for this thumbnail"
+                },
+                "heigth": {
+                    "type": "integer",
+                    "description": "Height of this thumbnail",
+                    "minimum": 0
+                },
+                "width": {
+                    "type": "integer",
+                    "description": "Width of this thumbnail",
+                    "minimum": 0
+                }
+            }
+        },
+        "image": {
+            "type": "object",
+            "description": "The image of this embed",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "URL for this image"
+                },
+                "proxyURL": {
+                    "type": "string",
+                    "description": "ProxyURL for this image"
+                },
+                "heigth": {
+                    "type": "integer",
+                    "description": "Height of this image",
+                    "minimum": 0
+                },
+                "width": {
+                    "type": "integer",
+                    "description": "Width of this image",
+                    "minimum": 0
+                }
+            }
+        },
+        "footer": {
+            "type": "object",
+            "description": "The footer of this embed",
+            "required": ["text"],
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "description": "The text of this footer",
+                    "maxLength": 2048
+                },
+                "iconURL": {
+                    "type": "string",
+                    "description": "URL of the icon for this footer"
+                },
+                "proxyIconURL": {
+                    "type": "string",
+                    "description": "Proxied URL of the icon for this footer"
+                }
+            }
+        }
+    }
+}

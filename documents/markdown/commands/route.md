@@ -1,0 +1,4 @@
+---
+commandName: route
+---
+This command can be used to search for a route and it's ticket prices, stopover, configuration, demand, etc. The command has two required parameters and three optional parameters. The required parameters are `<icao|iata>, <icao|iata>` which are the ICAO or IATA codes of the departure and arrival airports. The three optional parameters are `(plane)` which can be used to define the plane to use on this route, `(reputation)` which can be used to define the reputation used in the calculations and `(flights)` which can be used to define the flights per day of the route. If flights is not defined it will calculate it. This command will automatically search for the best possible stopover if it is required.

@@ -1,0 +1,4 @@
+---
+commandName: routes
+---
+This command can be used to search routes from a specified hub. The bot calculates the profits and configurations for every route and returns them sorted by profitability. The command has 2 required parameters and 2 optional parameters. The required parameters are `<icao|iata>` which is the ICAO or IATA code of the departure airport and `<plane>` which is the name/shortcut of the plane. The optional parameters are `(reputation)` which is the reputation to use in calculations and `(flights)` which can be used to define the flight amount of all returned routes. In addition, the bot will automatically find the best possible stopovers for each route that requires it.

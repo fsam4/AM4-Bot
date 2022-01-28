@@ -1,12 +1,14 @@
-# Ignore compiled files, modules and image & document folders
+# Ignore combiled JavaScript files along with the jsconfig file
+jsconfig.json
 *.js
-documents
+
+# Ignore node_modules, database folders & image folders
+documents/json/questions
+documents/json/todo
 node_modules
+database
 icons
 
-# Ignore compiler configuration files
-jsconfig.json
-
-# Ignore .env files
+# Ignore dotenv files
 .env.local
 .env
