@@ -283,8 +283,8 @@ const command: SlashCommand = {
                     $lookup: {
                         from: 'Airports',
                         let: {
-                            arrival: { $arrayElemAt: ["$airports", 0] },
-                            departure: { $arrayElemAt: ["$airports", 1] }
+                            departure: { $arrayElemAt: ["$airports", 0] },
+                            arrival: { $arrayElemAt: ["$airports", 1] }
                         },
                         pipeline: [
                             {
