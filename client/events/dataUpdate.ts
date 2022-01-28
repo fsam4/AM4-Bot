@@ -2,20 +2,20 @@ import { MongoClient } from 'mongodb';
 import { Formatters } from 'discord.js';
 import chalk from 'chalk';
 
-import addMonths from 'date-fns/addMonths';
-import isFirstDayOfMonth from 'date-fns/isFirstDayOfMonth';
 import differenceInMilliseconds from 'date-fns/differenceInMilliseconds';
+import isFirstDayOfMonth from 'date-fns/isFirstDayOfMonth';
+import addMonths from 'date-fns/addMonths';
 
-import type { AM4_Data } from '@typings/database';
 import type { AnyBulkWriteOperation } from 'mongodb';
+import type { AM4_Data } from '@typings/database';
 import type { Event } from '@client/types';
 
+type AllianceDocument = AM4_Data.alliance & { members: AM4_Data.member[] };
 type AllianceBulkWriteOperation = AnyBulkWriteOperation<AM4_Data.alliance>;
 type MemberBulkWriteOperation = AnyBulkWriteOperation<AM4_Data.member>;
 
 const event: Event = {
     name: "dataUpdate",
-    type: "master",
     once: true,
     async execute(rest, { log }) {
         let requestsRemaining: number;
@@ -28,7 +28,6 @@ const event: Event = {
             const am4 = database.db('AM4-Data');
             const allianceCollection = am4.collection<AM4_Data.alliance>('Alliances');
             const memberCollection = am4.collection<AM4_Data.member>('Members');
-            type AllianceDocument = AM4_Data.alliance & { members: AM4_Data.member[] };
             const alliances = await allianceCollection.aggregate<AllianceDocument>([
                 {
                     $match: {
@@ -157,6 +156,8 @@ const event: Event = {
                 const allianceBulkWriteResult = await allianceCollection.bulkWrite(allianceOperations);
                 const memberBulkWriteResult = await memberCollection.bulkWrite(memberOperations);
                 await log.send(`Updated the data of ${Formatters.bold(allianceBulkWriteResult.modifiedCount.toLocaleString('en'))} alliances and ${Formatters.bold(memberBulkWriteResult.modifiedCount.toLocaleString('en'))} members. Inserted ${Formatters.bold(memberBulkWriteResult.insertedCount.toLocaleString('en'))} new members.`);
+            } else {
+                console.log("No alliance documents were updated...");
             }
             console.timeEnd(label);
             console.info(`Requests remaining: ${requestsRemaining}`);

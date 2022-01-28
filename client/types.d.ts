@@ -12,11 +12,8 @@ interface EventNames {
     "dataUpdate": [AM4RestClient];
 }
 
-type EventType = "worker" | "master";
-
 type EventHandler<K extends keyof EventNames> = {
     name: K;
-    type: EventType;
     once: boolean;
     execute: (...args: [...EventNames[K], EventOptions]) => Promise<void>;
 }

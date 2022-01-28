@@ -1,4 +1,4 @@
-import updateContent from './documents/json/update.json';
+import updateEmbed from './documents/json/update.json';
 import { Routes } from 'discord-api-types/v9';
 import { REST } from '@discordjs/rest';
 import dotenv from 'dotenv';
@@ -27,7 +27,7 @@ void async function () {
             if (webhookToken === undefined) throw new Error("ANNOUNCEMENT_WEBHOOK_TOKEN must be provided!");
             fullRoute = Routes.webhook(webhookId, webhookToken);
         }
-        const body = { embeds: updateContent };
+        const body = { embeds: [updateEmbed] };
         await rest.post(fullRoute, { body });
         console.log(chalk.green("Succesfully sent announcement!"));
     }
