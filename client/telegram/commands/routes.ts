@@ -1,12 +1,14 @@
 import TelegramClientError from '../error';
 import { Markup, Scenes } from 'telegraf';
+import defaultSettings from '../../../src/settings.json';
 import Route from '../../../src/classes/route';
 import pug from 'pug';
 import fs from 'fs';
 
 import type { Command, DataCallbackQuery } from '@telegram/types';
-import type { AM4_Data, BaseDocument } from '@typings/database';
+import type { AM4, BaseDocument } from '@typings/database';
 import type { Message, User } from 'typegram';
+import type { GameMode } from '@typings/am4-api';
 import type { Document } from 'mongodb';
 
 type SeatType = "Y" | "J" | "F" | "L" | "H";
@@ -20,12 +22,10 @@ interface RouteDocument extends BaseDocument {
     preference: any[];
     configuration: Record<SeatType, number>;
     demand: Record<SeatType, number>;
-    arrival: AM4_Data.airport;
-    stopover?: AM4_Data.airport;
+    arrival: AM4.Airport;
+    stopover?: AM4.Airport;
     ticket: Record<SeatType, number>;
 }
-
-type GameMode = "realism" | "easy";
 
 interface SceneSession extends Scenes.SceneSessionData {
     message: Message.TextMessage;
@@ -57,9 +57,9 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('routes', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database }) {
-                const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
-                const routeCollection = database.am4.collection<AM4_Data.route>('Routes');
-                const planes = database.am4.collection<AM4_Data.plane>('Planes');
+                const airportCollection = database.am4.collection<AM4.Airport>('Airports');
+                const routeCollection = database.am4.collection<AM4.Route>('Routes');
+                const planes = database.am4.collection<AM4.Plane>('Planes');
                 this.scene.use((ctx, next) => {
                     ctx.scene.session.user ||= ctx.from;
                     ctx.scene.session.pages ||= {
@@ -76,13 +76,13 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
                     ctx.scene.session.input = ctx.message.text;
                     const keyboard = Markup.inlineKeyboard([
-                        Markup.button.callback('Realism', 'realism'),
-                        Markup.button.callback('Easy', 'easy'),
+                        Markup.button.callback('Realism', 'Realism'),
+                        Markup.button.callback('Easy', 'Easy'),
                         Markup.button.callback('❌ Exit', 'delete')
                     ]);
                     await ctx.reply('Do you play on realism or easy?', keyboard);
                 });
-                this.scene.action(/realism|easy/, async (ctx) => {
+                this.scene.action(/Realism|Easy/, async (ctx) => {
                     if (ctx.scene.session.mode) return;
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
                     const mode = (<DataCallbackQuery>ctx.callbackQuery).data as GameMode;
@@ -91,12 +91,12 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                         const input: string[] = ctx.scene.session.input.toLowerCase().split(',').map(s => s.trim());
                         if (input.length < 2) throw new TelegramClientError('You need to atleast define the departure airport and the plane...');
                         type args = [string, string, number, number];
-                        let [dep, plane_input, rep=99, flights] = input.map((string, i) => i > 1 ? Number(string) : string) as args;
-                        if (flights <= 0) throw new TelegramClientError("The amount of flights needs to be more than 0...");
+                        let [dep, plane_input, rep = defaultSettings.reputation, flights] = input.map((string, i) => i > 1 ? Number(string) : string) as args;
+                        if (typeof flights === "number" && flights <= 0) throw new TelegramClientError("The amount of flights needs to be more than 0...");
                         if (rep < 10 || rep >= 100) throw new TelegramClientError("The reputation needs to be more than 10 and less than 101...");
                         const plane = await planes.findOne({ $text: { $search: `"${plane_input}"` } });
                         if (!plane) throw new TelegramClientError(`No plane could be found with *${plane_input}*...`);
-                        if (mode === "easy") {
+                        if (mode === "Easy") {
                             plane.A_check.price /= 2;
                             plane.speed *= 1.5;
                         }
@@ -142,7 +142,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                                 }
                             }
                         ];
-                        if (mode === "realism") {
+                        if (mode === "Realism") {
                             postCalculationMatch.push({
                                 $gte: [
                                     '$arrival.runway',
@@ -153,7 +153,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                         if (flights) {
                             postCalculationMatch.push({
                                 $lte: [
-                                    18,
+                                    defaultSettings.activity,
                                     {
                                         $floor: {
                                             $multiply: [
@@ -251,7 +251,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                                             {
                                                 $floor: { 
                                                     $divide: [
-                                                        18, 
+                                                        defaultSettings.activity, 
                                                         { $divide: ['$distance', plane.speed] }
                                                     ] 
                                                 }
@@ -268,7 +268,9 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                                 }
                             },
                             {
-                                $sort: plane.type === "cargo" ? { totalCargo: -1 } : { totalPax: -1 }
+                                $sort: plane.type === "cargo" 
+                                    ? { totalCargo: -1 } 
+                                    : { totalPax: -1 }
                             },
                             {
                                 $limit: 100
@@ -315,7 +317,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                                 },
                                 options: {
                                     flights: route.flights,
-                                    mode: mode,
+                                    gameMode: mode,
                                     activity: 18,
                                     reputation: rep 
                                 }
@@ -325,10 +327,10 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                             route.profit = Route.profit(plane, {
                                 options: {
                                     activity: 18,
-                                    fuel_price: 500,
-                                    co2_price: 125,
+                                    fuelPrice: 500,
+                                    co2Price: 125,
                                     reputation: 100,
-                                    mode: mode
+                                    gameMode: mode
                                 },
                                 route: {
                                     configuration: configuration,

@@ -1,0 +1,13 @@
+{
+    "$schema": "settings-schema.json",
+    "reputation": 100,
+    "activity": 18,
+    "fuelPrice": 500,
+    "co2Price": 125,
+    "salaries": {
+        "pilot": 200,
+        "crew": 150,
+        "engineer": 250,
+        "tech": 225
+    }
+}

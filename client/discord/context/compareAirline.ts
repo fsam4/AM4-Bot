@@ -4,11 +4,10 @@ import { ObjectId } from 'bson';
 import QuickChart from 'quickchart-js';
 import Airline from '../../../src/classes/airline';
 
-import type { Discord, AM4_Data } from '@typings/database';
+import type { Discord, AM4 } from '@typings/database';
 import type { ContextMenu } from '@discord/types';
 
-type GameMode = "realism" | "easy";
-type Aircraft = AM4_Data.plane & { amount: number };
+type Aircraft = AM4.Plane & { amount: number };
 
 const command: ContextMenu<UserContextMenuInteraction> = {
     get name() {
@@ -28,8 +27,8 @@ const command: ContextMenu<UserContextMenuInteraction> = {
     async execute(interaction, { rest, database, account, locale }) {
         await interaction.deferReply();
         try {
-            const userCollection = database.discord.collection<Discord.user>("Users");
-            const planeCollection = database.am4.collection<AM4_Data.plane>("Planes");
+            const userCollection = database.discord.collection<Discord.User>("Users");
+            const planeCollection = database.am4.collection<AM4.Plane>("Planes");
             if (interaction.user.id === interaction.targetId) throw new DiscordClientError("You cannot compare yourself with yourself...");
             if (!account?.airlineID) throw new DiscordClientError("You need to save your airline via `/user login` to be able to use this command!");
             const targetUser = await userCollection.findOne({ id: interaction.targetId });
@@ -60,7 +59,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                                 data: [
                                     {
                                         x: Airline.profit(<Aircraft[]>fleet.planes, { 
-                                            mode: <GameMode>airline.gameMode.toLowerCase(),
+                                            gameMode: airline.gameMode,
                                             reputation: {
                                                 pax: 100,
                                                 cargo: 100
@@ -169,14 +168,14 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                                 'Cargo Reputation'
                             ],
                             datasets: airlines.map(({ airline, fleet }) => {
-                                const pax_planes = (<Aircraft[]>fleet.planes).filter(plane => plane.type === 'pax');
-                                const cargo_planes = (<Aircraft[]>fleet.planes).filter(plane => plane.type === 'cargo');
+                                const paxFleet = (<Aircraft[]>fleet.planes).filter(plane => plane.type === 'pax');
+                                const cargoFleet = (<Aircraft[]>fleet.planes).filter(plane => plane.type === 'cargo');
                                 return {
                                     label: airline.name,
                                     data: [
                                         airline.achievements,
-                                        cargo_planes.length ? cargo_planes.map(plane => plane.amount).reduce((a, b) => a + b) : 0,
-                                        pax_planes.length ? pax_planes.map(plane => plane.amount).reduce((a, b) => a + b) : 0,
+                                        cargoFleet.length && cargoFleet.map(plane => plane.amount).reduce((a, b) => a + b),
+                                        paxFleet.length && paxFleet.map(plane => plane.amount).reduce((a, b) => a + b),
                                         airline.level,
                                         airline.reputation.pax,
                                         airline.reputation.cargo
@@ -327,7 +326,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                                     backgroundColor: 'rgb(11, 245, 97)',
                                     data: airlines.map(({ fleet, airline }) => {
                                         return Airline.profit(<Aircraft[]>fleet.planes, { 
-                                            mode: <GameMode>airline.gameMode.toLowerCase(),
+                                            gameMode: airline.gameMode,
                                             reputation: {
                                                 pax: 100,
                                                 cargo: 100
@@ -340,7 +339,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                                     backgroundColor: 'rgb(245, 11, 11)',
                                     data: airlines.map(({ fleet, airline }) => {
                                         return Airline.profit(<Aircraft[]>fleet.planes, { 
-                                            mode: <GameMode>airline.gameMode.toLowerCase(),
+                                            gameMode: airline.gameMode,
                                             reputation: {
                                                 pax: 100,
                                                 cargo: 100

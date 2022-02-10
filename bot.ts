@@ -70,7 +70,6 @@ if (cluster.isPrimary) {
 
         const accessToken = process.env.AM4_ACCESS_TOKEN;
         if (accessToken === undefined) throw new Error("AM4_ACCESS_TOKEN must be provided!");
-        const rest = new AM4RestClient(accessToken);
 
         const logWebhookId = process.env.LOG_WEBHOOK_ID;
         if (logWebhookId === undefined) throw new Error("LOG_WEBHOOK_ID must be provided!");
@@ -79,6 +78,7 @@ if (cluster.isPrimary) {
 
         const options = { 
             discordWorker, telegramWorker,
+            rest: new AM4RestClient(accessToken),
             log: new Discord.WebhookClient({
                 id: logWebhookId,
                 token: logWebhookToken
@@ -99,7 +99,7 @@ if (cluster.isPrimary) {
             let updateAt: number | Date = new Date().setHours(12, 0, 0, 0);
             if (isPast(updateAt)) updateAt = addDays(updateAt, 1);
             const ms = Math.abs(differenceInMilliseconds(updateAt, Date.now()));
-            setTimeout(() => events.emit("dataUpdate", rest, options), ms);
+            setTimeout(() => events.emit("dataUpdate", options), ms);
             console.log(chalk.green(`Scheduled next data update to ${new Date(updateAt)}`));
         });
 
@@ -107,7 +107,7 @@ if (cluster.isPrimary) {
             if (typeof message !== "string") return;
             const eventNames = events.eventNames();
             if (eventNames.includes(message)) {
-                events.emit(message, rest, options);
+                events.emit(message, options);
             } else {
                 console.log(`Primary received unknown message: ${message}`);
             }
@@ -190,7 +190,7 @@ if (cluster.isPrimary) {
                         token: logWebhookToken
                     }),
                     database: {
-                        am4: database.db("AM4-Data"),
+                        am4: database.db("AM4"),
                         quiz: database.db("Quiz"),
                         discord: database.db("Discord"),
                         settings: database.db("Settings"),
@@ -282,13 +282,13 @@ if (cluster.isPrimary) {
 
                 if (err) throw err;
 
-                const commands: BotCommand[] = [];
+                const botCommands: BotCommand[] = [];
                 const options: TelegramClientTypes.BaseOptions = {
                     cooldowns, bot, rest, keyv,
                     discordWorker: cluster.workers[1],
                     timeouts: new Map(),
                     database: {
-                        am4: database.db("AM4-Data"),
+                        am4: database.db("AM4"),
                         quiz: database.db("Quiz"),
                         discord: database.db("Discord"),
                         settings: database.db("Settings"),
@@ -297,6 +297,7 @@ if (cluster.isPrimary) {
                 };
 
                 const stage = new Scenes.Stage([], { ttl: 600000 });
+                const clientCommands: TelegramClientTypes.Command[] = [];
                 for (const file of commandFiles) {
                     const command: TelegramClientTypes.Command = await import(`./client/telegram/commands/${file}`);
                     for (const scene of command.scenes) {
@@ -304,6 +305,11 @@ if (cluster.isPrimary) {
                         // @ts-expect-error: custom scene context type
                         stage.register(scene.scene);
                     }
+                    clientCommands.push(command);
+                    botCommands.push({
+                        command: command.name,
+                        description: command.description
+                    });
                 }
 
                 // ! session is deprecated, may break in any of telegraf's major releases
@@ -312,14 +318,11 @@ if (cluster.isPrimary) {
                 bot.use(stage.middleware());
                 bot.catch(err => console.error("Telegram Error:", err));
 
-                for await (const file of commandFiles) {
-                    const command: TelegramClientTypes.Command = await import(`./client/telegram/commands/${file}`);
-                    commands.push({
-                        command: command.name,
-                        description: command.description
-                    });
+                const ignoredCommands = ["start", "help"];
+
+                for (const command of clientCommands) {
                     bot.command(command.name, async (ctx) => {
-                        const users = options.database.telegram.collection<Database.Telegram.user>('Users');
+                        const users = options.database.telegram.collection<Database.Telegram.User>('Users');
                         const user = await users.findOne({ id: ctx.from.id });
                         if (user && !user.admin_level) {
                             const cooldown = await cooldowns.get(ctx.from.id.toString());
@@ -338,7 +341,7 @@ if (cluster.isPrimary) {
                             }
                         }
                         await command.execute(ctx, { ...options, account: user })
-                        if (!["start", "help"].includes(command.name)) {
+                        if (!ignoredCommands.includes(command.name)) {
                             if (!user) {
                                 await users.insertOne({
                                     id: ctx.from.id,
@@ -371,13 +374,15 @@ if (cluster.isPrimary) {
                             }
                         }
                     });
-                    // @ts-expect-error: context types will be correct at runtime
-                    for (const action of command.actions) bot.action(action.value, ctx => action.execute(ctx, options));
+                    for (const action of command.actions) {
+                        // @ts-expect-error: context types will be correct at runtime
+                        bot.action(action.value, ctx => action.execute(ctx, options));
+                    }
                 }
 
                 console.timeLog(label);
                 await bot.launch();
-                await bot.telegram.setMyCommands(commands);
+                await bot.telegram.setMyCommands(botCommands);
                 console.timeEnd(label);
 
             });

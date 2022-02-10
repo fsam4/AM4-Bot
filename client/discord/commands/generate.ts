@@ -1,10 +1,10 @@
 import { Permissions, Constants } from 'discord.js';
 import DiscordClientError from '../error';
-import fetch from 'node-fetch';
+import { fetch } from 'undici';
 
 import type { SlashCommand } from '@discord/types';
 
-interface fact {
+interface Fact {
     id: string;
     text: string;
     source: string;
@@ -45,7 +45,7 @@ const command: SlashCommand = {
             const subCommand = interaction.options.getSubcommand();
             switch(subCommand) {
                 case "fact": {
-                    const fact: fact = await fetch("https://uselessfacts.jsph.pl/random.json?language=en").then(res => res.json());
+                    const fact = await fetch("https://uselessfacts.jsph.pl/random.json?language=en").then(res => res.json()) as Fact;
                     if (!fact) throw new DiscordClientError('Something went wrong with finding a random fact...');
                     await interaction.editReply(fact.text);
                     break;

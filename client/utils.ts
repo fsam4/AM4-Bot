@@ -4,80 +4,11 @@ import { emojis } from '../config.json';
 import Route from '../src/classes/route';
 
 import type * as TelegramClientTypes from '@telegram/types';
-import type { Settings, AM4_Data } from '@typings/database';
 import type { Context, Scenes } from 'telegraf';
 import type { Message } from 'typegram';
+import type { AM4 } from '@typings/database';
 
-type GameMode = "easy" | "realism";
-type CodeType = "icao" | "iata";
-type PaxSeat = 'Y' | 'J' | 'F';
-type CargoSeat = 'H' | 'L';
-
-/**
- * Represents the settings of a user
- * @constructor
- * @param user_id The ID of the user
- * @param settings The partial settings of the user
- */
-
-export class User implements Settings.user {
-    public id: string;
-    public mode?: GameMode;
-    public training: {
-        fuel: number,
-        co2: number,
-        cargo_heavy: number,
-        cargo_large: number
-    };
-    public salaries: {
-        pilot: number;
-        crew: number;
-        engineer: number;
-        tech: number;
-    };
-    public preference: {
-        pax: [PaxSeat, PaxSeat, PaxSeat];
-        cargo: [CargoSeat, CargoSeat];
-    };
-    public options: {
-        show_warnings: boolean;
-        show_tips: boolean;
-        cost_index: number;
-        fuel_price: number;
-        co2_price: number;
-        activity: number;
-        code: CodeType;
-    };
-    constructor(user_id: string, settings?: Partial<Settings.user>) {
-        this.id = user_id;
-        if (settings?.mode) this.mode = settings.mode;
-        this.training = settings?.training || {
-            fuel: 0,
-            co2: 0,
-            cargo_heavy: 0,
-            cargo_large: 0
-        };
-        this.salaries = settings?.salaries || {
-            pilot: 200,
-            crew: 150,
-            engineer: 250,
-            tech: 225
-        };
-        this.preference = settings?.preference ||  {
-            pax: undefined,
-            cargo: undefined
-        };
-        this.options = settings?.options || {
-            show_warnings: true,
-            show_tips: false,
-            cost_index: 200,
-            fuel_price: 500,
-            co2_price: 125,
-            activity: 18,
-            code: undefined
-        };
-    }
-}
+type AirportResolvable = { icao: string, iata: string };
 
 /**
  * A namespace containing utility functions for the Discord client
@@ -108,7 +39,7 @@ export namespace Discord {
      * @returns The formatted string
      */
 
-    export function formatCode(airport: { icao: string, iata: string }, type?: "icao" | "iata") {
+    export function formatCode(airport: AirportResolvable, type?: keyof AirportResolvable) {
         return type
             ? airport[type].toUpperCase()
             : `${airport.iata.toUpperCase()}/${airport.icao.toUpperCase()}`;
@@ -183,7 +114,7 @@ export namespace MongoDB {
      * @returns The filter query
      */
 
-    export function createAirportFilter(query: string): Filter<AM4_Data.airport> {
+    export function createAirportFilter(query: string): Filter<AM4.Airport> {
         if (ObjectId.isValid(query)) {
             return { _id: new ObjectId(query) };
         } else {
@@ -197,30 +128,12 @@ export namespace MongoDB {
     }
 
     /**
-     * Create a plane filter query from a string
+     * Create a text filter query from a string
      * @param query The query string
      * @returns The filter query
      */
 
-    export function createPlaneFilter(query: string): Filter<AM4_Data.plane> {
-        if (ObjectId.isValid(query)) {
-            return { _id: new ObjectId(query) };
-        } else {
-            return {
-                $text: { 
-                    $search: `"${query}"` 
-                }
-            };
-        }
-    }
-
-    /**
-     * Create an achievement filter query from a string
-     * @param query The query string
-     * @returns The filter query
-     */
-
-    export function createAchievementFilter(query: string): Filter<AM4_Data.achievement> {
+    export function createTextFilter<T>(query: string): Filter<T> {
         if (ObjectId.isValid(query)) {
             return { _id: new ObjectId(query) };
         } else {
@@ -244,9 +157,8 @@ export namespace MongoDB {
             (a[0] + b[0]) / 2,
             (a[1] + b[1]) / 2
         ];
-        const { distance } = Route.preciseDistance(centerPoint, a);
-        const radians = distance / 6378.1;
-        return [centerPoint, radians];
+        const { distance } = Route.preciseDistance(centerPoint, a || b);
+        return [centerPoint, distance / 6378.1] as const;
     }
 
     /**

@@ -1,25 +1,29 @@
-interface Request {
+export interface Request {
     status: {
-        request: 'failed' | 'success';
+        request: "failed" | "success";
         requests_remaining: number;
         description?: string;
     };
 }
 
+export type GameMode = "Realism" | "Easy";
+
+type BooleanNumber = 0 | 1;
+
 export interface Airline extends Request {
     user: {
         company: string;
         level: number;
-        online: number;
+        online: BooleanNumber;
         share: number;
         shares_available: number;
         shares_sold: number;
-        ipo: number;
+        ipo: BooleanNumber;
         fleet: number;
         routes: number;
         alliance: string;
         achievements: number;
-        game_mode: 'Realism' | 'Easy';
+        game_mode: GameMode;
         rank: number;
         reputation: number;
         cargo_reputation: number;
@@ -48,7 +52,7 @@ export interface Alliance extends Request {
             members: number;
             maxMembers: number;
             value: number;
-            ipo: number;
+            ipo: BooleanNumber;
             minSV: number;
         }
     ];
@@ -69,14 +73,14 @@ export interface Route extends Request {
         distance: number;
         departure: string;
         arrival: string;
-    }
+    };
     demand: {
         economy_class_demand: number;
         business_class_demand: number;
         first_class_demand: number;
         cargo_large_demand: number;
         cargo_heavy_demand: number;
-    }
+    };
 }
 
 export interface Routes extends Request {
@@ -95,5 +99,5 @@ export interface Routes extends Request {
             cargo_heavy_demand: number;
             distance: number;
         }>;
-    }
+    };
 }

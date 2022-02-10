@@ -4,11 +4,11 @@ import * as Utils from '../../utils';
 import { emojis } from '../../../config.json';
 import Route from '../../../src/classes/route';
 
-import type { AM4_Data, Settings } from '@typings/database';
+import type { AM4, Settings } from '@typings/database';
 import type { SlashCommand } from '@discord/types';
 import type { Document } from 'mongodb';
 
-const { createAchievementFilter } = Utils.MongoDB;
+const { createTextFilter } = Utils.MongoDB;
 const { formatCode } = Utils.Discord;
 const spoiler = /\|\|/g;
 
@@ -44,13 +44,12 @@ const command: SlashCommand = {
     async execute(interaction, { database, locale }) {
         await interaction.deferReply({ ephemeral: true });
         try {
-            const users = database.settings.collection<Settings.user>('Users');
-            const achievements = database.am4.collection<AM4_Data.achievement>('Achievements');
-            const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
-            const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-            const user = new Utils.User(interaction.user.id, await users.findOne({ id: interaction.user.id }));
+            const userCollection = database.settings.collection<Settings.User>('Users');
+            const achievementCollection = database.am4.collection<AM4.Achievement>('Achievements');
+            const airportCollection = database.am4.collection<AM4.Airport>('Airports');
+            const planeCollection = database.am4.collection<AM4.Plane>('Planes');
             const input = interaction.options.getString("name", true).trim();
-            const achievement = await achievements.findOne(createAchievementFilter(input));
+            const achievement = await achievementCollection.findOne(createTextFilter<AM4.Achievement>(input));
             if (!achievement) throw new DiscordClientError(`No achievement ${Formatters.bold(input)} was found...`);
             const icon = new MessageAttachment(achievement.icon.buffer, "achievement.jpg");
             const files = [icon];
@@ -63,7 +62,7 @@ const command: SlashCommand = {
                 }
             });
             if (achievement.route.length) {
-                const airports = await airportCollection.aggregate<AM4_Data.airport>([
+                const airports = await airportCollection.aggregate<AM4.Airport>([
                     {
                         $match: { 
                             _id: { $in: achievement.route } 
@@ -90,6 +89,7 @@ const command: SlashCommand = {
                 const locations = airports.map(airport => airport.location.coordinates);
                 type Locations = Parameters<typeof Route.distance>;
                 const { distance, distances } = Route.distance(...locations as Locations);
+                const user = await userCollection.findOne({ id: interaction.user.id });
                 embed.addFields([
                     {
                         name: Formatters.bold(Formatters.underscore("Achievement info")),
@@ -97,7 +97,7 @@ const command: SlashCommand = {
                     },
                     {
                         name: Formatters.bold(Formatters.underscore("Route")),
-                        value: `**Departure:** ${Formatters.spoiler(`${airports[0].city.capitalize()} (${formatCode(airports[0], user.options.code)})`)}${airports.length > 2 ? `\n**Stopover:** ${Formatters.spoiler(`${airports[1].city.capitalize()} (${formatCode(airports[1], user.options.code)})`)}\n` : `\n`}**Arrival:** ${Formatters.spoiler(`${airports.last().city.capitalize()} (${formatCode(airports.last(), user.options.code)})`)}`
+                        value: `**Departure:** ${Formatters.spoiler(`${airports[0].city.capitalizeWords({ capitalizeAfterQuote: true })} (${formatCode(airports[0], user?.options.code)})`)}${airports.length > 2 ? `\n**Stopover:** ${Formatters.spoiler(`${airports[1].city.capitalizeWords({ capitalizeAfterQuote: true })} (${formatCode(airports[1], user?.options.code)})`)}\n` : `\n`}**Arrival:** ${Formatters.spoiler(`${airports.last().city.capitalizeWords({ capitalizeAfterQuote: true })} (${formatCode(airports.last(), user?.options.code)})`)}`
                     }
                 ]);
                 if (distance) embed.fields[1].value += `\n**Distance:** ${Formatters.spoiler(distance.toLocaleString(locale))} km`;
@@ -168,7 +168,7 @@ const command: SlashCommand = {
         }
     },
     async autocomplete(interaction, { database }) {
-        const achievements = database.am4.collection<AM4_Data.achievement>('Achievements');
+        const achievements = database.am4.collection<AM4.Achievement>('Achievements');
         const focused = <string>interaction.options.getFocused();
         try {
             const value = focused?.slice(0, 15).match(/(\w|-|\s){1,}/g)?.join("");

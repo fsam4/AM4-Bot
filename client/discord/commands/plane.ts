@@ -6,12 +6,13 @@ import { emojis } from '../../../config.json';
 import * as Utils from '../../utils';
 import Plane from '../../../src/lib/plane';
 
-import type { AM4_Data, Settings } from '@typings/database';
+import type { AM4, Settings } from '@typings/database';
 import type { SlashCommand } from '@discord/types';
+import type { GameMode } from '@typings/am4-api';
 
-type Aircraft = AM4_Data.plane & { engine_name: string };
+type AircraftWithEngine = AM4.Plane & { engineName: string };
 
-const { createPlaneFilter } = Utils.MongoDB;
+const { createTextFilter } = Utils.MongoDB;
 
 const command: SlashCommand = {
     get name() {
@@ -60,11 +61,11 @@ const command: SlashCommand = {
                         choices: [
                             {
                                 name: "Realism",
-                                value: "realism"
+                                value: "Realism"
                             },
                             {
                                 name: "Easy",
-                                value: "easy"
+                                value: "Easy"
                             }
                         ]
                     }
@@ -291,11 +292,11 @@ const command: SlashCommand = {
                         choices: [
                             {
                                 name: "Realism",
-                                value: "realism"
+                                value: "Realism"
                             },
                             {
                                 name: "Easy",
-                                value: "easy"
+                                value: "Easy"
                             }
                         ]
                     }
@@ -349,11 +350,11 @@ const command: SlashCommand = {
                         choices: [
                             {
                                 name: "Realism",
-                                value: "realism"
+                                value: "Realism"
                             },
                             {
                                 name: "Easy",
-                                value: "easy"
+                                value: "Easy"
                             }
                         ]
                     }
@@ -485,24 +486,26 @@ const command: SlashCommand = {
         await interaction.deferReply({ ephemeral: (ephemeral || group === 'settings') && interaction.inGuild() });
         try {
             const subCommand = interaction.options.getSubcommand();
-            const planeSettings = database.settings.collection<Settings.plane>('Planes');
-            const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-            const userCollection = database.settings.collection<Settings.user>('Users');
-            const user = new Utils.User(interaction.user.id, await userCollection.findOne({ id: interaction.user.id }));
+            const planeSettings = database.settings.collection<Settings.Plane>('Planes');
+            const planeCollection = database.am4.collection<AM4.Plane>('Planes');
+            const userCollection = database.settings.collection<Settings.User>('Users');
+            const user = await userCollection.findOne({ id: interaction.user.id });
             const options = {
-                salaries: user.salaries,
-                co2_price: user.options.co2_price,
-                fuel_price: user.options.fuel_price,
-                activity: user.options.activity,
+                salaries: user?.salaries,
+                co2Price: user?.options.co2_price,
+                fuelPrice: user?.options.fuel_price,
+                activity: user?.options.activity ?? 18,
                 reputation: 100
             };
             switch(group || subCommand) {
                 case "search": {
-                    type GameMode = "realism" | "easy";
                     const plane_input = interaction.options.getString("name", true).trim();
-                    const mode = <GameMode>interaction.options.getString("mode")?.trim();
-                    if (mode) user.mode = mode;
-                    let plane = await planeCollection.findOne(createPlaneFilter(plane_input));
+                    let gameMode = <GameMode>interaction.options.getString("mode")?.trim();
+                    if (!gameMode) {
+                        if (!user?.mode) throw new DiscordClientError('You need to either login with `/user login` or define the game mode option!');
+                        gameMode = user.mode;
+                    }
+                    let plane = await planeCollection.findOne(createTextFilter<AM4.Plane>(plane_input));
                     if (!plane) throw new DiscordClientError(`No plane was found with ${Formatters.bold(plane_input)}...`);
                     let default_stats = interaction.options.getBoolean("default");
                     let engine_name = "none", modifications = {
@@ -524,19 +527,19 @@ const command: SlashCommand = {
                                 engine_name = engine.name;
                             }
                         }
-                        plane.fuel *= (100 - user.training.fuel) / 100;
-                        plane.co2 *= (100 - user.training.co2) / 100;
+                        if (user?.training.fuel) plane.fuel *= (100 - user.training.fuel) / 100;
+                        if (user?.training.co2) plane.co2 *= (100 - user.training.co2) / 100;
                         if (modifications.co2) plane.co2 *= 0.9;
                         if (modifications.fuel) plane.fuel *= 0.9;
                         if (modifications.speed) plane.speed *= 1.1;
                     }
                     let easy = {
-                        profit: Plane.profit(plane, { ...options, mode: 'easy' }).profit,
-                        sv: Plane.estimatedShareValueGrowth(plane, { ...options, mode: "easy" })
+                        profit: Plane.profit(plane, { ...options, gameMode: "Easy" }).profit,
+                        sv: Plane.estimatedShareValueGrowth(plane, { ...options, gameMode: "Easy" })
                     };
                     let realism = {
-                        profit: Plane.profit(plane, { ...options, mode: 'realism' }).profit,
-                        sv: Plane.estimatedShareValueGrowth(plane, { ...options, mode: "realism" })
+                        profit: Plane.profit(plane, { ...options, gameMode: "Realism" }).profit,
+                        sv: Plane.estimatedShareValueGrowth(plane, { ...options, gameMode: "Realism" })
                     };
                     const image = new MessageAttachment(plane.image.buffer, "plane.jpg");
                     const embed = new MessageEmbed({
@@ -557,12 +560,12 @@ const command: SlashCommand = {
                         fields: [
                             { 
                                 name: Formatters.bold(Formatters.underscore("General statistics")), 
-                                value: `**Speed:** ${Math.round(user.mode === "easy" ? plane.speed * 1.5 : plane.speed).toLocaleString(locale)} km/h\n**Fuel usage:** ${plane.fuel.toFixed(2)} lbs/km\n**Co2 usage:** ${plane.co2.toFixed(2)} kg/${plane.type === "cargo" ? "1k": "pax"}/km\n**Runway:** ${plane.runway.toLocaleString(locale)} ft\n**Range:** ${plane.range.toLocaleString(locale)} km\n**Capacity:** ${plane.capacity.toLocaleString(locale)} ${plane.type === "cargo" ? "lbs" : "seats"}`, 
+                                value: `**Speed:** ${Math.round(gameMode === "Easy" ? plane.speed * 1.5 : plane.speed).toLocaleString(locale)} km/h\n**Fuel usage:** ${plane.fuel.toFixed(2)} lbs/km\n**Co2 usage:** ${plane.co2.toFixed(2)} kg/${plane.type === "cargo" ? "1k": "pax"}/km\n**Runway:** ${plane.runway.toLocaleString(locale)} ft\n**Range:** ${plane.range.toLocaleString(locale)} km\n**Capacity:** ${plane.capacity.toLocaleString(locale)} ${plane.type === "cargo" ? "lbs" : "seats"}`, 
                                 inline: true 
                             },
                             { 
                                 name: '\u200B', 
-                                value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round((user.mode === "easy" || default_stats) ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
+                                value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round((gameMode === "Easy" || default_stats) ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
                                 inline: true 
                             },
                             { 
@@ -572,12 +575,12 @@ const command: SlashCommand = {
                             },
                             { 
                                 name: Formatters.bold(Formatters.underscore("Profit (realism)")), 
-                                value: `**Per hour:** $${Math.round(realism.profit / user.options.activity).toLocaleString(locale)}\n**Per day:** $${realism.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(realism.profit * 7).toLocaleString(locale)}\n**Share value:** $${realism.sv.toFixed(2)}/day`, 
+                                value: `**Per hour:** $${Math.round(realism.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${realism.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(realism.profit * 7).toLocaleString(locale)}\n**Share value:** $${realism.sv.toFixed(2)}/day`, 
                                 inline: true 
                             },
                             { 
                                 name: Formatters.bold(Formatters.underscore("Profit (easy)")), 
-                                value: `**Per hour:** $${Math.round(easy.profit / user.options.activity).toLocaleString(locale)}\n**Per day:** $${easy.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(easy.profit * 7).toLocaleString(locale)}\n**Share value:** $${easy.sv.toFixed(2)}/day`, 
+                                value: `**Per hour:** $${Math.round(easy.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${easy.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(easy.profit * 7).toLocaleString(locale)}\n**Share value:** $${easy.sv.toFixed(2)}/day`, 
                                 inline: true 
                             }
                         ]
@@ -663,14 +666,14 @@ const command: SlashCommand = {
                                     }
                                     if (modifications.fuel) plane.fuel *= 0.9;
                                     if (modifications.speed) plane.speed *= 1.1;
-                                    if (!default_stats) plane.fuel *= (100 - user.training.fuel) / 100;
+                                    if (!default_stats && user?.training.fuel) plane.fuel *= (100 - user.training.fuel) / 100;
                                     easy = {
-                                        profit: Plane.profit(plane, { ...options, mode: 'easy' }).profit,
-                                        sv: Plane.estimatedShareValueGrowth(plane, { ...options, mode: "easy" })
+                                        profit: Plane.profit(plane, { ...options, gameMode: "Easy" }).profit,
+                                        sv: Plane.estimatedShareValueGrowth(plane, { ...options, gameMode: "Easy" })
                                     };
                                     realism = {
-                                        profit: Plane.profit(plane, { ...options, mode: 'realism' }).profit,
-                                        sv: Plane.estimatedShareValueGrowth(plane, { ...options, mode: "realism" })
+                                        profit: Plane.profit(plane, { ...options, gameMode: "Realism" }).profit,
+                                        sv: Plane.estimatedShareValueGrowth(plane, { ...options, gameMode: "Realism" })
                                     };
                                     break;
                                 }
@@ -696,12 +699,12 @@ const command: SlashCommand = {
                                         }
                                     }
                                     easy = {
-                                        profit: Plane.profit(plane, { ...options, mode: 'easy' }).profit,
-                                        sv: Plane.estimatedShareValueGrowth(plane, { ...options, mode: "easy" })
+                                        profit: Plane.profit(plane, { ...options, gameMode: "Easy" }).profit,
+                                        sv: Plane.estimatedShareValueGrowth(plane, { ...options, gameMode: "Easy" })
                                     };
                                     realism = {
-                                        profit: Plane.profit(plane, { ...options, mode: 'realism' }).profit,
-                                        sv: Plane.estimatedShareValueGrowth(plane, { ...options, mode: "realism" })
+                                        profit: Plane.profit(plane, { ...options, gameMode: "Realism" }).profit,
+                                        sv: Plane.estimatedShareValueGrowth(plane, { ...options, gameMode: "Realism" })
                                     };
                                     break;
                                 }
@@ -715,12 +718,12 @@ const command: SlashCommand = {
                         embed.setFields([
                             { 
                                 name: Formatters.bold(Formatters.underscore("General statistics")), 
-                                value: `**Speed:** ${Math.round(user.mode === "easy" ? plane.speed * 1.5 : plane.speed).toLocaleString(locale)} km/h\n**Fuel usage:** ${plane.fuel.toFixed(2)} lbs/km\n**Co2 usage:** ${plane.co2.toFixed(2)} kg/${plane.type === "cargo" ? "1k": "pax"}/km\n**Runway:** ${plane.runway.toLocaleString(locale)} ft\n**Range:** ${plane.range.toLocaleString(locale)} km\n**Capacity:** ${plane.capacity.toLocaleString(locale)} ${plane.type === "cargo" ? "lbs" : "seats"}`, 
+                                value: `**Speed:** ${Math.round(gameMode === "Easy" ? plane.speed * 1.5 : plane.speed).toLocaleString(locale)} km/h\n**Fuel usage:** ${plane.fuel.toFixed(2)} lbs/km\n**Co2 usage:** ${plane.co2.toFixed(2)} kg/${plane.type === "cargo" ? "1k": "pax"}/km\n**Runway:** ${plane.runway.toLocaleString(locale)} ft\n**Range:** ${plane.range.toLocaleString(locale)} km\n**Capacity:** ${plane.capacity.toLocaleString(locale)} ${plane.type === "cargo" ? "lbs" : "seats"}`, 
                                 inline: true 
                             },
                             { 
                                 name: '\u200B', 
-                                value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round((user.mode === "easy" || default_stats) ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
+                                value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round((gameMode === "Easy" || default_stats) ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
                                 inline: true 
                             },
                             { 
@@ -730,12 +733,12 @@ const command: SlashCommand = {
                             },
                             { 
                                 name: Formatters.bold(Formatters.underscore("Profit (realism)")), 
-                                value: `**Per hour:** $${Math.round(realism.profit / user.options.activity).toLocaleString(locale)}\n**Per day:** $${realism.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(realism.profit * 7).toLocaleString(locale)}\n**Share value:** $${realism.sv.toFixed(2)}/day`, 
+                                value: `**Per hour:** $${Math.round(realism.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${realism.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(realism.profit * 7).toLocaleString(locale)}\n**Share value:** $${realism.sv.toFixed(2)}/day`, 
                                 inline: true 
                             },
                             { 
                                 name: Formatters.bold(Formatters.underscore("Profit (easy)")), 
-                                value: `**Per hour:** $${Math.round(easy.profit / user.options.activity).toLocaleString(locale)}\n**Per day:** $${easy.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(easy.profit * 7).toLocaleString(locale)}\n**Share value:** $${easy.sv.toFixed(2)}/day`, 
+                                value: `**Per hour:** $${Math.round(easy.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${easy.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(easy.profit * 7).toLocaleString(locale)}\n**Share value:** $${easy.sv.toFixed(2)}/day`, 
                                 inline: true 
                             }
                         ]);
@@ -766,11 +769,14 @@ const command: SlashCommand = {
                     break;
                 }
                 case "filter": {
-                    let query: Filter<AM4_Data.plane> = {};
-                    const options = interaction.options.data[0].options.filter(option => option.name !== "mode");
-                    const gameMode = interaction.options.getString("mode") as "realism" | "easy";
-                    if (gameMode) user.mode = gameMode;
-                    for (const option of options) {
+                    let query: Filter<AM4.Plane> = {};
+                    const commandOptions = interaction.options.data[0].options.filter(option => option.name !== "mode");
+                    let gameMode = <GameMode>interaction.options.getString("mode")?.trim();
+                    if (!gameMode) {
+                        if (!user?.mode) throw new DiscordClientError('You need to either login with `/user login` or define the game mode option!');
+                        gameMode = user.mode;
+                    }
+                    for (const option of commandOptions) {
                         switch(option.type) {
                             case "STRING":
                                 const prop = option.name === "manufacturer" ? "manufacturer.name" : option.name;
@@ -779,7 +785,7 @@ const command: SlashCommand = {
                             case "INTEGER": {
                                 const [type, prop, subProp] = option.name.split('_');
                                 if (prop === "check") {
-                                    if (subProp === "price" && user.mode === "easy" && typeof option.value === "number") option.value *= 2;
+                                    if (subProp === "price" && gameMode === "Easy" && typeof option.value === "number") option.value *= 2;
                                     const filter = (type === 'max' ? { $lte: option.value } : { $gte: option.value });
                                     query[`A_check.${subProp}`] = filter;
                                 } else {
@@ -795,7 +801,7 @@ const command: SlashCommand = {
                             }
                         }
                     }
-                    const planes = await planeCollection.aggregate<Aircraft>([
+                    const planes = await planeCollection.aggregate<AircraftWithEngine>([
                         {
                             $unwind: {
                                 path: '$engines',
@@ -817,7 +823,7 @@ const command: SlashCommand = {
                                 co2: true,
                                 A_check: true,
                                 bonus_points: true,
-                                engine_name: {
+                                engineName: {
                                     $cond: {
                                         if: { $eq: [{ $type: "$engines" }, "object"] },
                                         then: '$engines.name',
@@ -847,12 +853,12 @@ const command: SlashCommand = {
                     if (!planes.length) throw new DiscordClientError('No planes were found with that criteria');
                     const embeds = planes.map((plane, i) => {
                         const easy = {
-                            profit: Plane.profit(plane, { ...options, mode: 'easy' }).profit,
-                            sv: Plane.estimatedShareValueGrowth(plane, { ...options, mode: "easy" })
+                            profit: Plane.profit(plane, { ...options, gameMode: "Easy" }).profit,
+                            sv: Plane.estimatedShareValueGrowth(plane, { ...options, gameMode: "Easy" })
                         };
                         const realism = {
-                            profit: Plane.profit(plane, { ...options, mode: 'realism' }).profit,
-                            sv: Plane.estimatedShareValueGrowth(plane, { ...options, mode: "realism" })
+                            profit: Plane.profit(plane, { ...options, gameMode: "Realism" }).profit,
+                            sv: Plane.estimatedShareValueGrowth(plane, { ...options, gameMode: "Realism" })
                         };
                         const image = new MessageAttachment(plane.image.buffer, "plane.jpg");
                         const embed = new MessageEmbed({
@@ -869,16 +875,16 @@ const command: SlashCommand = {
                                 text: `Plane ${i + 1} of ${planes.length}`,
                                 iconURL: interaction.client.user.displayAvatarURL()
                             },
-                            description: `**Engine:** ${plane.engine_name}`,
+                            description: `**Engine:** ${plane.engineName}`,
                             fields: [
                                 { 
                                     name: Formatters.bold(Formatters.underscore("General statistics")), 
-                                    value: `**Speed:** ${Math.round(user.mode === "easy" ? plane.speed * 1.5 : plane.speed).toLocaleString(locale)} km/h\n**Fuel usage:** ${plane.fuel.toFixed(2)} lbs/km\n**Co2 usage:** ${plane.co2.toFixed(2)} kg/${plane.type === "cargo" ? "1k": "pax"}/km\n**Runway:** ${plane.runway.toLocaleString(locale)} ft\n**Range:** ${plane.range.toLocaleString(locale)} km\n**Capacity:** ${plane.capacity.toLocaleString(locale)} ${plane.type === "cargo" ? "lbs" : "seats"}`, 
+                                    value: `**Speed:** ${Math.round(gameMode === "Easy" ? plane.speed * 1.5 : plane.speed).toLocaleString(locale)} km/h\n**Fuel usage:** ${plane.fuel.toFixed(2)} lbs/km\n**Co2 usage:** ${plane.co2.toFixed(2)} kg/${plane.type === "cargo" ? "1k": "pax"}/km\n**Runway:** ${plane.runway.toLocaleString(locale)} ft\n**Range:** ${plane.range.toLocaleString(locale)} km\n**Capacity:** ${plane.capacity.toLocaleString(locale)} ${plane.type === "cargo" ? "lbs" : "seats"}`, 
                                     inline: true 
                                 },
                                 { 
                                     name: '\u200B', 
-                                    value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round(user.mode === "easy" ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
+                                    value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round(gameMode === "Easy" ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
                                     inline: true 
                                 },
                                 { 
@@ -888,12 +894,12 @@ const command: SlashCommand = {
                                 },
                                 { 
                                     name: Formatters.bold(Formatters.underscore("Profit (realism)")), 
-                                    value: `**Per hour:** $${Math.round(realism.profit / user.options.activity).toLocaleString(locale)}\n**Per day:** $${realism.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(realism.profit * 7).toLocaleString(locale)}\n**Share value:** $${realism.sv.toFixed(2)}/day`, 
+                                    value: `**Per hour:** $${Math.round(realism.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${realism.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(realism.profit * 7).toLocaleString(locale)}\n**Share value:** $${realism.sv.toFixed(2)}/day`, 
                                     inline: true 
                                 },
                                 { 
                                     name: Formatters.bold(Formatters.underscore("Profit (easy)")), 
-                                    value: `**Per hour:** $${Math.round(easy.profit / user.options.activity).toLocaleString(locale)}\n**Per day:** $${easy.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(easy.profit * 7).toLocaleString(locale)}\n**Share value:** $${easy.sv.toFixed(2)}/day`, 
+                                    value: `**Per hour:** $${Math.round(easy.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${easy.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(easy.profit * 7).toLocaleString(locale)}\n**Share value:** $${easy.sv.toFixed(2)}/day`, 
                                     inline: true 
                                 }
                             ]
@@ -967,15 +973,16 @@ const command: SlashCommand = {
                     break;
                 }
                 case "compare": {
-                    type GameMode = "realism" | "easy";
-                    const mode = <GameMode>interaction.options.getString("mode")?.trim();
-                    if (mode) user.mode = mode;
-                    if (!user.mode) throw new DiscordClientError('You need to either define your game mode in arguments or save it by logging in with `/user login`!');
-                    const options = interaction.options.data[0].options.filter(option => option.name.startsWith("plane"));
+                    let gameMode = <GameMode>interaction.options.getString("mode")?.trim();
+                    if (!gameMode) {
+                        if (!user?.mode) throw new DiscordClientError('You need to either login with `/user login` or define the game mode option!');
+                        gameMode = user.mode;
+                    }
+                    const commandOptions = interaction.options.data[0].options.filter(option => option.name.startsWith("plane"));
                     const planes = await Promise.all(
-                        options.map(async option => {
+                        commandOptions.map(async option => {
                             const planeName = (<string>option.value).trim();
-                            const plane = await planeCollection.findOne(createPlaneFilter(planeName));
+                            const plane = await planeCollection.findOne(createTextFilter<AM4.Plane>(planeName));
                             if (!plane) throw new DiscordClientError(`${Formatters.bold(`${option.name}:`)} No plane could be found with ${Formatters.bold(planeName)}...`);
                             return plane;
                         })
@@ -995,19 +1002,27 @@ const command: SlashCommand = {
                                         "Income"
                                     ],
                                     datasets: planes.map(plane => {
-                                        const options = { mode: user.mode };
                                         const engines = plane.engines.map(engine => {
-                                            const res = Plane.profit({
-                                                ...plane,
-                                                fuel: engine.fuel,
-                                                speed: engine.speed
-                                            }, options);
-                                            for (const prop in res) values.push(res[prop]);
+                                            const res = Plane.profit(
+                                                {
+                                                    ...plane,
+                                                    fuel: engine.fuel,
+                                                    speed: engine.speed
+                                                },
+                                                {
+                                                    gameMode
+                                                }
+                                            );
+                                            for (const prop in res) {
+                                                values.push(res[prop]);
+                                            }
                                             return res;
                                         });
-                                        const res = Plane.profit(plane, options);
+                                        const res = Plane.profit(plane, { gameMode });
                                         engines.push(res);
-                                        for (const prop in res) values.push(res[prop]);
+                                        for (const prop in res) {
+                                            values.push(res[prop]);
+                                        }
                                         return {
                                             label: plane.name,
                                             borderWidth: 1,
@@ -1176,7 +1191,7 @@ const command: SlashCommand = {
                                         label: name,
                                         data: [
                                             {
-                                                x: user.mode === 'easy' ? A_check.price / 2 : A_check.price,
+                                                x: gameMode === "Easy" ? A_check.price / 2 : A_check.price,
                                                 y: A_check.time
                                             }
                                         ]
@@ -1341,7 +1356,7 @@ const command: SlashCommand = {
                                         data: [
                                             {
                                                 x: plane.range,
-                                                y: user.mode === 'easy' ? plane.speed * 1.5 : plane.speed,
+                                                y: gameMode === "Easy" ? plane.speed * 1.5 : plane.speed,
                                             }
                                         ]
                                     }))
@@ -1489,9 +1504,9 @@ const command: SlashCommand = {
                                 if (existing_settings > 25) throw new DiscordClientError('You can only have 25 existing plane settings at a time!');
                             }
                             const planeName = interaction.options.getString("plane", true).trim();
-                            const plane = await planeCollection.findOne(createPlaneFilter(planeName));
+                            const plane = await planeCollection.findOne(createTextFilter<AM4.Plane>(planeName));
                             if (!plane) throw new DiscordClientError(`No plane was found with ${Formatters.bold(planeName)}...`);
-                            let options: Settings.plane = {
+                            let options: Settings.Plane = {
                                 id: interaction.user.id,
                                 planeID: plane._id,
                                 modifications: {
@@ -1512,9 +1527,9 @@ const command: SlashCommand = {
                         }
                         case "edit": {
                             const planeName = interaction.options.getString("plane", true).trim();
-                            const plane = await planeCollection.findOne(createPlaneFilter(planeName));
+                            const plane = await planeCollection.findOne(createTextFilter<AM4.Plane>(planeName));
                             if (!plane) throw new DiscordClientError(`No plane was found with ${Formatters.bold(planeName)}...`);
-                            const filter: Filter<Settings.plane> = { 
+                            const filter: Filter<Settings.Plane> = { 
                                 id: interaction.user.id, 
                                 planeID: plane._id 
                             };
@@ -1526,8 +1541,8 @@ const command: SlashCommand = {
                                 }
                             });
                             if (!currentSettings) throw new DiscordClientError(`You do not have any active settings for ${Formatters.bold(plane?.name || planeName)}. You can create settings by using \`/plane settings create\`.`);
-                            const options = interaction.options.data.find(option => option.name === group).options.find(option => option.name === subCommand).options;
-                            const modifications = options.filter(option => option.name.endsWith("modification"));
+                            const commandOptions = interaction.options.data.find(option => option.name === group).options.find(option => option.name === subCommand).options;
+                            const modifications = commandOptions.filter(option => option.name.endsWith("modification"));
                             for (const option of modifications.values()) {
                                 const [prop] = option.name.match(/fuel|co2|speed/);
                                 currentSettings.modifications[prop] = option.value;
@@ -1544,9 +1559,9 @@ const command: SlashCommand = {
                         }
                         case "delete": {
                             const planeName = interaction.options.getString("plane", true).trim();
-                            const plane = await planeCollection.findOne(createPlaneFilter(planeName));
+                            const plane = await planeCollection.findOne(createTextFilter<AM4.Plane>(planeName));
                             if (!plane) throw new DiscordClientError(`No plane was found with ${Formatters.bold(planeName)}...`);
-                            const filter: Filter<Settings.plane> = { 
+                            const filter: Filter<Settings.Plane> = { 
                                 id: interaction.user.id, 
                                 planeID: plane._id 
                             };
@@ -1564,9 +1579,9 @@ const command: SlashCommand = {
                         }
                         case "view": {
                             const planeName = interaction.options.getString("plane", true).trim();
-                            const plane = await planeCollection.findOne(createPlaneFilter(planeName));
+                            const plane = await planeCollection.findOne(createTextFilter<AM4.Plane>(planeName));
                             if (!plane) throw new DiscordClientError(`No plane was found with ${Formatters.bold(planeName)}...`);
-                            const filter: Filter<Settings.plane> = { 
+                            const filter: Filter<Settings.Plane> = { 
                                 id: interaction.user.id, 
                                 planeID: plane._id 
                             };
@@ -1617,14 +1632,14 @@ const command: SlashCommand = {
         }
     },
     async autocomplete(interaction, { database }) {
-        const planes = database.am4.collection<AM4_Data.plane>('Planes');
+        const planes = database.am4.collection<AM4.Plane>('Planes');
         const focused = interaction.options.getFocused(true);
         try {
             let choices: ApplicationCommandOptionChoice[];
             if (focused.name === "engine") {
                 const planeName = interaction.options.getString("plane");
                 if (planeName) {
-                    const plane = await planes.findOne(createPlaneFilter(planeName));
+                    const plane = await planes.findOne(createTextFilter<AM4.Plane>(planeName));
                     if (plane) {
                         choices = plane.engines.map(engine => ({
                             name: engine.name,

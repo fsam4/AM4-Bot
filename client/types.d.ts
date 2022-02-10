@@ -5,17 +5,16 @@ import type { Worker } from 'cluster';
 interface EventOptions {
     telegramWorker: Worker;
     discordWorker: Worker;
+    rest: AM4RestClient;
     log: WebhookClient;
 }
 
-interface EventNames {
-    "dataUpdate": [AM4RestClient];
-}
+type EventNames = "dataUpdate";
 
-type EventHandler<K extends keyof EventNames> = {
+type EventHandler<K extends EventNames> = {
     name: K;
     once: boolean;
-    execute: (...args: [...EventNames[K], EventOptions]) => Promise<void>;
+    execute: (options: EventOptions) => Promise<void>;
 }
 
-export type Event = { [P in keyof EventNames]: EventHandler<P> }[keyof EventNames];
+export type Event = { [P in EventNames]: EventHandler<P> }[EventNames];

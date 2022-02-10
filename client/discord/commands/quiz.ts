@@ -4,8 +4,20 @@ import DiscordClientError from '../error';
 import { promisify } from 'util';
 import config from '../../../config.json';
 
-import type { Quiz, Discord, QuestionDifficulty } from '@typings/database';
+import type { Quiz, Discord } from '@typings/database';
 import type { SlashCommand } from '@discord/types';
+
+type ImageQuestion = { 
+    type: Extract<Quiz.Question["type"], "image">;
+    question: Exclude<Quiz.Question["question"], string>;
+};
+
+type TextQuestion = { 
+    type: Extract<Quiz.Question["type"], "text">;
+    question: Extract<Quiz.Question["question"], string>;
+};
+
+type Question = Omit<Quiz.Question, "type" | "question"> & (ImageQuestion | TextQuestion);
 
 const quizCooldowns = new Set<string>();
 const eventMultiplier = 1;
@@ -161,13 +173,13 @@ const command: SlashCommand = {
             return;
         }
         await interaction.deferReply();
-        const games = database.quiz.collection<Quiz.game>('Games');
-        const quizUserCollection = database.quiz.collection<Quiz.user>('Users');
-        const questionCollection = database.quiz.collection<Quiz.question>('Questions');
-        const userCollection = database.discord.collection<Discord.user>("Users");
+        const games = database.quiz.collection<Quiz.Game>('Games');
+        const quizUserCollection = database.quiz.collection<Quiz.User>('Users');
+        const questionCollection = database.quiz.collection<Quiz.Question>('Questions');
+        const userCollection = database.discord.collection<Discord.User>("Users");
         try {
             const subCommand = interaction.options.getSubcommand();
-            type Difficulty = QuestionDifficulty | "normal";
+            type Difficulty = Quiz.Question["difficulty"] | "normal";
             switch(subCommand) {
                 case "play": {
                     if (!interaction.inCachedGuild()) throw new DiscordClientError("This command can only be used in servers where the bot is in...");
@@ -177,7 +189,7 @@ const command: SlashCommand = {
                     const rounds = interaction.options.getInteger("rounds") || 5;
                     const game = await games.findOne(gameId);
                     if (!game) throw new DiscordClientError('That is not a valid game...');
-                    const filterQuery: Filter<Quiz.question> = { tags: game.tag };
+                    const filterQuery: Filter<Quiz.Question> = { tags: game.tag };
                     if (mode !== "normal") filterQuery.difficulty = mode;
                     const poolSize = await questionCollection.countDocuments(filterQuery);
                     console.log(`${game.name} was started in ${interaction.guild.name}!`);
@@ -242,7 +254,7 @@ const command: SlashCommand = {
                                     await thread.setName(game.name, reason);
                                 }
                             } else {
-                                thread = await (<TextChannel>interaction.channel).threads.create({
+                                thread = await interaction.channel.threads.create({
                                     name: game.name,
                                     autoArchiveDuration: 60,
                                     reason: `Quiz started by ${interaction.user.username}#${interaction.user.discriminator}`,
@@ -250,7 +262,7 @@ const command: SlashCommand = {
                                 });
                                 await thread.members.add(interaction.user, "Started a quiz game");
                             }
-                            const cursor = questionCollection.aggregate<Quiz.question>([
+                            const cursor = questionCollection.aggregate<Question>([
                                 {
                                     $match: filterQuery
                                 },
@@ -280,7 +292,7 @@ const command: SlashCommand = {
                                     let questionMessage: Message;
                                     if (doc.type === "image") {
                                         display.setTitle(`${game.base_question} (${round}/${rounds})`);
-                                        const attachment = new MessageAttachment((<Binary>doc.question).buffer, "question.jpg");
+                                        const attachment = new MessageAttachment(doc.question.buffer, "question.jpg");
                                         display.setImage('attachment://question.jpg');
                                         questionMessage = await thread.send({ embeds: [display], files: [attachment] })
                                         .catch(closeCursorAndThrowError);
@@ -395,7 +407,7 @@ const command: SlashCommand = {
                     });
                     const amount = await cursor.count();
                     const users = await cursor.limit(10).toArray();
-                    const accounts = await userCollection.aggregate<Discord.user>([
+                    const accounts = await userCollection.aggregate<Discord.User>([
                         {
                             $match: {
                                 id: { 

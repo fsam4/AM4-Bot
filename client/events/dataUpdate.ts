@@ -7,17 +7,17 @@ import isFirstDayOfMonth from 'date-fns/isFirstDayOfMonth';
 import addMonths from 'date-fns/addMonths';
 
 import type { AnyBulkWriteOperation } from 'mongodb';
-import type { AM4_Data } from '@typings/database';
 import type { Event } from '@client/types';
+import type { AM4 } from '@typings/database';
 
-type AllianceDocument = AM4_Data.alliance & { members: AM4_Data.member[] };
-type AllianceBulkWriteOperation = AnyBulkWriteOperation<AM4_Data.alliance>;
-type MemberBulkWriteOperation = AnyBulkWriteOperation<AM4_Data.member>;
+type AllianceDocument = AM4.Alliance & { members: AM4.AllianceMember[] };
+type AllianceBulkWriteOperation = AnyBulkWriteOperation<AM4.Alliance>;
+type MemberBulkWriteOperation = AnyBulkWriteOperation<AM4.AllianceMember>;
 
 const event: Event = {
     name: "dataUpdate",
     once: true,
-    async execute(rest, { log }) {
+    async execute({ log, rest }) {
         let requestsRemaining: number;
         const label = chalk.yellow("Data update");
         console.time(label);
@@ -25,9 +25,9 @@ const event: Event = {
         if (databaseUrl === undefined) throw new Error("DATABASE_URL must be provided!");
         MongoClient.connect(databaseUrl, async (err, database) => {
             if (err) throw err;
-            const am4 = database.db('AM4-Data');
-            const allianceCollection = am4.collection<AM4_Data.alliance>('Alliances');
-            const memberCollection = am4.collection<AM4_Data.member>('Members');
+            const am4 = database.db("AM4");
+            const allianceCollection = am4.collection<AM4.Alliance>('Alliances');
+            const memberCollection = am4.collection<AM4.AllianceMember>('Members');
             const alliances = await allianceCollection.aggregate<AllianceDocument>([
                 {
                     $match: {
@@ -97,9 +97,9 @@ const event: Event = {
                                                 }],
                                                 $slice: -7
                                             },
-                                            sv: {
+                                            shareValue: {
                                                 $each: [{ 
-                                                    value: member.sv, 
+                                                    value: member.shareValue, 
                                                     date: today 
                                                 }],
                                                 $slice: -7
@@ -128,8 +128,8 @@ const event: Event = {
                                             value: Number(onlineMS > 86400000), 
                                             date: today 
                                         }],
-                                        sv: [{ 
-                                            value: member.sv, 
+                                        shareValue: [{ 
+                                            value: member.shareValue, 
                                             date: today 
                                         }],
                                         expireAt: expireDate

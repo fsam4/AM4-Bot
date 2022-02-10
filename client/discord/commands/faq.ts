@@ -124,11 +124,11 @@ const command: SlashCommand = {
         const subCommand = interaction.options.getSubcommand(false);
         await interaction.deferReply({ ephemeral: subCommand !== "search" && interaction.inGuild() });
         try {
-            const faqCollection = database.discord.collection<Discord.faq>("FAQ");
+            const faqCollection = database.discord.collection<Discord.FAQ>("FAQ");
             switch(subCommand) {
                 case "search": {
                     const query = interaction.options.getString("query", true);
-                    let filter: Filter<Discord.faq> = ObjectId.isValid(query) ? { _id: new ObjectId(query) } : { question: query };
+                    let filter: Filter<Discord.FAQ> = ObjectId.isValid(query) ? { _id: new ObjectId(query) } : { question: query };
                     const type = <QuestionType>interaction.options.getString("type", true);
                     switch(type) {
                         case "custom": {
@@ -216,7 +216,7 @@ const command: SlashCommand = {
                 case "delete": {
                     const questionID = interaction.options.getString("id");
                     if (!ObjectId.isValid(questionID)) throw new DiscordClientError("That is not a valid FAQ ID!");
-                    const filter: Filter<Discord.faq> = { _id: new ObjectId(questionID), $and: [{ author: { $exists: true } }] };
+                    const filter: Filter<Discord.FAQ> = { _id: new ObjectId(questionID), $and: [{ author: { $exists: true } }] };
                     const owner = interaction.client.application.owner;
                     const isDeveloper = owner instanceof Team ? owner.members.some(member => member.id === interaction.user.id) : (interaction.user.id === owner.id);
                     if (!isDeveloper && account.admin_level < 2) filter.$and.push({ author: interaction.user.id });
@@ -237,12 +237,12 @@ const command: SlashCommand = {
         }
     },
     async autocomplete(interaction, { database }) {
-        const faqCollection = database.discord.collection<Discord.faq>("FAQ");
+        const faqCollection = database.discord.collection<Discord.FAQ>("FAQ");
         const focusedValue = <string>interaction.options.getFocused();
         const typeValue = <QuestionType>interaction.options.getString("type");
         try {
             const value = focusedValue.slice(0, 15).match(/(\w|-|\s){1,}/g)?.join("");
-            const filter: Filter<Discord.faq> = {
+            const filter: Filter<Discord.FAQ> = {
                 name: { 
                     $regex: `.*${value}.*`,
                     $options: "i" 

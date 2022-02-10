@@ -1,0 +1,58 @@
+{
+    "$schema": "http://json-schema.org/schema",
+    "type": "object",
+    "required": ["reputation", "activity", "fuelPrice", "co2Price", "salaries"],
+    "properties": {
+        "reputation": {
+            "description": "The default reputation to use",
+            "type": "number",
+            "minimum": 10,
+            "maximum": 100
+        },
+        "activity": {
+            "description": "The default activity time to use (in hours)",
+            "type": "number",
+            "minimum": 1,
+            "maximum": 24
+        },
+        "fuelPrice": {
+            "description": "The default fuel price to use",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3000
+        },
+        "co2Price": {
+            "description": "The default co2 price to use",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 200
+        },
+        "salaries": {
+            "type": "object",
+            "description": "The default salaries to use",
+            "required": ["pilot", "crew", "engineer", "tech"],
+            "properties": {
+                "pilot": {
+                    "description": "The default pilot salary to use",
+                    "type": "number",
+                    "minimum": 200
+                },
+                "crew": {
+                    "description": "The default crew salary to use",
+                    "type": "number",
+                    "minimum": 150
+                },
+                "engineer": {
+                    "description": "The default engineer salary to use",
+                    "type": "number",
+                    "minimum": 250
+                },
+                "tech": {
+                    "description": "The default tech salary to use",
+                    "type": "number",
+                    "minimum": 225
+                }
+            }
+        }
+    }
+}

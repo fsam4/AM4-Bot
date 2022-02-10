@@ -1,10 +1,9 @@
 import { MessageEmbed, MessageActionRow, MessageSelectMenu, Formatters, MessageAttachment, Constants, type Message, type MessageComponentInteraction, type UserContextMenuInteraction } from 'discord.js';
 import DiscordClientError from '../error';
 import { emojis } from '../../../config.json';
-import { User } from '../../utils';
 import Plane from '../../../src/lib/plane';
 
-import type { AM4_Data, Settings, Discord } from '@typings/database';
+import type { AM4, Settings, Discord } from '@typings/database';
 import type { ContextMenu } from '@discord/types';
 
 const command: ContextMenu<UserContextMenuInteraction> = {
@@ -25,17 +24,17 @@ const command: ContextMenu<UserContextMenuInteraction> = {
     async execute(interaction, { database, rest, locale }) {
         await interaction.deferReply();
         try {
-            const users = database.discord.collection<Discord.user>("Users");
-            const settings = database.settings.collection<Settings.user>('Users');
-            const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-            const planeSettings = database.settings.collection<Settings.plane>('Planes');
+            const users = database.discord.collection<Discord.User>("Users");
+            const settings = database.settings.collection<Settings.User>('Users');
+            const planeCollection = database.am4.collection<AM4.Plane>('Planes');
+            const planeSettings = database.settings.collection<Settings.Plane>('Planes');
             const account = await users.findOne({ id: interaction.targetId });
             if (!account?.airlineID) throw new DiscordClientError(`${Formatters.userMention(interaction.targetId)} has not logged in...`);
             const { status, airline, fleet } = await rest.fetchAirline(account.airlineID);
             if (!status.success) throw new DiscordClientError(status.error);
             if (!fleet.size) throw new DiscordClientError("This airline does not have any planes in it's fleet...");
-            const { training, options } = new User(interaction.user.id, await settings.findOne({ id: interaction.user.id }));
-            const planes = await planeCollection.aggregate<AM4_Data.plane & { amount: number }>([
+            const user = await settings.findOne({ id: interaction.user.id });
+            const planes = await planeCollection.aggregate<AM4.Plane & { amount: number }>([
                 {
                     $match: { 
                         name: { 
@@ -88,8 +87,8 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                     if (modifications.speed) plane.speed *= 1.1;
                     if (modifications.co2) plane.co2 *= 0.9;
                 }
-                plane.fuel *= (100 - training.fuel) / 100;
-                plane.co2 *= (100 - training.co2) / 100;
+                if (user?.training.fuel) plane.fuel *= (100 - user.training.fuel) / 100;
+                if (user?.training.co2) plane.co2 *= (100 - user.training.co2) / 100;
             }
             const select = new MessageSelectMenu({
                 customId: "plane",
@@ -105,10 +104,16 @@ const command: ContextMenu<UserContextMenuInteraction> = {
             });
             let plane = planes[0];
             let image = new MessageAttachment(plane.image.buffer, "plane.jpg");
-            type GameMode = Lowercase<typeof airline.gameMode>;
+            const options = {
+                activity: user?.options.activity ?? 18,
+                fuelPrice: user?.options.fuel_price,
+                co2Price: user?.options.co2_price,
+                reputation: airline.reputation[plane.type],
+                gameMode: airline.gameMode
+            };
             let statistics = {
-                profit: Plane.profit(plane, { ...options, mode: <GameMode>airline.gameMode.toLowerCase() }).profit,
-                sv: Plane.estimatedShareValueGrowth(plane, { ...options, mode: <GameMode>airline.gameMode.toLowerCase() })
+                profit: Plane.profit(plane, options).profit,
+                sv: Plane.estimatedShareValueGrowth(plane, options)
             };
             const embed = new MessageEmbed({
                 color: "BLURPLE",
@@ -163,8 +168,8 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                     plane = planes.find(plane => plane._id.equals(plane_id));
                     image = new MessageAttachment(plane.image.buffer, "plane.jpg");
                     statistics = {
-                        profit: Plane.profit(plane, { ...options, mode: <GameMode>airline.gameMode.toLowerCase() }).profit,
-                        sv: Plane.estimatedShareValueGrowth(plane, { ...options, mode: <GameMode>airline.gameMode.toLowerCase() })
+                        profit: Plane.profit(plane, options).profit,
+                        sv: Plane.estimatedShareValueGrowth(plane, options)
                     };
                     embed.setDescription(`**Amount:** ${plane.amount} planes\n**Plane type:** ${plane.type === "vip" ? plane.type.toUpperCase() : plane.type}`);
                     embed.setImage(`attachment://${image.name}`);

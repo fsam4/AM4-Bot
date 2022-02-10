@@ -13,12 +13,12 @@ import format from 'date-fns/format';
 
 import type { Message, User, InputMediaPhoto } from 'typegram';
 import type { Command, DataCallbackQuery } from '@telegram/types';
-import type { Telegram, AM4_Data } from '@typings/database';
+import type { Telegram, AM4 } from '@typings/database';
 import type { Member } from '@source/classes/alliance';
 import type { Context } from 'telegraf';
 import type Alliance from '@source/classes/alliance';
 
-interface AllianceMember extends AM4_Data.member {
+interface AllianceMember extends AM4.AllianceMember {
     daysOffline: number;
     thisWeek: number;
     left: Date;
@@ -83,9 +83,9 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('search:alliance', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database, rest }) {
-                const keyboards = database.telegram.collection<Telegram.keyboard>('Keyboards');
-                const allianceCollection = database.am4.collection<AM4_Data.alliance>('Alliances');
-                const memberCollection = database.am4.collection<AM4_Data.member>("Members");
+                const keyboards = database.telegram.collection<Telegram.Keyboard>('Keyboards');
+                const allianceCollection = database.am4.collection<AM4.Alliance>('Alliances');
+                const memberCollection = database.am4.collection<AM4.AllianceMember>("Members");
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => void 0);
@@ -142,7 +142,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                                                 then: { 
                                                     $last: {
                                                         $map: {
-                                                            input: '$sv',
+                                                            input: '$shareValue',
                                                             as: 'data',
                                                             in: '$$data.date'
                                                         }
@@ -303,9 +303,9 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('members:alliance', <BaseSceneOptions>{ ttl: 600000 }),
             async register({ database, rest }) {
-                const keyboards = database.telegram.collection<Telegram.keyboard>('Keyboards');
-                const memberCollection = database.am4.collection<AM4_Data.member>('Members');
-                const allianceCollection = database.am4.collection<AM4_Data.alliance>("Alliances");
+                const keyboards = database.telegram.collection<Telegram.Keyboard>('Keyboards');
+                const memberCollection = database.am4.collection<AM4.AllianceMember>('Members');
+                const allianceCollection = database.am4.collection<AM4.Alliance>("Alliances");
                 const choices = [
                     {
                         name: 'Total Contribution',
@@ -321,7 +321,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     },
                     {
                         name: 'Share Value',
-                        value: 'sv'
+                        value: 'shareValue'
                     },
                     {
                         name: 'Joining date',
@@ -387,11 +387,11 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     ctx.scene.session.sorting.order = (<DataCallbackQuery>ctx.callbackQuery).data as "asc" | "desc";
                     const { order, path: sort } = ctx.scene.session.sorting;
                     const [{ alliance, members: m }] = ctx.scene.session.alliances;
-                    type MemberData = { data: AM4_Data.member & { thisWeek: number, daysOffline: number } };
+                    type MemberData = { data: AM4.AllianceMember & { thisWeek: number, daysOffline: number } };
                     let member_list = m.toArray() as Array<Member & MemberData>;
                     const allianceDocument = await allianceCollection.findOne({ name: alliance.name });
                     if (allianceDocument) {
-                        type AllianceMemberDocument = AM4_Data.member & { thisWeek: number, daysOffline: number };
+                        type AllianceMemberDocument = AM4.AllianceMember & { thisWeek: number, daysOffline: number };
                         const memberDocuments = await memberCollection.aggregate<AllianceMemberDocument>([
                             {
                                 $match: {
@@ -479,7 +479,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('compare:alliance', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database, rest }) {
-                const allianceCollection = database.am4.collection<AM4_Data.alliance>('Alliances');
+                const allianceCollection = database.am4.collection<AM4.Alliance>('Alliances');
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => void 0);
@@ -682,7 +682,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                                             label: alliance.name,
                                             data: members.map(member => ({
                                                 x: member.contribution.daily,
-                                                y: member.sv
+                                                y: member.shareValue
                                             }))
                                         }))
                                     },

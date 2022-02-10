@@ -1,7 +1,7 @@
 b <u>Information</u>
 |
-| <b>City:</b> #{airport.city.capitalize()}
-| <b>Country:</b> #{airport.country.capitalize()}, #{airport.country_code.toUpperCase()}
+| <b>City:</b> #{airport.city.capitalizeWords({ capitalizeAfterQuote: true })}
+| <b>Country:</b> #{airport.country.capitalizeWords({ capitalizeAfterQuote: true })}, #{airport.country_code.toUpperCase()}
 | <b>ICAO:</b> #{airport.icao.toUpperCase()}
 | <b>IATA:</b> #{airport.iata.toUpperCase()}
 |

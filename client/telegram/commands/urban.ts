@@ -1,6 +1,6 @@
 import TelegramClientError from '../error';
 import { Scenes } from 'telegraf';
-import fetch from 'node-fetch';
+import { fetch } from 'undici';
 
 import type { Message, User } from 'typegram';
 import type { Command } from '@telegram/types';
@@ -31,6 +31,8 @@ type SceneContext = Scenes.SceneContext<SceneSession>;
 
 const definitionURL = (term: string) => `https://www.urbandictionary.com/define.php?${new URLSearchParams({ term })}`;
 const replaceHyperlinks = (s: string) => `[${s.replace(/\[|\]/g, "")}](${definitionURL(s)})`;
+
+const baseUrl = "https://api.urbandictionary.com/v0/define";
 const hyperlink = /\[.+\]/g;
 
 const command: Command<Scenes.SceneContext, never, SceneContext> = {
@@ -57,7 +59,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                     await ctx.scene.leave();
                     try {
                         const query = new URLSearchParams({ term: ctx.message.text });
-                        const definition: Definition = await fetch(`https://api.urbandictionary.com/v0/define?${query}`).then(response => response.json());
+                        const definition = await fetch(`${baseUrl}?${query}`).then(res => res.json()) as Definition;
                         if (!definition || !definition.list?.length) throw new TelegramClientError(`No results found for *${ctx.message.text}*...`);
                         const [answer] = definition.list;
                         answer.definition = answer.definition.replace(hyperlink, replaceHyperlinks);

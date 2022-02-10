@@ -8,8 +8,8 @@ const event: Event = {
     once: false,
     async execute(member, { database, rest }) {
         if (member.user.bot) return;
-        const servers = database.settings.collection<Settings.server>('Servers');
-        const users = database.discord.collection<Discord.user>('Users');
+        const servers = database.settings.collection<Settings.Server>('Servers');
+        const users = database.discord.collection<Discord.User>('Users');
         const server = await servers.findOne({ id: member.guild.id });
         if (server && server.log_channel) {
             const user = await users.findOne({ id: member.id });

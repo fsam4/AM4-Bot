@@ -4,7 +4,7 @@ import addMonths from 'date-fns/addMonths';
 import pug from 'pug';
 import fs from 'fs';
 
-import type { Telegram, AM4_Data } from '@typings/database';
+import type { Telegram, AM4 } from '@typings/database';
 import type { Message, User } from 'typegram';
 import type { Command } from '@telegram/types';
 
@@ -35,9 +35,9 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('search:achievement', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database }) {
-                const keyboards = database.telegram.collection<Telegram.keyboard>('Keyboards');
-                const achievements = database.am4.collection<AM4_Data.achievement>('Achievements');
-                const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
+                const keyboards = database.telegram.collection<Telegram.Keyboard>('Keyboards');
+                const achievements = database.am4.collection<AM4.Achievement>('Achievements');
+                const airportCollection = database.am4.collection<AM4.Airport>('Airports');
                 this.scene.use((ctx, next) => {
                     ctx.scene.session.user ||= ctx.from;
                     return next();
@@ -59,7 +59,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                         const achievement = await achievements.findOne({ $text: { $search: `"${ctx.message.text}"` } });
                         if (!achievement) throw new TelegramClientError(`No achievement *${ctx.message.text}* was found...`);
                         if (achievement.route.length) {
-                            const airports = await airportCollection.aggregate<AM4_Data.airport>([
+                            const airports = await airportCollection.aggregate<AM4.Airport>([
                                 {
                                     $match: { 
                                         _id: { $in: achievement.route } 

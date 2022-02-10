@@ -24,6 +24,12 @@ type GetPath<O, P extends string> =
             ? GetStringKey<O, P>
             : never;
 
+interface CapitalizationOptions {
+    preserve?: boolean; 
+    capitalizeAfterQuote?: boolean; 
+    skipWord?: (word: string, position: number) => boolean;
+}
+
 declare global {
 
     interface Map<K, V> {
@@ -98,11 +104,22 @@ declare global {
     interface String {
 
         /**
-         * Capitalizes first letter of each word in a string
-         * @returns A string with each word of the string in capital
+         * Capitalizes the first letter of a string only
+         * @param options The capitalization options
+         * @returns The capitalized string
+         * @license https://github.com/grncdr/js-capitalize/blob/master/LICENSE
          */
 
-        capitalize(this: string): string;
+        capitalize(this: string, options?: Pick<CapitalizationOptions, "preserve">): string;
+
+        /**
+         * Capitalizes the first letter of each word in a string
+         * @param options The capitalization options
+         * @returns The capitalized string
+         * @license https://github.com/grncdr/js-capitalize/blob/master/LICENSE
+         */
+
+        capitalizeWords(this: string, options?: CapitalizationOptions): string;
 
     }
 
@@ -162,24 +179,6 @@ declare global {
         
         convertToCSV(array: Array<{ [key: string]: any }>, seperator?: string): string;
 
-    }
-
-}
-
-declare module 'mongodb' {
-
-    type Project<T extends Record<keyof P, any>, P> = {
-        [Property in keyof P as P[Property] extends false ? never : Property]: T[Property];
-    }
-
-    type GeoNear<T> = T & {
-        dist : {
-            calculated: number;
-            location: {
-               type: "Point";
-               coordinates: [number, number];
-            };
-        };
     }
 
 }

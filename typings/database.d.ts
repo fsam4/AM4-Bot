@@ -1,4 +1,5 @@
 import type { Binary, ObjectId } from "bson";
+import type { GameMode } from "@typings/am4-api";
 
 type PaxSeat = 'Y' | 'J' | 'F';
 type CargoLoad = 'H' | 'L';
@@ -7,11 +8,31 @@ interface BaseDocument {
     _id?: ObjectId;
 }
 
-type LogData = { value: number, date: Date };
+interface LocationDocument {
+    location: {
+        type: "Point";
+        coordinates: [number, number];
+    };
+}
 
-export namespace AM4_Data {
+type Project<T extends Record<keyof P, any>, P> = {
+    [Property in keyof P as P[Property] extends false ? never : Property]: T[Property];
+};
+
+type GeoNear<T> = T & {
+    dist: LocationDocument & { 
+        calculated: number; 
+    };
+};
+
+type LogValue = { 
+    value: number, 
+    date: Date 
+};
+
+export namespace AM4 {
     
-    interface achievement extends BaseDocument {
+    interface Achievement extends BaseDocument {
         name: string;
         description?: string;
         bonus_points: number;
@@ -21,7 +42,7 @@ export namespace AM4_Data {
         image?: string;
     }
 
-    interface airport extends BaseDocument {
+    interface Airport extends BaseDocument, LocationDocument {
         city: string;
         country: string;
         country_code: string;
@@ -29,31 +50,27 @@ export namespace AM4_Data {
         runway: number;
         icao: string;
         iata: string;
-        location: {
-            type: "Point";
-            coordinates: [number, number];
-        };
     }
 
-    interface alliance extends BaseDocument {
+    interface Alliance extends BaseDocument {
         name: string;
         archived?: true;
-        values: LogData[];
+        values: LogValue[];
     }
 
-    interface member extends BaseDocument {
+    interface AllianceMember extends BaseDocument {
         name: string;
         allianceID: ObjectId;
         joined: Date;
         flights: number;
         contribution: number;
-        sv: LogData[];
-        offline: LogData[];
-        dailyContribution: LogData[];
+        shareValue: LogValue[];
+        offline: LogValue[];
+        dailyContribution: LogValue[];
         expireAt: Date;
     }
 
-    interface plane extends BaseDocument {
+    interface Plane extends BaseDocument {
         name: string;
         price?: number;
         bonus_points?: number;
@@ -86,7 +103,7 @@ export namespace AM4_Data {
         }>
     }
 
-    interface route extends BaseDocument {
+    interface Route extends BaseDocument {
         airports: [ObjectId, ObjectId];
         demand: {
             Y: number,
@@ -103,7 +120,7 @@ type AdminLevel = 0 | 1 | 2 | 3 | 4 | 5;
 
 export namespace Discord {
 
-    interface user extends BaseDocument {
+    interface User extends BaseDocument {
         id: string;
         name?: string;
         airlineID?: number;
@@ -120,7 +137,7 @@ export namespace Discord {
         }>;
     }
 
-    interface notification extends BaseDocument {
+    interface Notification extends BaseDocument {
         date: Date;
         user: string;
         server: string;
@@ -138,7 +155,7 @@ export namespace Discord {
         }>;
     }
 
-    interface panel extends BaseDocument {
+    interface Panel extends BaseDocument {
         type: "message" | "panel";
         author: string;
         server: string;
@@ -153,7 +170,7 @@ export namespace Discord {
         }>;
     }
 
-    interface giveaway extends BaseDocument {
+    interface Giveaway extends BaseDocument {
         finished: boolean;
         author: string;
         server: string;
@@ -165,7 +182,7 @@ export namespace Discord {
         users: string[];
     }
 
-    interface faq extends BaseDocument {
+    interface FAQ extends BaseDocument {
         author?: string;
         server?: string;
         question: string;
@@ -177,14 +194,14 @@ export namespace Discord {
 
 export namespace Telegram {
 
-    interface keyboard extends BaseDocument {
+    interface Keyboard extends BaseDocument {
         id: number;
         command: string;
         input: string[];
         expireAt: Date;
     }
 
-    interface user extends BaseDocument {
+    interface User extends BaseDocument {
         id: number;
         admin_level: AdminLevel;
         commands: Array<{
@@ -196,18 +213,16 @@ export namespace Telegram {
 }
 
 type GameTag = "airport" | "am4" | "plane" | "aviation" | "logo";
-type QuestionDifficulty = "hard" | "easy";
-type QuestionType = "text" | "image";
 
 export namespace Quiz {
 
-    interface user extends BaseDocument {
+    interface User extends BaseDocument {
         id: string | number,
         points: number,
         score?: number
     }
 
-    interface game extends BaseDocument {
+    interface Game extends BaseDocument {
         base_question?: string;
         author: string,
         name: string,
@@ -216,11 +231,11 @@ export namespace Quiz {
         reward: number
     }
 
-    interface question<T extends QuestionType = QuestionType> extends BaseDocument {
-        type: T;
+    interface Question extends BaseDocument {
+        type: "text" | "image";
         tags: GameTag[];
-        question: T extends 'text' ? string : Binary;
-        difficulty: QuestionDifficulty;
+        difficulty: "hard" | "easy";
+        question: string | Binary;
         answers: string[];
     }
 
@@ -228,9 +243,9 @@ export namespace Quiz {
 
 export namespace Settings {
 
-    interface user extends BaseDocument {
+    interface User extends BaseDocument {
         id: string;
-        mode?: 'easy' | 'realism';
+        mode?: GameMode;
         training: {
             fuel: number,
             co2: number,
@@ -258,7 +273,7 @@ export namespace Settings {
         };
     }
 
-    interface webhook extends BaseDocument {
+    interface Webhook extends BaseDocument {
         id: string;
         token: string;
         server: string;
@@ -274,7 +289,7 @@ export namespace Settings {
         };
     }
 
-    interface server extends BaseDocument {
+    interface Server extends BaseDocument {
         id: string;
         alliance_name?: string;
         log_channel?: string;
@@ -292,7 +307,7 @@ export namespace Settings {
         };
     }
 
-    interface plane extends BaseDocument {
+    interface Plane extends BaseDocument {
         id: string;
         planeID: ObjectId;
         engine?: string;
@@ -300,7 +315,7 @@ export namespace Settings {
             fuel: boolean,
             co2: boolean,
             speed: boolean
-        }
+        };
     }
     
 }

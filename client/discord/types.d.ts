@@ -5,32 +5,34 @@ import type { Worker } from 'cluster';
 import type Discord from 'discord.js';
 import type Keyv from 'keyv';
 
+type DatabaseNames = "am4" | "discord" | "settings" | "telegram" | "quiz";
+
 interface BaseOptions {
+    database: Readonly<Record<DatabaseNames, Db>>;
     timeouts: Map<ObjectId, NodeJS.Timeout>;
+    webhook: Discord.WebhookClient;
+    log: Discord.WebhookClient;
     telegramWorker: Worker;
-    database: Readonly<Record<"am4" | "discord" | "settings" | "telegram" | "quiz", Db>>;
     cooldowns: Keyv<Date>;
     client: Discord.Client;
     rest: AM4RestClient;
-    webhook: Discord.WebhookClient;
-    log: Discord.WebhookClient;
 }
 
 interface CommandOptions extends BaseOptions {
-    account: Database.Discord.user;
+    account: Database.Discord.User;
     ephemeral: boolean;
     guildLocale: string;
     locale: string;
 }
 
 interface ContextMenuOptions extends BaseOptions {
-    account: Database.Discord.user;
+    account: Database.Discord.User;
     guildLocale: string;
     locale: string;
 }
 
 interface ComponentOptions extends BaseOptions {
-    account: Database.Discord.user;
+    account: Database.Discord.User;
     parsedCustomId: string[];
     guildLocale: string;
     locale: string;

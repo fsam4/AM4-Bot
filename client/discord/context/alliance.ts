@@ -7,10 +7,10 @@ import formatDistanceToNowStrict from 'date-fns/formatDistanceToNowStrict';
 import compareAsc from 'date-fns/compareAsc';
 import addDays from 'date-fns/addDays';
 
-import type { AM4_Data, Discord } from '@typings/database';
+import type { AM4, Discord } from '@typings/database';
 import type { ContextMenu } from '@discord/types';
 
-interface AllianceMember extends AM4_Data.member {
+interface AllianceMember extends AM4.AllianceMember {
     daysOffline: number;
     thisWeek: number;
     left: Date;
@@ -34,9 +34,9 @@ const command: ContextMenu<UserContextMenuInteraction> = {
     async execute(interaction, { database, rest, locale }) {
         await interaction.deferReply();
         try {
-            const allainceCollection = database.am4.collection<AM4_Data.alliance>('Alliances');
-            const memberCollection = database.am4.collection<AM4_Data.member>('Members');
-            const users = database.discord.collection<Discord.user>("Users");
+            const allainceCollection = database.am4.collection<AM4.Alliance>('Alliances');
+            const memberCollection = database.am4.collection<AM4.AllianceMember>('Members');
+            const users = database.discord.collection<Discord.User>("Users");
             const account = await users.findOne({ id: interaction.targetId });
             if (!account?.airlineID) throw new DiscordClientError(`${Formatters.userMention(interaction.targetId)} has not logged in...`);
             const { status: airlineStatus, airline } = await rest.fetchAirline(account.airlineID);
@@ -108,7 +108,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                                     then: { 
                                         $last: {
                                             $map: {
-                                                input: '$sv',
+                                                input: '$shareValue',
                                                 as: 'data',
                                                 in: '$$data.date'
                                             }

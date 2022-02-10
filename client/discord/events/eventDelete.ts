@@ -5,7 +5,7 @@ const event: Event = {
     name: "guildScheduledEventDelete",
     once: false,
     async execute(scheduledEvent, { database }) {
-        const giveaways = database.discord.collection<Discord.giveaway>("Giveaways");
+        const giveaways = database.discord.collection<Discord.Giveaway>("Giveaways");
         await giveaways.updateOne({ event: scheduledEvent.id }, {
             $unset: {
                 event: ""

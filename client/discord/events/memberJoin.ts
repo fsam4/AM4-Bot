@@ -9,8 +9,8 @@ const event: Event = {
     async execute(member, { rest, database }) {
         if (member.user.bot) return;
         const permissions = member.guild.me.permissions;
-        const servers = database.settings.collection<Settings.server>('Servers');
-        const users = database.discord.collection<Discord.user>('Users');
+        const servers = database.settings.collection<Settings.Server>('Servers');
+        const users = database.discord.collection<Discord.User>('Users');
         const server = await servers.findOne({ id: member.guild.id });
         if (server) {
             const user = await users.findOne({ id: member.id });

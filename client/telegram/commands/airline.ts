@@ -12,7 +12,7 @@ import subHours from 'date-fns/subHours';
 import format from 'date-fns/format';
 
 import type { Message, User, InputMediaPhoto } from 'typegram';
-import type { Telegram, AM4_Data } from '@typings/database';
+import type { Telegram, AM4 } from '@typings/database';
 import type { Context } from 'telegraf';
 import type { Command } from '@telegram/types';
 
@@ -23,7 +23,7 @@ interface SceneSession extends Scenes.SceneSessionData {
 
 type BaseSceneOptions = ConstructorParameters<typeof Scenes.BaseScene>[1];
 type SceneContext = Scenes.SceneContext<SceneSession>;
-type Aircraft = AM4_Data.plane & { amount?: number };
+type Aircraft = AM4.Plane & { amount?: number };
 
 const commandName = "airline";
 
@@ -63,8 +63,8 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('search:airline', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database, rest }) {
-                const keyboards = database.telegram.collection<Omit<Telegram.keyboard, '_id'>>('Keyboards');
-                const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
+                const keyboards = database.telegram.collection<Omit<Telegram.Keyboard, '_id'>>('Keyboards');
+                const planeCollection = database.am4.collection<AM4.Plane>('Planes');
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => void 0);
@@ -120,10 +120,9 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                                 }
                             }
                         ]).toArray();
-                        type GameMode = Lowercase<typeof airline.gameMode>;
                         const compile = pug.compileFile('client/telegram/layouts/airline.pug');
                         const profit = Airline.profit(planes, { 
-                            mode: <GameMode>airline.gameMode.toLowerCase(),
+                            gameMode: airline.gameMode,
                             reputation: airline.reputation
                         });
                         const cargoFleet = planes.filter(plane => plane.type === 'cargo');
@@ -226,7 +225,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                                 data: {
                                     datasets: [
                                         {
-                                            data: planes.map(plane => Plane.profit(plane, { mode: airline.gameMode.toLowerCase() as Lowercase<typeof airline.gameMode> }).profit * plane.amount)
+                                            data: planes.map(plane => Plane.profit(plane, { gameMode: airline.gameMode }).profit * plane.amount)
                                         }
                                     ],
                                     labels: planes.map(plane => `${plane.name} • ${plane.amount}x`),
@@ -327,7 +326,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('compare:airline', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database, rest }) {
-                const aircrafts = database.am4.collection<AM4_Data.plane>('Planes');
+                const aircrafts = database.am4.collection<AM4.Plane>('Planes');
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => void 0);
@@ -352,7 +351,6 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                                 return response;
                             })
                         );
-                        type GameMode = "realism" | "easy";
                         const graphs = [
                             {
                                 emoji: '1️⃣',
@@ -365,7 +363,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                                             data: [
                                                 {
                                                     x: Airline.profit(<Aircraft[]>fleet.planes, { 
-                                                        mode: <GameMode>airline.gameMode.toLowerCase(),
+                                                        gameMode: airline.gameMode,
                                                         reputation: {
                                                             pax: 100,
                                                             cargo: 100
@@ -628,7 +626,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                                                 backgroundColor: 'rgb(11, 245, 97)',
                                                 data: airlines.map(({ fleet, airline }) => {
                                                     return Airline.profit(<Aircraft[]>fleet.planes, { 
-                                                        mode: <GameMode>airline.gameMode.toLowerCase(),
+                                                        gameMode: airline.gameMode,
                                                         reputation: {
                                                             pax: 100,
                                                             cargo: 100
@@ -641,7 +639,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                                                 backgroundColor: 'rgb(245, 11, 11)',
                                                 data: airlines.map(({ fleet, airline }) => {
                                                     return Airline.profit(<Aircraft[]>fleet.planes, { 
-                                                        mode: <GameMode>airline.gameMode.toLowerCase(),
+                                                        gameMode: airline.gameMode,
                                                         reputation: {
                                                             pax: 100,
                                                             cargo: 100

@@ -1,5 +1,5 @@
 import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, MessageSelectMenu, Formatters, Constants, type Message, type MessageComponentInteraction, type ApplicationCommandOptionChoice } from 'discord.js';
-import { ObjectId, type GeoNear, type Filter, type Document } from 'mongodb';
+import { ObjectId, type Filter, type Document } from 'mongodb';
 import * as Utils from '../../utils';
 import DiscordClientError from '../error';
 import QuickChart from 'quickchart-js';
@@ -7,10 +7,11 @@ import { emojis } from '../../../config.json';
 import Route from '../../../src/classes/route';
 import Plane from '../../../src/lib/plane';
 
-import type { AM4_Data, Settings } from '@typings/database';
+import type { AM4, Settings, GeoNear } from '@typings/database';
 import type { SlashCommand } from '@discord/types';
+import type { GameMode } from '@typings/am4-api';
 
-interface Airport extends AM4_Data.airport {
+interface Airport extends AM4.Airport {
     totalPax: number,
     totalCargo: number,
     average_demand: {
@@ -22,12 +23,11 @@ interface Airport extends AM4_Data.airport {
     }
 }
 
-const { createAirportFilter, createPlaneFilter, createLocationBox, createLocationSphere } = Utils.MongoDB;
+const { createAirportFilter, createTextFilter, createLocationBox, createLocationSphere } = Utils.MongoDB;
 const { formatCode } = Utils.Discord;
 
 type SphereCoordinates = Parameters<typeof createLocationSphere>;
 type BoxCoordinates = Parameters<typeof createLocationBox>;
-type GameMode = "realism" | "easy";
 
 const command: SlashCommand = {
     get name() {
@@ -135,11 +135,11 @@ const command: SlashCommand = {
                         choices: [
                             {
                                 name: "Realism",
-                                value: "realism"
+                                value: "Realism"
                             },
                             {
                                 name: "Easy",
-                                value: "easy"
+                                value: "Easy"
                             }
                         ]
                     }
@@ -187,11 +187,11 @@ const command: SlashCommand = {
                         choices: [
                             {
                                 name: "Realism",
-                                value: "realism"
+                                value: "Realism"
                             },
                             {
                                 name: "Easy",
-                                value: "easy"
+                                value: "Easy"
                             }
                         ]
                     }
@@ -365,10 +365,10 @@ const command: SlashCommand = {
     async execute(interaction, { database, client, ephemeral, locale }) {
         await interaction.deferReply({ ephemeral });
         try {
-            const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
-            const routeCollection = database.am4.collection<AM4_Data.route>('Routes');
-            const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-            const users = database.settings.collection<Settings.user>('Users');
+            const airportCollection = database.am4.collection<AM4.Airport>('Airports');
+            const routeCollection = database.am4.collection<AM4.Route>('Routes');
+            const planeCollection = database.am4.collection<AM4.Plane>('Planes');
+            const userCollection = database.settings.collection<Settings.User>('Users');
             const subCommand = interaction.options.getSubcommand();
             const group = interaction.options.getSubcommandGroup(false);
             switch(group || subCommand) {
@@ -386,14 +386,14 @@ const command: SlashCommand = {
                     if (!airport) throw new DiscordClientError("Unknown airport");
                     const embed = new MessageEmbed({
                         color: "BLUE",
-                        title: `${airport.city.capitalize()}, ${airport.country_code.toUpperCase()}`,
+                        title: `${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}, ${airport.country_code.toUpperCase()}`,
                         thumbnail: {
                             url: "https://i.ibb.co/rpHM4Jm/hq.png"
                         },
                         fields: [
                             { 
                                 name: Formatters.bold(Formatters.underscore("Information")), 
-                                value: `**City:** ${airport.city.capitalize()}\n**Country:** ${airport.country.capitalize()} (${airport.country_code.toUpperCase()})\n**ICAO:** ${airport.icao.toUpperCase()}\n**IATA:** ${airport.iata.toUpperCase()}` 
+                                value: `**City:** ${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}\n**Country:** ${airport.country.capitalizeWords({ capitalizeAfterQuote: true })} (${airport.country_code.toUpperCase()})\n**ICAO:** ${airport.icao.toUpperCase()}\n**IATA:** ${airport.iata.toUpperCase()}` 
                             },
                             { 
                                 name: Formatters.bold(Formatters.underscore("Statistics")), 
@@ -413,7 +413,7 @@ const command: SlashCommand = {
                     const runway = interaction.options.getInteger("runway");
                     const country = interaction.options.getString("country")?.trimEnd();
                     const limit = interaction.options.getInteger("limit") || 1000;
-                    let query: Filter<AM4_Data.airport> = {};
+                    let query: Filter<AM4.Airport> = {};
                     if (market) query.market = { $gte: market };
                     if (runway) query.runway = { $gte: runway };
                     if (country) query = {
@@ -432,7 +432,7 @@ const command: SlashCommand = {
                     const airports = await cursor.limit(limit).toArray();
                     const embeds = airports.map((airport, i) => new MessageEmbed({
                         color: "BLUE",
-                        title: `${airport.city.capitalize()}, ${airport.country_code.toUpperCase()}`,
+                        title: `${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}, ${airport.country_code.toUpperCase()}`,
                         thumbnail: {
                             url: "https://i.ibb.co/rpHM4Jm/hq.png"
                         },
@@ -443,7 +443,7 @@ const command: SlashCommand = {
                         fields: [
                             { 
                                 name: Formatters.bold(Formatters.underscore("Information")), 
-                                value: `**City:** ${airport.city.capitalize()}\n**Country:** ${airport.country.capitalize()} (${airport.country_code.toUpperCase()})\n**ICAO:** ${airport.icao.toUpperCase()}\n**IATA:** ${airport.iata.toUpperCase()}` 
+                                value: `**City:** ${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}\n**Country:** ${airport.country.capitalizeWords({ capitalizeAfterQuote: true })} (${airport.country_code.toUpperCase()})\n**ICAO:** ${airport.icao.toUpperCase()}\n**IATA:** ${airport.iata.toUpperCase()}` 
                             },
                             { 
                                 name: Formatters.bold(Formatters.underscore("Statistics")), 
@@ -515,22 +515,21 @@ const command: SlashCommand = {
                     const market = interaction.options.getInteger("market") ?? 89;
                     let gameMode = <GameMode>interaction.options.getString("mode");
                     if (!gameMode) {
-                        const user = await users.findOne({ id: interaction.user.id });
-                        if (user) gameMode = user.mode;
+                        const user = await userCollection.findOne({ id: interaction.user.id });
+                        if (!user?.mode) throw new DiscordClientError('You need to either login with `/user login` or define the game mode option!');
+                        gameMode = user.mode;
                     }
-                    if (!gameMode) throw new DiscordClientError('You need to either login with `/user login` or define the game mode option!');
-                    const plane = await planeCollection.findOne(createPlaneFilter(plane_input));
+                    const plane = await planeCollection.findOne(createTextFilter<AM4.Plane>(plane_input));
                     if (!plane) throw new DiscordClientError(`No plane could be found with ${Formatters.bold(plane_input)}...`);
                     const hub = await airportCollection.findOne(createAirportFilter(code));
                     if (!hub) throw new DiscordClientError('That is not a valid airport...');
-                    const cursor = airportCollection.aggregate<GeoNear<AM4_Data.airport>>([
+                    const query: Filter<AM4.Airport> = { market: { $gte: market } };
+                    if (gameMode === "Realism") query.runway = { $gte: plane.runway };
+                    const cursor = airportCollection.aggregate<GeoNear<AM4.Airport>>([
                         {
                             $geoNear: {
                                 near: hub.location,
-                                query: {
-                                    market: { $gte: market },
-                                    runway: { $gte: gameMode === 'realism' ? plane.runway : 0 }
-                                },
+                                query: query,
                                 maxDistance: plane.range * 2 * 1000,
                                 minDistance: 100 * 1000,
                                 distanceMultiplier: 0.001,
@@ -552,14 +551,14 @@ const command: SlashCommand = {
                     const image = new MessageAttachment(plane.image.buffer, "plane.jpg");
                     const embed = new MessageEmbed({
                         color: "BLUE",
-                        title: `${airport.city.capitalize()}, ${airport.country_code.toUpperCase()}`,
+                        title: `${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}, ${airport.country_code.toUpperCase()}`,
                         thumbnail: {
                             url: `attachment://${image.name}`
                         },
                         fields: [
                             { 
                                 name: Formatters.bold(Formatters.underscore("Information")), 
-                                value: `**City:** ${airport.city.capitalize()}\n**Country:** ${airport.country.capitalize()} (${airport.country_code.toUpperCase()})\n**ICAO:** ${airport.icao.toUpperCase()}\n**IATA:** ${airport.iata.toUpperCase()}` 
+                                value: `**City:** ${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}\n**Country:** ${airport.country.capitalizeWords({ capitalizeAfterQuote: true })} (${airport.country_code.toUpperCase()})\n**ICAO:** ${airport.icao.toUpperCase()}\n**IATA:** ${airport.iata.toUpperCase()}` 
                             },
                             { 
                                 name: Formatters.bold(Formatters.underscore("Statistics")), 
@@ -584,7 +583,7 @@ const command: SlashCommand = {
                     const locations = route.map(airport => airport.location.coordinates);
                     type Locations = Parameters<typeof Route.distance>;
                     const { distance: originalDistance } = Route.distance(...locations as Locations);
-                    const query: Filter<AM4_Data.airport> = {
+                    const query: Filter<AM4.Airport> = {
                         location: {
                             $geoWithin: {
                                 $centerSphere: createLocationSphere(...locations as SphereCoordinates)
@@ -593,13 +592,13 @@ const command: SlashCommand = {
                     };
                     let gameMode = <GameMode>interaction.options.getString("mode");
                     if (!gameMode) {
-                        const user = await users.findOne({ id: interaction.user.id });
-                        if (user) gameMode = user.mode;
+                        const user = await userCollection.findOne({ id: interaction.user.id });
+                        if (!user?.mode) throw new DiscordClientError('You need to either login with `/user login` or define the game mode option!');
+                        gameMode = user.mode;
                     }
-                    if (!gameMode) throw new DiscordClientError('You need to either login with `/user login` or define the game mode option!');
                     const planeInput = interaction.options.getString("plane", true).trim();
-                    const plane = await planeCollection.findOne(createPlaneFilter(planeInput));
-                    if (gameMode === "realism") query.runway = { $gte: plane.runway };
+                    const plane = await planeCollection.findOne(createTextFilter<AM4.Plane>(planeInput));
+                    if (gameMode === "Realism") query.runway = { $gte: plane.runway };
                     const cursor = airportCollection.find(query);
                     const amount = await cursor.count();
                     if (!amount) {
@@ -610,14 +609,13 @@ const command: SlashCommand = {
                     const stopoverAmount = interaction.options.getInteger("amount") || 1;
                     const stopovers = Route.findStopovers(route, airports, plane, gameMode, stopoverAmount);
                     if (!stopovers.length) throw new DiscordClientError("No suitable stopovers could be found between these two routes...");
-                    const settings = database.settings.collection<Settings.user>('Users')
-                    const user = new Utils.User(interaction.user.id, await settings.findOne({ id: interaction.user.id }));
+                    const user = await userCollection.findOne({ id: interaction.user.id });
                     const embeds = stopovers.map((stopover, i) => {
                         const lastIndex = stopover.airports.length - 1;
-                        const stopoverAirports = stopover.airports.slice(1, lastIndex);
+                        const stopoverAirports: AM4.Airport[] = stopover.airports.slice(1, lastIndex);
                         return new MessageEmbed({
                             color: "BLUE",
-                            title: `${formatCode(departure, user.options.code)} to ${formatCode(arrival, user.options.code)}`,
+                            title: `${formatCode(departure, user?.options.code)} to ${formatCode(arrival, user?.options.code)}`,
                             description: `**Additional distance:** ${(stopover.distance - originalDistance).toLocaleString(locale)} km`,
                             thumbnail: {
                                 url: "https://i.ibb.co/rpHM4Jm/hq.png"
@@ -627,8 +625,8 @@ const command: SlashCommand = {
                                 iconURL: client.user.displayAvatarURL()
                             },
                             fields: stopoverAirports.map(airport => ({
-                                name: `${airport.city.capitalize()}, ${airport.country_code.toUpperCase()}`,
-                                value: `**City:** ${airport.city.capitalize()}\n**Country:** ${airport.country.capitalize()} (${airport.country_code.toUpperCase()})\n**ICAO:** ${airport.icao.toUpperCase()}\n**IATA:** ${airport.iata.toUpperCase()}\n**Market:** ${airport.market}%\n**Runway:** ${airport.runway.toLocaleString(locale)} ft`
+                                name: `${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}, ${airport.country_code.toUpperCase()}`,
+                                value: `**City:** ${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}\n**Country:** ${airport.country.capitalizeWords({ capitalizeAfterQuote: true })} (${airport.country_code.toUpperCase()})\n**ICAO:** ${airport.icao.toUpperCase()}\n**IATA:** ${airport.iata.toUpperCase()}\n**Market:** ${airport.market}%\n**Runway:** ${airport.runway.toLocaleString(locale)} ft`
                             }))
                         });
                     });
@@ -682,7 +680,7 @@ const command: SlashCommand = {
                     break;
                 }
                 case "geo": {
-                    let airports: AM4_Data.airport[] = [], amount: number;
+                    let airports: AM4.Airport[] = [], amount: number;
                     const limit = interaction.options.getInteger("limit") || 1000;
                     switch(subCommand) {
                         case "near": {
@@ -751,7 +749,7 @@ const command: SlashCommand = {
                     const embeds = airports.map((airport, i) => {
                         return new MessageEmbed({
                             color: "BLUE",
-                            title: `${airport.city.capitalize()}, ${airport.country_code.toUpperCase()}`,
+                            title: `${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}, ${airport.country_code.toUpperCase()}`,
                             thumbnail: {
                                 url: "https://i.ibb.co/rpHM4Jm/hq.png"
                             },
@@ -762,7 +760,7 @@ const command: SlashCommand = {
                             fields: [
                                 { 
                                     name: Formatters.bold(Formatters.underscore("Information")), 
-                                    value: `**City:** ${airport.city.capitalize()}\n**Country:** ${airport.country.capitalize()} (${airport.country_code.toUpperCase()})\n**ICAO:** ${airport.icao.toUpperCase()}\n**IATA:** ${airport.iata.toUpperCase()}` 
+                                    value: `**City:** ${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}\n**Country:** ${airport.country.capitalizeWords({ capitalizeAfterQuote: true })} (${airport.country_code.toUpperCase()})\n**ICAO:** ${airport.icao.toUpperCase()}\n**IATA:** ${airport.iata.toUpperCase()}` 
                                 },
                                 { 
                                     name: Formatters.bold(Formatters.underscore("Statistics")), 
@@ -855,7 +853,7 @@ const command: SlashCommand = {
                             data: {
                                 type: 'bar',
                                 data: {
-                                    labels: airports.map(airport => airport.city.capitalize()),
+                                    labels: airports.map(airport => airport.city.capitalizeWords({ capitalizeAfterQuote: true })),
                                     datasets: [ 
                                         {
                                             label: 'Market',
@@ -939,7 +937,7 @@ const command: SlashCommand = {
                             data: {
                                 type: 'bar',
                                 data: {
-                                    labels: airports.map(airport => airport.city.capitalize()),
+                                    labels: airports.map(airport => airport.city.capitalizeWords({ capitalizeAfterQuote: true })),
                                     datasets: [ 
                                         {
                                             label: 'Pax',
@@ -1030,7 +1028,7 @@ const command: SlashCommand = {
                                         'Heavy Load (k)'
                                     ],
                                     datasets: airports.map(airport => ({
-                                        label: airport.city.capitalize(),
+                                        label: airport.city.capitalizeWords({ capitalizeAfterQuote: true }),
                                         data: [
                                             airport.average_demand.Y,
                                             airport.average_demand.J,
@@ -1159,7 +1157,7 @@ const command: SlashCommand = {
             let choices: ApplicationCommandOptionChoice[];
             if (focused.name === "plane") {
                 const value = (<string>focused.value)?.slice(0, 15).match(/(\w|-|\s){1,}/g)?.join("");
-                const planes = database.am4.collection<AM4_Data.plane>("Planes");
+                const planes = database.am4.collection<AM4.Plane>("Planes");
                 const pipeline: Document[] = [
                     {
                         $limit: 25
@@ -1199,8 +1197,8 @@ const command: SlashCommand = {
                 choices = await cursor.toArray();
             } else {
                 const value = (<string>focused.value)?.slice(0, 10).match(/[a-zA-Z]/g)?.join("");
-                const airports = database.am4.collection<AM4_Data.airport>("Airports");
-                const query: Filter<AM4_Data.airport> = value && {
+                const airports = database.am4.collection<AM4.Airport>("Airports");
+                const query: Filter<AM4.Airport> = value && {
                     $or: [
                         { 
                             icao: { 
@@ -1223,7 +1221,7 @@ const command: SlashCommand = {
                 if (!value) cursor.sort({ country: 1 });
                 const results = await cursor.toArray();
                 choices = results.map(airport => ({
-                    name: `${airport.city.capitalize()}, ${airport.country_code.toUpperCase()} (${airport.iata.toUpperCase()}/${airport.icao.toUpperCase()})`,
+                    name: `${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}, ${airport.country_code.toUpperCase()} (${airport.iata.toUpperCase()}/${airport.icao.toUpperCase()})`,
                     value: airport._id.toHexString()
                 }));
             }

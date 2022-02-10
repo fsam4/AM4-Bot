@@ -25,10 +25,10 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
         const isMessage = interaction.targetMessage instanceof Message;
         await interaction.deferReply({ ephemeral: isMessage && interaction.inGuild() });
         try {
-            const faqCollection = database.discord.collection<Discord.faq>("FAQ");
+            const faqCollection = database.discord.collection<Discord.FAQ>("FAQ");
             if (!interaction.targetMessage.content) throw new DiscordClientError(`${isMessage ? Formatters.hyperlink("This message", interaction.targetMessage.url) : "This message"} has no content to search for...`);
             const content = interaction.targetMessage.content.match(/[0-9a-zA-Z'-? ]/g).join("");
-            const filter: Filter<Discord.faq> = {
+            const filter: Filter<Discord.FAQ> = {
                 $text: { $search: content },
                 $or: [
                     { public: true },

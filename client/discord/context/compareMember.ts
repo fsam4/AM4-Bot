@@ -3,11 +3,11 @@ import DiscordClientError from '../error';
 import { ObjectId } from 'bson';
 import QuickChart from 'quickchart-js';
 
-import type { AM4_Data, Discord } from '@typings/database';
+import type { AM4, Discord } from '@typings/database';
 import type { ContextMenu } from '@discord/types';
 import type { Member } from '@source/classes/alliance';
 
-type MemberDocument = AM4_Data.member & { thisWeek: number };
+type MemberDocument = AM4.AllianceMember & { thisWeek: number };
 type AllianceMember = Member & { document?: MemberDocument };
 
 // This command was never released to AM4 Bot due to Discord's context menu command cap (5).
@@ -30,9 +30,9 @@ const command: ContextMenu<UserContextMenuInteraction> = {
     async execute(interaction, { database, rest, account, locale }) {
         await interaction.deferReply();
         try {
-            const userCollection = database.discord.collection<Discord.user>("Users");
-            const allianceCollection = database.am4.collection<AM4_Data.alliance>("Alliances");
-            const memberCollection = database.am4.collection<AM4_Data.member>("Members");
+            const userCollection = database.discord.collection<Discord.User>("Users");
+            const allianceCollection = database.am4.collection<AM4.Alliance>("Alliances");
+            const memberCollection = database.am4.collection<AM4.AllianceMember>("Members");
             if (interaction.user.id === interaction.targetId) throw new DiscordClientError("You cannot compare yourself with yourself...");
             if (!account?.airlineID) throw new DiscordClientError("You need to save your airline via `/user login` to be able to use this command!");
             const targetUser = await userCollection.findOne({ id: interaction.targetId });

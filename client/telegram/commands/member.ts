@@ -11,7 +11,7 @@ import addMonths from 'date-fns/addMonths';
 import format from 'date-fns/format';
 
 import type { Message, User, InputMediaPhoto } from 'typegram';
-import type { Telegram, AM4_Data } from '@typings/database';
+import type { Telegram, AM4 } from '@typings/database';
 import type { Context } from 'telegraf';
 import type { Command } from '@telegram/types';
 import type { Member } from '@source/classes/alliance';
@@ -62,9 +62,9 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('search:member', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database, rest }) {
-                const memberCollection = database.am4.collection<AM4_Data.member>('Members');
-                const keyboards = database.telegram.collection<Telegram.keyboard>('Keyboards')
-                const allianceCollection = database.am4.collection<AM4_Data.alliance>("Alliances");
+                const memberCollection = database.am4.collection<AM4.AllianceMember>('Members');
+                const keyboards = database.telegram.collection<Telegram.Keyboard>('Keyboards')
+                const allianceCollection = database.am4.collection<AM4.Alliance>("Alliances");
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => void 0);
@@ -87,7 +87,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                         if (!airlineStatus.success) throw new TelegramClientError(airlineStatus.error);
                         if (!airline.alliance) throw new TelegramClientError('That user does not seem to be in an alliance, try searching with user ID if you are sure that this user is in an alliance.');
                         const { member } = await airline.alliance.fetchMember();
-                        let memberDocument: AM4_Data.member;
+                        let memberDocument: AM4.AllianceMember;
                         const allianceDocument = await allianceCollection.findOne({ name: airline.alliance.name });
                         if (allianceDocument) {
                             memberDocument = await memberCollection.findOne({ 
@@ -239,8 +239,8 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('compare:member', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database, rest }) {
-                const memberCollection = database.am4.collection<AM4_Data.member>('Members');
-                const allianceCollection = database.am4.collection<AM4_Data.alliance>("Alliances");
+                const memberCollection = database.am4.collection<AM4.AllianceMember>('Members');
+                const allianceCollection = database.am4.collection<AM4.Alliance>("Alliances");
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     ctx.deleteMessage().catch(() => void 0);
@@ -253,7 +253,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     try {
                         const member_input = ctx.message.text.split(',').map(s => s.trim());
                         if (member_input.length < 2 || member_input.length > 5) throw new TelegramClientError('You need to provide 2-5 users...');
-                        type MemberDocument = AM4_Data.member & { thisWeek: number };
+                        type MemberDocument = AM4.AllianceMember & { thisWeek: number };
                         type AllianceMember = Member & { document?: MemberDocument };
                         let members = await Promise.all<AllianceMember>(
                             member_input.map(async input => {

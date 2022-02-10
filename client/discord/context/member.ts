@@ -6,7 +6,7 @@ import { emojis } from '../../../config.json';
 import differenceInWeeks from 'date-fns/differenceInWeeks';
 import differenceInDays from 'date-fns/differenceInDays';
 
-import type { AM4_Data, Discord } from '@typings/database';
+import type { AM4, Discord } from '@typings/database';
 import type { ContextMenu } from '@discord/types';
 
 const command: ContextMenu<UserContextMenuInteraction> = {
@@ -27,9 +27,9 @@ const command: ContextMenu<UserContextMenuInteraction> = {
     async execute(interaction, { database, rest, locale }) {
         await interaction.deferReply();
         try {
-            const memberCollection = database.am4.collection<AM4_Data.member>('Members');
-            const allianceCollection = database.am4.collection<AM4_Data.alliance>("Alliances");
-            const users = database.discord.collection<Discord.user>("Users");
+            const memberCollection = database.am4.collection<AM4.AllianceMember>('Members');
+            const allianceCollection = database.am4.collection<AM4.Alliance>("Alliances");
+            const users = database.discord.collection<Discord.User>("Users");
             const targetAccount = await users.findOne({ id: interaction.targetId });
             if (!targetAccount?.airlineID) throw new DiscordClientError(`${Formatters.userMention(interaction.targetId)} has not logged in...`);
             const { status: airlineStatus, airline } = await rest.fetchAirline(targetAccount.airlineID);
@@ -56,7 +56,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                 fields: [
                     {
                         name: Formatters.bold(Formatters.underscore("General Statistics")),
-                        value: `**Share value:** $${member.sv.toLocaleString(locale)}\n**Joined:** ${Formatters.time(member.joined)}\n**Last online:** ${Formatters.time(member.online, "R")}\n**Flights:** ${member.flights.toLocaleString(locale)}`,
+                        value: `**Share value:** $${member.shareValue.toLocaleString(locale)}\n**Joined:** ${Formatters.time(member.joined)}\n**Last online:** ${Formatters.time(member.online, "R")}\n**Flights:** ${member.flights.toLocaleString(locale)}`,
                         inline: false
                     },
                     {
@@ -191,7 +191,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                             }
                         });
                     }
-                    if (memberDocument.sv.length) {
+                    if (memberDocument.shareValue.length) {
                         charts.push({
                             emoji: emojis.stock,
                             data: {
@@ -204,7 +204,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                                             backgroundColor: "rgb(0, 255, 0, 1)",
                                             borderColor: "rgb(0, 255, 0, 1)",
                                             fill: false,
-                                            data: memberDocument.sv.map(({ value, date }) => ({
+                                            data: memberDocument.shareValue.map(({ value, date }) => ({
                                                 x: date,
                                                 y: value
                                             }))

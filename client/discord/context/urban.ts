@@ -1,6 +1,6 @@
 import { MessageEmbed, Formatters, Constants, MessageActionRow, MessageButton, Message, type MessageContextMenuInteraction } from 'discord.js';
 import DiscordClientError from '../error';
-import fetch from 'node-fetch';
+import { fetch } from 'undici';
 
 import type { ContextMenu } from '@discord/types';
 
@@ -22,6 +22,8 @@ interface Definition {
 
 const definitionURL = (term: string) => `https://www.urbandictionary.com/define.php?${new URLSearchParams({ term })}`;
 const replaceHyperlinks = (s: string) => Formatters.hyperlink(s.replace(/\[|\]/g, ""), definitionURL(s));
+
+const baseUrl = "https://api.urbandictionary.com/v0/define";
 const hyperlink = /\[.+\]/g;
 
 const command: ContextMenu<MessageContextMenuInteraction> = {
@@ -44,7 +46,7 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
         try {
             if (!interaction.targetMessage.content) throw new DiscordClientError("This message does not have any text content...");
             const query = new URLSearchParams({ term: interaction.targetMessage.content });
-            const definition: Definition = await fetch(`https://api.urbandictionary.com/v0/define?${query}`).then(response => response.json());
+            const definition = await fetch(`${baseUrl}?${query}`).then(res => res.json()) as Definition;
             if (!definition || !definition.list?.length) throw new DiscordClientError(`No results found for ${Formatters.bold(interaction.targetMessage.content)}...`);
             const [answer] = definition.list;
             answer.definition = answer.definition.replace(hyperlink, replaceHyperlinks);

@@ -32,8 +32,8 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
         }
         await interaction.deferReply({ ephemeral: true });
         try {
-            const users = database.discord.collection<Discord.user>("Users");
-            const notifications = database.discord.collection<Discord.notification>("Notifications");
+            const users = database.discord.collection<Discord.User>("Users");
+            const notifications = database.discord.collection<Discord.Notification>("Notifications");
             if (interaction.targetMessage instanceof Message) {
                 const systemWebhooks = [log.id, webhook.id];
                 if (!interaction.targetMessage.webhookId) throw new DiscordClientError("This command can only be used on notification messages sent by AM4 Bot notification webhooks!");

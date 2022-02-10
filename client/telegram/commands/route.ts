@@ -7,9 +7,8 @@ import fs from 'fs';
 
 import type { Command, DataCallbackQuery } from '@telegram/types';
 import type { Message, User } from 'typegram';
-import type { AM4_Data } from '@typings/database';
-
-type GameMode = "realism" | "easy";
+import type { GameMode } from '@typings/am4-api';
+import type { AM4 } from '@typings/database';
 
 interface SceneSession extends Scenes.SceneSessionData {
     message: Message.TextMessage;
@@ -36,8 +35,8 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('route', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database, rest }) {
-                const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-                const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
+                const planeCollection = database.am4.collection<AM4.Plane>('Planes');
+                const airportCollection = database.am4.collection<AM4.Airport>('Airports');
                 this.scene.use((ctx, next) => {
                     ctx.scene.session.user ||= ctx.from;
                     return next();
@@ -50,13 +49,13 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
                     ctx.scene.session.input = ctx.message.text;
                     const keyboard = Markup.inlineKeyboard([
-                        Markup.button.callback('Realism', 'realism'),
-                        Markup.button.callback('Easy', 'easy'),
+                        Markup.button.callback('Realism', 'Realism'),
+                        Markup.button.callback('Easy', 'Easy'),
                         Markup.button.callback('❌ Exit', 'exit')
                     ]);
                     await ctx.reply('Do you play on realism or easy?', keyboard);
                 });
-                this.scene.action(/realism|easy/, async (ctx) => {
+                this.scene.action(/Realism|Easy/, async (ctx) => {
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
                     const mode = (<DataCallbackQuery>ctx.callbackQuery).data as GameMode;
                     const locale = ctx.from.language_code || 'en';
@@ -66,7 +65,9 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                         await ctx.scene.leave();
                         if (input.length < 2) throw new TelegramClientError('You need to define both departure and arrival airports!');
                         type args = [string, string, string, number, number];
-                        let [dep, arr, plane_input, rep=99, flights] = input.map((string, i) => i > 2 ? Number(string) : string) as args;
+                        let [dep, arr, plane_input, rep, flights] = input.map((string, i) => i > 2 ? Number(string) : string) as args;
+                        if (typeof flights === "number" && flights <= 0) throw new TelegramClientError("The amount of flights needs to be more than 0...");
+                        if (typeof rep === "number" && (rep < 10 || rep >= 100)) throw new TelegramClientError("The reputation needs to be more than 10 and less than 101...");
                         const departure = await airportCollection.findOne({
                             $or: [
                                 { icao: dep.toLowerCase() },
@@ -95,7 +96,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                         if (plane_input) {
                             const plane = await planeCollection.findOne({ $text: { $search: `"${plane_input}"` } });
                             if (!plane) throw new TelegramClientError(`No plane was found with *${plane_input}*...`);
-                            if (mode === "easy") {
+                            if (mode === "Easy") {
                                 plane.A_check.price /= 2;
                                 plane.speed *= 1.5;
                             }
@@ -107,8 +108,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                                 },
                                 options: {
                                     flights: flights,
-                                    mode: mode,
-                                    activity: 18,
+                                    gameMode: mode,
                                     reputation: rep 
                                 }
                             });

@@ -19,7 +19,7 @@ const component: Component<ButtonInteraction> = {
         }
         await interaction.deferReply({ ephemeral: true });
         try {
-            const giveaways = database.discord.collection<Discord.giveaway>("Giveaways");
+            const giveaways = database.discord.collection<Discord.Giveaway>("Giveaways");
             const message = <Message>interaction.message;
             let giveaway = await giveaways.findOne({ message: message.id });
             if (interaction.user.id === giveaway.author) throw new DiscordClientError("You cannot join your own giveaway...");

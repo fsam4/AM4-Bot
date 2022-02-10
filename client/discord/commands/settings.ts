@@ -445,7 +445,7 @@ const command: SlashCommand = {
         }
         await interaction.deferReply({ ephemeral: true });
         try {
-            const servers = database.settings.collection<Settings.server>('Servers');
+            const servers = database.settings.collection<Settings.Server>('Servers');
             const server = await servers.findOne({ id: interaction.guild.id });
             const subCommand = interaction.options.getSubcommand();
             const group = interaction.options.getSubcommandGroup(false);
@@ -499,7 +499,7 @@ const command: SlashCommand = {
                     const commandId = interaction.options.getString("command", true).trim();
                     await interaction.client.application.commands.fetch(commandId)
                     .then(async command => {
-                        if (command.id === interaction.commandId && !(<GuildMember>interaction.member).permissions.has("ADMINISTRATOR")) throw new DiscordClientError("Only administrators can edit the permissions of this command!");
+                        if (command.id === interaction.commandId && !interaction.member.permissions.has("ADMINISTRATOR")) throw new DiscordClientError("Only administrators can edit the permissions of this command!");
                         switch(subCommand) {
                             case "add": {
                                 const mentionable = interaction.options.get("mentionable", true);
@@ -580,7 +580,7 @@ const command: SlashCommand = {
                     break;
                 }
                 case "webhooks": {
-                    const webhookCollection = database.settings.collection<Settings.webhook>("Webhooks");
+                    const webhookCollection = database.settings.collection<Settings.Webhook>("Webhooks");
                     switch(subCommand) {
                         case "create": {
                             const current = await webhookCollection.countDocuments({ server: interaction.guildId });

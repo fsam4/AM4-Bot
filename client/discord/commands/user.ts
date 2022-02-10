@@ -1,6 +1,7 @@
 import { Permissions, MessageEmbed, Formatters, Constants, MessageActionRow, MessageButton, type GuildMember, type RoleResolvable, type TextChannel } from 'discord.js';
-import { Discord as Utils, User } from '../../utils';
+import { Discord as Utils } from '../../utils';
 import DiscordClientError from '../error';
+import defaultSettings from '../../../src/settings.json';
 import { emojis } from '../../../config.json';
 import format from 'date-fns/format';
 
@@ -284,9 +285,9 @@ const command: SlashCommand = {
     async execute(interaction, { database, account, rest, locale }) {
         await interaction.deferReply({ ephemeral: interaction.inGuild() });
         try {
-            const users = database.discord.collection<Discord.user>('Users');
-            const settings = database.settings.collection<Settings.user>('Users');
-            const servers = database.settings.collection<Settings.server>('Servers');
+            const users = database.discord.collection<Discord.User>('Users');
+            const settings = database.settings.collection<Settings.User>('Users');
+            const servers = database.settings.collection<Settings.Server>('Servers');
             const subCommand = interaction.options.getSubcommand();
             const group = interaction.options.getSubcommandGroup(false);
             switch(group || subCommand) {
@@ -332,7 +333,7 @@ const command: SlashCommand = {
                                     }
                                 ]
                             });
-                            if (interaction.guild) embed.setColor((<GuildMember>interaction.member).displayColor);
+                            if (interaction.inCachedGuild()) embed.setColor(interaction.member.displayColor);
                             await interaction.editReply({ embeds: [embed] });
                             break;
                         }
@@ -340,21 +341,38 @@ const command: SlashCommand = {
                             const options = interaction.options.data[0].options[0].options;
                             if (!options?.length) throw new DiscordClientError("You need to fill in atleast one option to edit!");
                             const user = await settings.findOne({ id: interaction.user.id });
-                            if (!user) await settings.insertOne(new User(interaction.user.id));
+                            if (!user) await settings.insertOne({
+                                id: interaction.user.id,
+                                salaries: defaultSettings.salaries,
+                                training: {
+                                    cargo_heavy: 0,
+                                    cargo_large: 0,
+                                    fuel: 0,
+                                    co2: 0
+                                },
+                                preference: {
+                                    cargo: undefined,
+                                    pax: undefined
+                                },
+                                options: {
+                                    activity: defaultSettings.activity,
+                                    fuel_price: defaultSettings.fuelPrice,
+                                    co2_price: defaultSettings.co2Price,
+                                    show_warnings: true,
+                                    show_tips: false,
+                                    cost_index: 200,
+                                    code: undefined
+                                }
+                            });
                             const update: { [key: string]: any } = {};
                             for (const option of options) {
                                 let value: unknown;
-                                switch(option.type) {
-                                    case "STRING": {
-                                        value = (<string>option.value).trimEnd();
-                                        if (subCommand === 'preference') value = (<string>value).split("");
-                                        if (option.value === 'default') value = undefined;
-                                        break;
-                                    }
-                                    default: {
-                                        value = option.value;
-                                        break;
-                                    }
+                                if (option.type === "STRING") {
+                                    value = (<string>option.value).trimEnd();
+                                    if (subCommand === 'preference') value = (<string>value).split("");
+                                    if (option.value === 'default') value = undefined;
+                                } else {
+                                    value = option.value;
                                 }
                                 update[`${subCommand}.${option.name}`] = value;
                             }
@@ -390,7 +408,7 @@ const command: SlashCommand = {
                             }
                         ]
                     });
-                    if (interaction.inGuild()) embed.setColor((<GuildMember>interaction.member).displayColor);
+                    if (interaction.inCachedGuild()) embed.setColor(interaction.member.displayColor);
                     if (userData.mute) embed.author.name += " (suspended)";
                     if (userData.warnings.length) embed.addFields({
                         name: Formatters.bold(Formatters.underscore(`Warnings (${userData.warnings.length}/5)`)),
@@ -420,7 +438,6 @@ const command: SlashCommand = {
                         }
                     });
                     if (!res.acknowledged || !res.modifiedCount) throw new DiscordClientError("Failed to register your account. Please try again...");
-                    type GameMode = Lowercase<typeof airline.gameMode>;
                     await settings.updateOne(
                         { 
                             id: interaction.user.id 
@@ -454,7 +471,7 @@ const command: SlashCommand = {
                                 }
                             },
                             $set: {
-                                mode: <GameMode>airline.gameMode.toLowerCase()
+                                mode: airline.gameMode
                             }
                         }, 
                         { 
@@ -603,10 +620,9 @@ const command: SlashCommand = {
                     if (!account?.airlineID) throw new DiscordClientError("You have not logged in. To login use `/user login`.");
                     const { status, airline } = await rest.fetchAirline(account.airlineID);
                     if (!status.success) throw new DiscordClientError(status.error);
-                    type GameMode = Lowercase<typeof airline.gameMode>;
                     await settings.updateOne({ id: interaction.user.id }, {
                         $set: {
-                            mode: <GameMode>airline.gameMode.toLowerCase()
+                            mode: airline.gameMode
                         }
                     });
                     await users.updateOne({ id: interaction.user.id }, {

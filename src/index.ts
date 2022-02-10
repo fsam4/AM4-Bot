@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import { fetch } from 'undici';
 
 import Airline from './classes/airline';
 import Alliance from './classes/alliance';
@@ -62,7 +62,7 @@ export default class AM4RestClient {
         if (!this.accessToken) throw new Error("Missing access token");
         const query = new URLSearchParams({ access_token: this.accessToken });
         query.append(typeof input === 'string' ? "user" : "id", input.toString());
-        const response: AM4.Airline = await fetch(`${AM4BaseUrl}?${query}`).then(response => response.json());
+        const response = await fetch(`${AM4BaseUrl}?${query}`).then(res => res.json()) as AM4.Airline;
         if (response.status.description === 'Missing or invalid access token') throw new AM4APIError(response.status);
         this.requestsRemaining = response.status.requests_remaining; 
         return new Airline(response, this, typeof input === "number" ? input : null);
@@ -80,7 +80,7 @@ export default class AM4RestClient {
             access_token: this.accessToken,
             search: input
         });
-        const response: AM4.Alliance = await fetch(`${AM4BaseUrl}?${query}`).then(response => response.json());
+        const response = await fetch(`${AM4BaseUrl}?${query}`).then(res => res.json()) as AM4.Alliance;
         if (response.status.description === 'Missing or invalid access token') throw new AM4APIError(response.status);
         this.requestsRemaining = response.status.requests_remaining; 
         return new Alliance(response, this);
@@ -103,12 +103,12 @@ export default class AM4RestClient {
             const value = parameters[key].toString();
             query.append(key, value);
         }
-        type route = T extends 'demand' ? AM4.Route : AM4.Routes;
-        const response: route = await fetch(`${AM4BaseUrl}?${query}`).then(response => response.json());
+        type RouteResponse = T extends 'demand' ? AM4.Route : AM4.Routes;
+        const response = await fetch(`${AM4BaseUrl}?${query}`).then(res => res.json()) as RouteResponse;
         if (response.status.description === 'Missing or invalid access token') throw new AM4APIError(response.status);
         this.requestsRemaining = response.status.requests_remaining; 
         // @ts-ignore: the return type will always be correct at runtime
-        return (mode === "demand" ? new Route(response, this, parameters) : new Routes(response));
+        return (mode === "demand" ? new Route(response, this) : new Routes(response));
     }
 
 }

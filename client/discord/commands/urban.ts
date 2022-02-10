@@ -1,6 +1,6 @@
 import { MessageEmbed, Permissions, Formatters, Constants, MessageActionRow, MessageButton } from 'discord.js';
 import DiscordClientError from '../error';
-import fetch from 'node-fetch';
+import { fetch } from 'undici';
 
 import type { SlashCommand } from '@discord/types';
 
@@ -22,6 +22,8 @@ interface Definition {
 
 const definitionURL = (term: string) => `https://www.urbandictionary.com/define.php?${new URLSearchParams({ term })}`;
 const replaceHyperlinks = (s: string) => Formatters.hyperlink(s.replace(/\[|\]/g, ""), definitionURL(s));
+
+const baseUrl = "https://api.urbandictionary.com/v0/define";
 const hyperlink = /\[.+\]/g;
 
 const command: SlashCommand = {
@@ -56,7 +58,7 @@ const command: SlashCommand = {
         try {
             const term = interaction.options.getString("term");
             const query = new URLSearchParams({ term });
-            const definition: Definition = await fetch(`https://api.urbandictionary.com/v0/define?${query}`).then(response => response.json());
+            const definition = await fetch(`${baseUrl}?${query}`).then(res => res.json()) as Definition;
             if (definition || !definition.list?.length) throw new DiscordClientError(`No results found for ${Formatters.bold(term)}...`);
             const [answer] = definition.list;
             answer.definition = answer.definition.replace(hyperlink, replaceHyperlinks);

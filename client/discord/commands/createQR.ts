@@ -1,12 +1,13 @@
 import { Permissions, MessageAttachment, Constants } from 'discord.js';
 import DiscordClientError from '../error';
-import fetch from 'node-fetch';
+import { fetch } from 'undici';
 
 import type { SlashCommand } from '@discord/types';
 
 const url = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w]*))?)/;
 const hex = /[\#]([a-fA-F\d]{6}|[a-fA-F\d]{3})/gm;
-const name_value = /^[a-z]*$/;
+const baseUrl = "https://quickchart.io/qr/create";
+const name = /^[a-z]*$/;
 
 const command: SlashCommand = {
     get name() {
@@ -112,22 +113,18 @@ const command: SlashCommand = {
         try {
             const query = new URLSearchParams();
             const fileName = interaction.options.get("name").value as string;
-            if (!name_value.test(fileName)) throw new DiscordClientError("Invalid file name. The QR-code file name can only contain characters!");
+            if (!name.test(fileName)) throw new DiscordClientError("Invalid file name. The QR-code file name can only contain characters!");
             const options = interaction.options.data.filter(({ name }) => name !== "name");
             for (const option of options.values()) {
-                const key = option.name.split('_').map((string, i) => {
-                    if (i === 0) return string;
-                    const char = string.charAt(0);
-                    const expr = new RegExp(`^${char}`);
-                    return string.replace(expr, char.toUpperCase());
-                }).join('');
+                const key = option.name.split('_').map((string, index) => index ? string.capitalize() : string).join('');
                 if (option.type === "STRING") option.value = (<string>option.value).trim();
-                query.append(key, option.value.toString());
+                query.append(key, typeof option.value === "string" ? option.value : option.value.toString());
             }
             if (!url.test(query.get("text"))) throw new DiscordClientError('That is not a valid URL...');
             if (query.has("light") && !hex.test(query.get("light"))) throw new DiscordClientError('That is not a valid background colour...');
             if (query.has("dark") && !hex.test(query.get("dark"))) throw new DiscordClientError('That is not a valid QR-code colour...');
-            const buffer = await fetch(`https://quickchart.io/qr/create?${query}`).then(res => res.buffer());
+            const arrayBuffer = await fetch(`${baseUrl}?${query}`).then(res => res.arrayBuffer());
+            const buffer = Buffer.from(new Uint8Array(arrayBuffer));
             const QRcode = new MessageAttachment(buffer, `${fileName}.${query.get("format") || 'png'}`);
             await interaction.editReply({ files: [QRcode] });
         }

@@ -3,13 +3,13 @@ b <u>Route information</u>
 - var stopover = sb 
     if stopover 
         |
-        | <b>Departure:</b> #{departure.city.capitalize()}, #{departure.country.capitalize()} (#{departure.icao.toUpperCase()}/#{departure.iata.toUpperCase()})
-        | <b>Stopover</b> #{stopover.city.capitalize()}, #{stopover.country.capitalize()} (#{stopover.icao.toUpperCase()}/#{stopover.iata.toUpperCase()})
-        | <b>Arrival:</b> #{arrival.city.capitalize()}, #{arrival.country.capitalize()} (#{arrival.icao.toUpperCase()}/#{arrival.iata.toUpperCase()})
+        | <b>Departure:</b> #{departure.city.capitalizeWords({ capitalizeAfterQuote: true })}, #{departure.country.capitalizeWords({ capitalizeAfterQuote: true })} (#{departure.icao.toUpperCase()}/#{departure.iata.toUpperCase()})
+        | <b>Stopover</b> #{stopover.city.capitalizeWords({ capitalizeAfterQuote: true })}, #{stopover.country.capitalizeWords({ capitalizeAfterQuote: true })} (#{stopover.icao.toUpperCase()}/#{stopover.iata.toUpperCase()})
+        | <b>Arrival:</b> #{arrival.city.capitalizeWords({ capitalizeAfterQuote: true })}, #{arrival.country.capitalizeWords({ capitalizeAfterQuote: true })} (#{arrival.icao.toUpperCase()}/#{arrival.iata.toUpperCase()})
     else
         |
-        | <b>Departure:</b> #{departure.city.capitalize()}, #{departure.country.capitalize()} (#{departure.icao.toUpperCase()}/#{departure.iata.toUpperCase()})
-        | <b>Arrival:</b> #{arrival.city.capitalize()}, #{arrival.country.capitalize()} (#{arrival.icao.toUpperCase()}/#{arrival.iata.toUpperCase()})
+        | <b>Departure:</b> #{departure.city.capitalizeWords({ capitalizeAfterQuote: true })}, #{departure.country.capitalizeWords({ capitalizeAfterQuote: true })} (#{departure.icao.toUpperCase()}/#{departure.iata.toUpperCase()})
+        | <b>Arrival:</b> #{arrival.city.capitalizeWords({ capitalizeAfterQuote: true })}, #{arrival.country.capitalizeWords({ capitalizeAfterQuote: true })} (#{arrival.icao.toUpperCase()}/#{arrival.iata.toUpperCase()})
 
 |
 | <b>Distance:</b> #{distance.toLocaleString(locale)} km 

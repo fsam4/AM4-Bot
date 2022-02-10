@@ -72,7 +72,7 @@ const component: Component<SelectMenuInteraction> = {
                     break;
                 }
                 case 'webhooks': {
-                    const webhooks = database.settings.collection<Settings.webhook>("Webhooks");
+                    const webhooks = database.settings.collection<Settings.Webhook>("Webhooks");
                     const amount = await webhooks.countDocuments();
                     embeds[0] = new MessageEmbed({
                         color: "RANDOM",
@@ -105,7 +105,7 @@ const component: Component<SelectMenuInteraction> = {
                     break;
                 }
                 case 'quiz': {
-                    const users = database.quiz.collection<Quiz.user>("Users");
+                    const users = database.quiz.collection<Quiz.User>("Users");
                     const nextTounament = lastDayOfMonth(interaction.createdAt).setHours(21, 0, 0, 0);
                     const amount = await users.countDocuments(config.tournament?.enabled && { score: { $exists: true } });
                     embeds[0] = new MessageEmbed({

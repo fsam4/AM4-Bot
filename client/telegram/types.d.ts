@@ -17,7 +17,7 @@ interface BaseOptions {
 }
 
 interface CommandOptions extends BaseOptions {
-    account: Telegram.user;
+    account: Telegram.User;
 }
 
 type DataCallbackQuery = Extract<CallbackQuery, { data: string }>;

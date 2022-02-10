@@ -7,10 +7,11 @@ import * as Utils from '../../utils';
 import Route from '../../../src/classes/route';
 import Plane from '../../../src/lib/plane';
 
-import type { Settings, AM4_Data } from '@typings/database';
+import type { Settings, AM4 } from '@typings/database';
 import type { SlashCommand } from '@discord/types';
+import type { GameMode } from '@typings/am4-api';
 
-const { createAirportFilter, createPlaneFilter, createLocationSphere } = Utils.MongoDB;
+const { createAirportFilter, createTextFilter, createLocationSphere } = Utils.MongoDB;
 const { formatCode, formatSeats } = Utils.Discord;
 
 const command: SlashCommand = {
@@ -96,11 +97,11 @@ const command: SlashCommand = {
                         choices: [
                             {
                                 name: "Realism",
-                                value: "realism"
+                                value: "Realism"
                             },
                             {
                                 name: "Easy",
-                                value: "easy"
+                                value: "Easy"
                             }
                         ]
                     }
@@ -138,11 +139,11 @@ const command: SlashCommand = {
                         choices: [
                             {
                                 name: 'Realism',
-                                value: 'realism'
+                                value: 'Realism'
                             },
                             {
                                 name: 'Easy',
-                                value: 'easy'
+                                value: 'Easy'
                             }
                         ]
                     }
@@ -218,11 +219,11 @@ const command: SlashCommand = {
                         choices: [
                             {
                                 name: "Realism",
-                                value: "realism"
+                                value: "Realism"
                             },
                             {
                                 name: "Easy",
-                                value: "easy"
+                                value: "Easy"
                             }
                         ]
                     }
@@ -233,27 +234,24 @@ const command: SlashCommand = {
     async execute(interaction, { database, rest, ephemeral, locale }) {
         await interaction.deferReply({ ephemeral });
         try {
-            const settings = database.settings.collection<Settings.user>('Users');
-            const planeSettings = database.settings.collection<Settings.plane>('Planes');
-            const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
-            const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-            const user = new Utils.User(interaction.user.id, await settings.findOne({ id: interaction.user.id }));
+            const userCollection = database.settings.collection<Settings.User>('Users');
+            const planeSettings = database.settings.collection<Settings.Plane>('Planes');
+            const airportCollection = database.am4.collection<AM4.Airport>('Airports');
+            const planeCollection = database.am4.collection<AM4.Plane>('Planes');
+            const user = await userCollection.findOne({ id: interaction.user.id });
             const subCommand = interaction.options.getSubcommand();
-            type GameMode = "realism" | "easy";
             switch(subCommand) {
                 case "search": {
                     const departureCode = interaction.options.getString("departure", true).trim();
                     const arrivalCode = interaction.options.getString("arrival", true).trim();
                     const stopoverCode = interaction.options.getString("stopover")?.trim();
-                    const mode = interaction.options.getString("mode")?.trim();
                     type FollowUpOptions = Parameters<typeof interaction.followUp>[0];
                     const followups: FollowUpOptions[] = [];
-                    if (mode && mode === user.mode) followups.push({
-                        content: "🪙 When you have logged in you do not need to define the game mode anymore as it will be automatically filled for you.",
-                        ephemeral: true
-                    });
-                    if (mode) user.mode = <GameMode>mode;
-                    if (!user.mode) throw new DiscordClientError('You need to define the game mode or save it by logging in with `/user login`...');
+                    let gameMode = <GameMode>interaction.options.getString("mode")?.trim();
+                    if (!gameMode) {
+                        if (!user?.mode) throw new DiscordClientError('You need to either login with `/user login` or define the game mode option!');
+                        gameMode = user.mode;
+                    }
                     const departure = await airportCollection.findOne(createAirportFilter(departureCode));
                     if (!departure) throw new DiscordClientError('That is not a valid departure airport...');
                     const arrival = await airportCollection.findOne(createAirportFilter(arrivalCode));
@@ -264,7 +262,7 @@ const command: SlashCommand = {
                     });
                     if (!status.success) throw new DiscordClientError(status.error);
                     const embed = new MessageEmbed({
-                        title: `${formatCode(departure, user.options.code)} to ${formatCode(arrival, user.options.code)}`,
+                        title: `${formatCode(departure, user?.options.code)} to ${formatCode(arrival, user?.options.code)}`,
                         color: "DARK_GREEN",
                         footer: {
                             text: `Requests remaining: ${status.requestsRemaining.toLocaleString(locale)}`,
@@ -278,16 +276,16 @@ const command: SlashCommand = {
                             } 
                         ]
                     });
-                    let plane: AM4_Data.plane, engineName: string, profit: number;
+                    let plane: AM4.Plane, engineName: string, profit: number;
                     const planeName = interaction.options.getString("plane")?.trim();
                     const row = new MessageActionRow();
                     const files: MessageAttachment[] = [];
                     if (planeName) {
-                        plane = await planeCollection.findOne(createPlaneFilter(planeName));
+                        plane = await planeCollection.findOne(createTextFilter<AM4.Plane>(planeName));
                         if (!plane) throw new DiscordClientError(`No plane was found with ${Formatters.bold(planeName)}...`);
                         let flights = interaction.options.getInteger("flights");
                         const reputation = interaction.options.getInteger("reputation");
-                        const cost_index = interaction.options.getInteger("cost_index") ?? user.options.cost_index
+                        const cost_index = interaction.options.getInteger("cost_index") ?? user?.options.cost_index
                         const change = (100 + (100 - reputation)) / 100;
                         const image = new MessageAttachment(plane.image.buffer, "plane.jpg");
                         embed.setThumbnail(`attachment://${image.name}`);
@@ -307,18 +305,18 @@ const command: SlashCommand = {
                             if (modifications.speed) plane.speed *= 1.1;
                             if (modifications.fuel) plane.fuel *= 0.9;
                             if (modifications.co2) plane.co2 *= 0.9;
-                        } else if (user.options.show_tips) {
+                        } else if (user?.options.show_tips) {
                             followups.push({
                                 content: "🪙 You can configure settings for this plane via `/plane settings`. Configuring settings for planes is recommended as on default they use market statistics.",
                                 ephemeral: true
                             });
                         }
-                        if (user.mode === "easy") {
+                        if (gameMode === "Easy") {
                             plane.A_check.price /= 2;
                             plane.speed *= 1.5;
                         }
-                        plane.fuel *= (100 - user.training.fuel) / 100;
-                        plane.co2 *= (100 - user.training.co2) / 100;
+                        if (user?.training.fuel) plane.fuel *= (100 - user.training.fuel) / 100;
+                        if (user?.training.co2) plane.co2 *= (100 - user.training.co2) / 100;
                         if (typeof cost_index === "number") {
                             const speed = plane.speed / 2;
                             plane.speed = Math.round(speed + speed * (cost_index / 200));
@@ -329,14 +327,14 @@ const command: SlashCommand = {
                             const locations = [departure, stopover, arrival].map(airport => airport.location.coordinates);
                             type Locations = Parameters<typeof Route.distance>;
                             const { distance, distances } = Route.distance(...locations as Locations);
-                            if (!flights) flights = Route.flights(distance, plane.speed, user.options.activity);
+                            if (!flights) flights = Route.flights(distance, plane.speed, user?.options.activity);
                             const { configuration, preference } = Route.configure(plane, {
                                 options: {
-                                    preference: user.preference[plane.type === "cargo" ? "cargo" : "pax"],
-                                    mode: user.mode,
+                                    preference: user?.preference[plane.type === "cargo" ? plane.type : "pax"],
+                                    gameMode,
                                     flights: flights,
-                                    reputation: reputation || 100,
-                                    activity: user.options.activity
+                                    reputation: reputation,
+                                    activity: user?.options.activity
                                 },
                                 route: {
                                     demand: demand, 
@@ -353,11 +351,10 @@ const command: SlashCommand = {
                             }
                             const options = {
                                 options: {
-                                    activity: user.options.activity,
-                                    fuel_price: user.options.fuel_price,
-                                    co2_price: user.options.co2_price,
-                                    reputation: reputation || 100,
-                                    mode: user.mode
+                                    reputation, gameMode,
+                                    activity: user?.options.activity,
+                                    fuelPrice: user?.options.fuel_price,
+                                    co2Price: user?.options.co2_price
                                 },
                                 route: {
                                     distance, 
@@ -367,24 +364,24 @@ const command: SlashCommand = {
                             };
                             profit = Route.profit(plane, options).profit;
                             embed.setDescription(`**Class priority:** ${formatSeats(preference.join(' > '))}`);
-                            if (plane.type === 'pax' && configuration[preference[2]] * flights > demand[preference[2]] * change && user.options.show_warnings) {
+                            if (plane.type === 'pax' && configuration[preference[2]] * flights > demand[preference[2]] * change && user?.options.show_warnings) {
                                 followups.push({
                                     content: '⚠️ The demand of this route might not be able to support this plane!',
                                     ephemeral: true
                                 });
-                            } else if (plane.type === 'cargo' && configuration[preference[1]] * flights > demand[preference[1]] * change && user.options.show_warnings) {
+                            } else if (plane.type === 'cargo' && configuration[preference[1]] * flights > demand[preference[1]] * change && user?.options.show_warnings) {
                                 followups.push({
                                     content: '⚠️ The demand of this route might not be able to support this plane!',
                                     ephemeral: true
                                 });
                             }
-                            if (!distances.every(distance => distance <= plane.range) && user.options.show_warnings) {
+                            if (!distances.every(distance => distance <= plane.range) && user?.options.show_warnings) {
                                 followups.push({
                                     content: `⚠️ The range of the plane is ${Formatters.bold(`${Math.round(plane.range).toLocaleString(locale)} km`)} and the longest leg on this route is ${Formatters.bold(`${route.distance.toLocaleString(locale)} km`)}!`,
                                     ephemeral: true
                                 });
                             }
-                            if ((plane.runway > arrival.runway) || (plane.runway > stopover.runway) && user.mode === 'realism' && user.options.show_warnings) {
+                            if ((plane.runway > arrival.runway) || (plane.runway > stopover.runway) && gameMode === "Realism" && user?.options.show_warnings) {
                                 followups.push({
                                     content: `⚠️ The runway requirement of this plane is ${Formatters.bold(`${plane.runway.toLocaleString(locale)} ft`)} and the runway of the destination/stopover is ${Formatters.bold(`${arrival.runway.toLocaleString(locale)} ft`)}!`,
                                     ephemeral: true
@@ -392,15 +389,16 @@ const command: SlashCommand = {
                             }
                             const ticketType = plane.type === "vip" ? "vip" : "default";
                             const estimatedSV = Route.estimatedShareValueGrowth(plane, options) / flights;
+                            const ticketMode = gameMode.toLowerCase() as Lowercase<typeof gameMode>;
                             embed.addFields([
                                 { 
                                     name: Formatters.bold(Formatters.underscore("Route information")), 
-                                    value: `**Departure:** ${route.departure} (${formatCode(departure, user.options.code)})\n**Stopover:** ${stopover.city.capitalize()}, ${stopover.country.capitalize()} (${formatCode(stopover, user.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user.options.code)})\n**Distance:** ${distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights.toLocaleString(locale)}/day`, 
+                                    value: `**Departure:** ${route.departure} (${formatCode(departure, user?.options.code)})\n**Stopover:** ${stopover.city.capitalizeWords({ capitalizeAfterQuote: true })}, ${stopover.country.capitalizeWords({ capitalizeAfterQuote: true })} (${formatCode(stopover, user?.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user?.options.code)})\n**Distance:** ${distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights.toLocaleString(locale)}/day`, 
                                     inline: false 
                                 },
                                 { 
                                     name: Formatters.bold(Formatters.underscore("Ticket prices")), 
-                                    value: `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[user.mode][ticketType].F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[user.mode][ticketType].J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[user.mode][ticketType].Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[user.mode].default.L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[user.mode].default.H}`, 
+                                    value: `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[ticketMode][ticketType].F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[ticketMode][ticketType].J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[ticketMode][ticketType].Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[ticketMode].default.L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[ticketMode].default.H}`, 
                                     inline: true 
                                 },
                                 { 
@@ -415,14 +413,14 @@ const command: SlashCommand = {
                                 }
                             ]);
                         } else {
-                            if (!flights) flights = Route.flights(route.distance, plane.speed, user.options.activity);
+                            if (!flights) flights = Route.flights(route.distance, plane.speed, user?.options.activity);
                             const { configuration, preference } = Route.configure(plane, {
                                 options: {
-                                    preference: user.preference[plane.type === "cargo" ? "cargo" : "pax"],
-                                    mode: user.mode,
+                                    preference: user?.preference[plane.type === "cargo" ? plane.type : "pax"],
+                                    gameMode,
                                     flights: flights,
-                                    reputation: reputation || 100,
-                                    activity: user.options.activity
+                                    reputation: reputation,
+                                    activity: user?.options.activity
                                 },
                                 route: {
                                     demand: demand, 
@@ -439,11 +437,10 @@ const command: SlashCommand = {
                             }
                             const options = {
                                 options: {
-                                    activity: user.options.activity,
-                                    fuel_price: user.options.fuel_price,
-                                    co2_price: user.options.co2_price,
-                                    reputation: reputation || 100,
-                                    mode: user.mode
+                                    reputation, gameMode,
+                                    activity: user?.options.activity,
+                                    fuelPrice: user?.options.fuel_price,
+                                    co2Price: user?.options.co2_price
                                 },
                                 route: {
                                     distance: route.distance, 
@@ -452,24 +449,24 @@ const command: SlashCommand = {
                             };
                             profit = Route.profit(plane, options).profit;
                             embed.setDescription(`**Class priority:** ${formatSeats(preference.join(' > '))}`);
-                            if (plane.type === 'pax' && configuration[preference[2]] * flights > demand[preference[2]] * change && user.options.show_warnings) {
+                            if (plane.type === 'pax' && configuration[preference[2]] * flights > demand[preference[2]] * change && user?.options.show_warnings) {
                                 followups.push({
                                     content: '⚠️ The demand of this route might not be able to support this plane!',
                                     ephemeral: true
                                 });
-                            } else if (plane.type === 'cargo' && configuration[preference[1]] * flights > demand[preference[1]] * change && user.options.show_warnings) {
+                            } else if (plane.type === 'cargo' && configuration[preference[1]] * flights > demand[preference[1]] * change && user?.options.show_warnings) {
                                 followups.push({
                                     content: '⚠️ The demand of this route might not be able to support this plane!',
                                     ephemeral: true
                                 });
                             }
-                            if (route.distance > plane.range * 2 && user.options.show_warnings) {
+                            if (route.distance > plane.range * 2 && user?.options.show_warnings) {
                                 followups.push({
                                     content: `⚠️ The maximum distance of this plane with a stopover is ${Formatters.bold(`${Math.round(plane.range * 2).toLocaleString(locale)} km`)} and the distance of this route is ${Formatters.bold(`${route.distance.toLocaleString(locale)} km`)}!`,
                                     ephemeral: true
                                 });
                             }
-                            if (plane.runway > arrival.runway && user.mode === 'realism' && user.options.show_warnings) {
+                            if (plane.runway > arrival.runway && gameMode === "Realism" && user?.options.show_warnings) {
                                 followups.push({
                                     content: `⚠️ The runway requirement of this plane is ${Formatters.bold(`${plane.runway.toLocaleString(locale)} ft`)} and the runway of the destination is ${Formatters.bold(`${arrival.runway.toLocaleString(locale)} ft`)}!`,
                                     ephemeral: true
@@ -477,10 +474,11 @@ const command: SlashCommand = {
                             }
                             const ticketType = plane.type === "vip" ? plane.type : "default";
                             const estimatedSV = Route.estimatedShareValueGrowth(plane, options) / flights;
+                            const ticketMode = gameMode.toLowerCase() as Lowercase<typeof gameMode>;
                             embed.addFields([
                                 { 
                                     name: Formatters.bold(Formatters.underscore("Ticket prices")), 
-                                    value: `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[user.mode][ticketType].F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[user.mode][ticketType].J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[user.mode][ticketType].Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[user.mode].default.L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[user.mode].default.H}`, 
+                                    value: `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[ticketMode][ticketType].F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[ticketMode][ticketType].J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[ticketMode][ticketType].Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[ticketMode].default.L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[ticketMode].default.H}`, 
                                     inline: true 
                                 },
                                 { 
@@ -505,7 +503,7 @@ const command: SlashCommand = {
                                         }
                                     }
                                 }).toArray();
-                                const stopovers = Route.findStopovers([departure, arrival], airports, plane, user.mode);
+                                const stopovers = Route.findStopovers([departure, arrival], airports, plane, gameMode);
                                 if (stopovers.length) followups.push('⚠️ No suitable stopover could be found for this route!');
                                 if (stopovers.length) {
                                     const [stopoverRoute] = stopovers;
@@ -513,20 +511,20 @@ const command: SlashCommand = {
                                     const [stopover] = stopoverRoute.airports.slice(1, lastIndex);
                                     embed.fields.unshift(                                { 
                                         name: Formatters.bold(Formatters.underscore("Route information")), 
-                                        value: `**Departure:** ${route.departure} (${formatCode(departure, user.options.code)})\n**Stopover:** ${stopover.city.capitalize()}, ${stopover.country.capitalize()} (${formatCode(stopover, user.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user.options.code)})\n**Distance:** ${stopoverRoute.distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights.toLocaleString(locale)}/day`, 
+                                        value: `**Departure:** ${route.departure} (${formatCode(departure, user?.options.code)})\n**Stopover:** ${stopover.city.capitalizeWords({ capitalizeAfterQuote: true })}, ${stopover.country.capitalizeWords({ capitalizeAfterQuote: true })} (${formatCode(stopover, user?.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user?.options.code)})\n**Distance:** ${stopoverRoute.distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights.toLocaleString(locale)}/day`, 
                                         inline: false 
                                     });
                                 } else {
                                     embed.fields.unshift({ 
                                         name: Formatters.bold(Formatters.underscore("Route information")), 
-                                        value: `**Departure:** ${route.departure} (${formatCode(departure, user.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user.options.code)})\n**Distance:** ${route.distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights}/day`, 
+                                        value: `**Departure:** ${route.departure} (${formatCode(departure, user?.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user?.options.code)})\n**Distance:** ${route.distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights}/day`, 
                                         inline: false 
                                     });
                                 }
                             } else {
                                 embed.fields.unshift({ 
                                     name: Formatters.bold(Formatters.underscore("Route information")), 
-                                    value: `**Departure:** ${route.departure} (${formatCode(departure, user.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user.options.code)})\n**Distance:** ${route.distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights}/day`, 
+                                    value: `**Departure:** ${route.departure} (${formatCode(departure, user?.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user?.options.code)})\n**Distance:** ${route.distance.toLocaleString(locale)}km\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Flight time:** ${Route.flightTime(route.distance, plane.speed).format("hh:mm:ss")}\n**Flights:** ${flights}/day`, 
                                     inline: false 
                                 });
                             }  
@@ -547,19 +545,20 @@ const command: SlashCommand = {
                             const { distance } = Route.distance(...locations as Locations);
                             embed.fields.unshift({ 
                                 name: Formatters.bold(Formatters.underscore("Route information")), 
-                                value: `**Departure:** ${route.departure} (${formatCode(departure, user.options.code)})\n**Stopover:** ${stopover.city.capitalize()}, ${stopover.country.capitalize()} (${formatCode(stopover, user.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user.options.code)})\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Distance:** ${distance.toLocaleString(locale)}km`, 
+                                value: `**Departure:** ${route.departure} (${formatCode(departure, user?.options.code)})\n**Stopover:** ${stopover.city.capitalizeWords({ capitalizeAfterQuote: true })}, ${stopover.country.capitalizeWords({ capitalizeAfterQuote: true })} (${formatCode(stopover, user?.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user?.options.code)})\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Distance:** ${distance.toLocaleString(locale)}km`, 
                                 inline: false 
                             });
                         } else {
                             embed.fields.unshift({ 
                                 name: Formatters.bold(Formatters.underscore("Route information")), 
-                                value: `**Departure:** ${route.departure} (${formatCode(departure, user.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user.options.code)})\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Distance:** ${route.distance.toLocaleString(locale)}km`, 
+                                value: `**Departure:** ${route.departure} (${formatCode(departure, user?.options.code)})\n**Arrival:** ${route.arrival} (${formatCode(arrival, user?.options.code)})\n**Market:** ${arrival.market}%\n**Runway:** ${arrival.runway.toLocaleString(locale)} ft\n**Distance:** ${route.distance.toLocaleString(locale)}km`, 
                                 inline: false 
                             });
                         }
+                        const ticketMode = gameMode.toLowerCase() as Lowercase<typeof gameMode>;
                         embed.addFields({ 
                             name: Formatters.bold(Formatters.underscore("Ticket prices")), 
-                            value: `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[user.mode].default.F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[user.mode].default.J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[user.mode].default.Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[user.mode].default.L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[user.mode].default.H}`, 
+                            value: `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[ticketMode].default.F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[ticketMode].default.J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[ticketMode].default.Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[ticketMode].default.L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[ticketMode].default.H}`, 
                             inline: true 
                         });
                         row.addComponents([
@@ -622,7 +621,8 @@ const command: SlashCommand = {
                                     files: files
                                 });
                             } else {
-                                embed.fields.last().value = `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[user.mode][interaction.customId].F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[user.mode][interaction.customId].J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[user.mode][interaction.customId].Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[user.mode][interaction.customId].L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[user.mode].default.H}`;
+                                const ticketMode = gameMode.toLowerCase() as Lowercase<typeof gameMode>;
+                                embed.fields.last().value = `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[ticketMode][interaction.customId].F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[ticketMode][interaction.customId].J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[ticketMode][interaction.customId].Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[ticketMode][interaction.customId].L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[ticketMode].default.H}`;
                                 button.setCustomId(interaction.customId === "vip" ? "default" : "vip");
                                 button.setLabel(interaction.customId === "vip" ? "Use default ticket prices" : "Use VIP ticket prices");
                                 button.setEmoji(interaction.customId === "vip" ? emojis.pax : emojis.vip);
@@ -631,10 +631,12 @@ const command: SlashCommand = {
                                     embeds: [embed],
                                     components: [row]
                                 });
-                                if (interaction.customId === "vip" && user.options.show_warnings) await interaction.followUp({
-                                    content: "⚠️ The VIP ticket prices are still experimental. Use them at your own risk!",
-                                    ephemeral: true
-                                });
+                                if (interaction.customId === "vip" && user?.options.show_warnings) {
+                                    await interaction.followUp({
+                                        content: "⚠️ The VIP ticket prices are still experimental. Use them at your own risk!",
+                                        ephemeral: true
+                                    });
+                                }
                             }
                         }
                     });
@@ -646,9 +648,11 @@ const command: SlashCommand = {
                     break;
                 }
                 case "research": {
-                    const mode = interaction.options.getString("mode")?.trim();
-                    if (mode) user.mode = <GameMode>mode;
-                    if (!user.mode) throw new DiscordClientError('You need to define the game mode or save it by logging in with `/user login`...');
+                    let gameMode = <GameMode>interaction.options.getString("mode")?.trim();
+                    if (!gameMode) {
+                        if (!user?.mode) throw new DiscordClientError('You need to either login with `/user login` or define the game mode option!');
+                        gameMode = user.mode;
+                    }
                     const departure_code = interaction.options.getString("departure", true).trim();
                     const departure = await airportCollection.findOne(createAirportFilter(departure_code));
                     if (!departure) throw new DiscordClientError('That is not a valid departure airport...');
@@ -658,6 +662,7 @@ const command: SlashCommand = {
                         max_distance: interaction.options.getInteger("max_distance", true)
                     });
                     if (!status.success) throw new DiscordClientError(status.error);
+                    const ticketMode = gameMode.toLowerCase() as Lowercase<typeof gameMode>;
                     const embeds = routes.map(({ route, demand, ticket }) => new MessageEmbed({
                         color: "DARK_GREEN",
                         title: route.arrival,
@@ -668,7 +673,7 @@ const command: SlashCommand = {
                         fields: [
                             { 
                                 name: Formatters.bold(Formatters.underscore("Route information")), 
-                                value: `**Departure:** ${route.departure}\n**Arrival:** ${route.arrival} (${formatCode(route, user.options.code)})\n**Market:** ${route.market}%\n**Runway:** ${route.runway.toLocaleString(locale)} ft\n**Distance:** ${route.distance.toLocaleString(locale)}km`, 
+                                value: `**Departure:** ${route.departure}\n**Arrival:** ${route.arrival} (${formatCode(route, user?.options.code)})\n**Market:** ${route.market}%\n**Runway:** ${route.runway.toLocaleString(locale)} ft\n**Distance:** ${route.distance.toLocaleString(locale)}km`, 
                                 inline: false 
                             },
                             { 
@@ -678,7 +683,7 @@ const command: SlashCommand = {
                             },
                             { 
                                 name: Formatters.bold(Formatters.underscore("Ticket prices")), 
-                                value: `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[user.mode].default.F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[user.mode].default.J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[user.mode].default.Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[user.mode].default.L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[user.mode].default.H}`, 
+                                value: `${Formatters.formatEmoji(emojis.first_seat)} $${ticket[ticketMode].default.F}\n${Formatters.formatEmoji(emojis.business_seat)} $${ticket[ticketMode].default.J}\n${Formatters.formatEmoji(emojis.economy_seat)} $${ticket[ticketMode].default.Y}\n${Formatters.formatEmoji(emojis.cargo_small)} $${ticket[ticketMode].default.L}\n${Formatters.formatEmoji(emojis.cargo_big)} $${ticket[ticketMode].default.H}`, 
                                 inline: true 
                             }
                         ]
@@ -687,7 +692,7 @@ const command: SlashCommand = {
                         customId: "route",
                         placeholder: "Select a route...",
                         options: routes.map(({ route }, i) => ({
-                            label: formatCode(route, user.options.code),
+                            label: formatCode(route, user?.options.code),
                             value: i.toString(),
                             description: route.arrival,
                             default: !i
@@ -881,10 +886,12 @@ const command: SlashCommand = {
                     ];
                     const planeName = interaction.options.getString("plane")?.trim();
                     if (planeName) {
-                        const mode = interaction.options.getString("mode")?.trim();
-                        if (mode) user.mode = <GameMode>mode;
-                        if (!user.mode) throw new DiscordClientError('You need to either define your game mode in arguments or save it by logging in with `/user login`!');
-                        const plane = await planeCollection.findOne(createPlaneFilter(planeName));
+                        let gameMode = <GameMode>interaction.options.getString("mode")?.trim();
+                        if (!gameMode) {
+                            if (!user?.mode) throw new DiscordClientError('You need to either login with `/user login` or define the game mode option!');
+                            gameMode = user.mode;
+                        }
+                        const plane = await planeCollection.findOne(createTextFilter<AM4.Plane>(planeName));
                         if (!plane) throw new DiscordClientError(`No plane could be found with ${Formatters.bold(planeName)}...`);
                         const plane_settings = await planeSettings.findOne({  
                             id: interaction.user.id,
@@ -901,10 +908,10 @@ const command: SlashCommand = {
                             if (modifications.fuel) plane.fuel *= 0.9;
                             if (modifications.co2) plane.co2 *= 0.9;
                         }
-                        if (user.mode === 'realism') plane.A_check.price *= 2;
-                        if (user.mode === 'easy') plane.speed *= 1.5;
-                        plane.fuel *= (100 - user.training.fuel) / 100;
-                        plane.co2 *= (100 - user.training.co2) / 100;
+                        if (gameMode) plane.A_check.price *= 2;
+                        if (gameMode === "Easy") plane.speed *= 1.5;
+                        if (user?.training.fuel) plane.fuel *= (100 - user.training.fuel) / 100;
+                        if (user?.training.co2) plane.co2 *= (100 - user.training.co2) / 100;
                         graphs.push({
                             id: new ObjectId(),
                             type: "Bar graph",
@@ -914,14 +921,14 @@ const command: SlashCommand = {
                                 data: {
                                     labels: [ 'Profit', 'Expenses', 'Income' ],
                                     datasets: routes.map(({ route, demand }) => {
-                                        let flights = Route.flights(route.distance, plane.speed, user.options.activity);
+                                        let flights = Route.flights(route.distance, plane.speed, user?.options.activity);
                                         const { configuration } = Route.configure(plane, {
                                             options: {
-                                                preference: user.preference[plane.type === "cargo" ? "cargo" : "pax"],
-                                                mode: user.mode,
+                                                preference: user?.preference[plane.type === "cargo" ? "cargo" : "pax"],
+                                                gameMode,
                                                 flights: flights,
                                                 reputation: 100,
-                                                activity: user.options.activity
+                                                activity: user?.options.activity
                                             },
                                             route: {
                                                 demand: demand, 
@@ -930,11 +937,11 @@ const command: SlashCommand = {
                                         });
                                         const { profit, expenses, income } = Route.profit(plane, {
                                             options: {
-                                                activity: user.options.activity,
-                                                fuel_price: user.options.fuel_price,
-                                                co2_price: user.options.co2_price,
+                                                activity: user?.options.activity,
+                                                fuelPrice: user?.options.fuel_price,
+                                                co2Price: user?.options.co2_price,
                                                 reputation: 100,
-                                                mode: user.mode 
+                                                gameMode
                                             },
                                             route: {
                                                 distance: route.distance, 
@@ -1078,7 +1085,7 @@ const command: SlashCommand = {
             switch(focused.name) {
                 case "plane": {
                     const value = (<string>focused.value)?.slice(0, 15).match(/(\w|-|\s){1,}/g)?.join("");
-                    const planes = database.am4.collection<AM4_Data.plane>("Planes");
+                    const planes = database.am4.collection<AM4.Plane>("Planes");
                     const pipeline: Document[] = [
                         {
                             $limit: 25
@@ -1121,8 +1128,8 @@ const command: SlashCommand = {
                 case "stopover": {
                     const planeValue = interaction.options.getString("plane");
                     if (planeValue) {
-                        const airportCollection = database.am4.collection<AM4_Data.airport>("Airports");
-                        const planeCollection = database.am4.collection<AM4_Data.plane>("Planes");
+                        const airportCollection = database.am4.collection<AM4.Airport>("Airports");
+                        const planeCollection = database.am4.collection<AM4.Plane>("Planes");
                         const departure = interaction.options.getString("departure");
                         const arrival = interaction.options.getString("arrival");
                         const route = await airportCollection.find({ 
@@ -1132,7 +1139,7 @@ const command: SlashCommand = {
                             ] 
                         }).toArray();
                         type Coordinates = Parameters<typeof createLocationSphere>;
-                        let query: Filter<AM4_Data.airport> = {
+                        let query: Filter<AM4.Airport> = {
                             location: {
                                 $geoWithin: {
                                     $centerSphere: createLocationSphere(...route.map(airport => airport.location.coordinates) as Coordinates)
@@ -1158,13 +1165,13 @@ const command: SlashCommand = {
                             ]
                         };
                         const airports = await airportCollection.find(query).toArray();
-                        const plane = await planeCollection.findOne(createPlaneFilter(planeValue));
+                        const plane = await planeCollection.findOne(createTextFilter<AM4.Plane>(planeValue));
                         const stopovers = Route.filterStopovers(route, airports, plane);
                         choices = stopovers.map(stopover => {
                             const lastIndex = stopover.airports.length - 1;
                             const [airport] = stopover.airports.slice(1, lastIndex);
                             return {
-                                name: `${airport.city.capitalize()}, ${airport.country_code.toUpperCase()} (${airport.iata.toUpperCase()}/${airport.icao.toUpperCase()})`,
+                                name: `${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}, ${airport.country_code.toUpperCase()} (${airport.iata.toUpperCase()}/${airport.icao.toUpperCase()})`,
                                 value: airport._id.toHexString()
                             };
                         });
@@ -1174,8 +1181,8 @@ const command: SlashCommand = {
                 }
                 default: {
                     const value = (<string>focused.value)?.slice(0, 10).match(/[a-zA-Z]/g)?.join("");
-                    const airports = database.am4.collection<AM4_Data.airport>("Airports");
-                    const query: Filter<AM4_Data.airport> = value && {
+                    const airports = database.am4.collection<AM4.Airport>("Airports");
+                    const query: Filter<AM4.Airport> = value && {
                         $or: [
                             { 
                                 icao: { 
@@ -1198,7 +1205,7 @@ const command: SlashCommand = {
                     if (!value) cursor.sort({ country: 1 });
                     const results = await cursor.toArray();
                     choices = results.map(airport => ({
-                        name: `${airport.city.capitalize()}, ${airport.country_code.toUpperCase()} (${airport.iata.toUpperCase()}/${airport.icao.toUpperCase()})`,
+                        name: `${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}, ${airport.country_code.toUpperCase()} (${airport.iata.toUpperCase()}/${airport.icao.toUpperCase()})`,
                         value: airport._id.toHexString()
                     }));
                 }

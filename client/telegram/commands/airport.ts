@@ -6,16 +6,14 @@ import fs from 'fs';
 
 import type { Command, DataCallbackQuery } from '@telegram/types';
 import type { Message, User } from 'typegram';
-import type { AM4_Data } from '@typings/database';
+import type { AM4, GeoNear } from '@typings/database';
+import type { GameMode } from '@typings/am4-api';
 import type { Context } from 'telegraf';
-import type { GeoNear } from 'mongodb';
-
-type GameMode = "realism" | "easy";
 
 interface SceneSession extends Scenes.SceneSessionData {
     pages: Generator<string, string, number>;
     message: Message.TextMessage;
-    gameMode: GameMode;
+    gameMode;
     input: string;
     user: User;
 }
@@ -60,7 +58,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('filter:airport', <BaseSceneOptions>{ ttl: 600000 }),
             async register({ database }) {
-                const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
+                const airportCollection = database.am4.collection<AM4.Airport>('Airports');
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => void 0);
@@ -147,7 +145,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('search:airport', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database }) {
-                const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
+                const airportCollection = database.am4.collection<AM4.Airport>('Airports');
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => void 0);
@@ -165,7 +163,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                                 { icao: ctx.message.text.toLowerCase() }
                             ]
                         });
-                        const title = `${airport.city.capitalize()}, ${airport.country.capitalize()} (${airport.iata.toUpperCase()}(${airport.icao.toUpperCase()}))`;
+                        const title = `${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}, ${airport.country.capitalizeWords({ capitalizeAfterQuote: true })} (${airport.iata.toUpperCase()}(${airport.icao.toUpperCase()}))`;
                         const content = `Runway: ${airport.runway.toLocaleString(locale)} ft\nMarket: ${airport.market}%`;
                         await ctx.replyWithVenue(airport.location.coordinates[1], airport.location.coordinates[0], title, content);
                     }
@@ -188,8 +186,8 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('sell:airport', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database }) {
-                const airportCollection = database.am4.collection<AM4_Data.airport>('Airports');
-                const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
+                const airportCollection = database.am4.collection<AM4.Airport>('Airports');
+                const planeCollection = database.am4.collection<AM4.Plane>('Planes');
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     ctx.scene.session.gameMode = (<DataCallbackQuery>ctx.callbackQuery).data as GameMode;
@@ -204,13 +202,13 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
                     ctx.scene.session.input = ctx.message.text;
                     const keyboard = Markup.inlineKeyboard([
-                        Markup.button.callback('Realism', 'realism'),
-                        Markup.button.callback('Easy', 'easy'),
+                        Markup.button.callback('Realism', 'Realism'),
+                        Markup.button.callback('Easy', 'Easy'),
                         Markup.button.callback('❌ Exit', 'exit')
                     ]);
                     await ctx.reply('Do you play on realism or easy?', keyboard);
                 });
-                this.scene.action(/realism|easy/, async (ctx) => {
+                this.scene.action(/Realism|Easy/, async (ctx) => {
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
                     await ctx.answerCbQuery();
                     await ctx.deleteMessage().catch(() => void 0);
@@ -230,7 +228,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                             ]
                         });
                         if (!hub) throw new TelegramClientError('That is not a valid airport...');
-                        const airports = await airportCollection.aggregate<GeoNear<AM4_Data.airport>>([
+                        const airports = await airportCollection.aggregate<GeoNear<AM4.Airport>>([
                             {
                                 $geoNear: {
                                     near: { 
@@ -239,7 +237,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                                     },
                                     query: {
                                         market: { $gte: 89 },
-                                        runway: { $gte: mode === 'realism' ? plane.runway : 0 }
+                                        runway: { $gte: mode === "Realism" ? plane.runway : 0 }
                                     },
                                     maxDistance: plane.range * 2 * 1000,
                                     minDistance: 100 * 1000,
@@ -255,7 +253,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                         ]).toArray();
                         if (!airports.length) throw new TelegramClientError('Could not find any airports with that criteria...');
                         const [airport] = airports;
-                        const title = `${airport.city.capitalize()}, ${airport.country.capitalize()} (${airport.iata.toUpperCase()}(${airport.icao.toUpperCase()}))`;
+                        const title = `${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}, ${airport.country.capitalizeWords({ capitalizeAfterQuote: true })} (${airport.iata.toUpperCase()}(${airport.icao.toUpperCase()}))`;
                         const content = `Runway: ${airport.runway.toLocaleString(locale)} ft\nMarket: ${airport.market}%\nDistance: ${airport.dist.calculated.toLocaleString(locale)} km`;
                         await ctx.replyWithVenue(airport.location.coordinates[1], airport.location.coordinates[0], title, content);
                     }

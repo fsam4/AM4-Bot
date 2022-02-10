@@ -232,7 +232,7 @@ const command: SlashCommand = {
         }
         await interaction.deferReply({ ephemeral: true });
         try {
-            const panels = database.discord.collection<Discord.panel>("Panels");
+            const panels = database.discord.collection<Discord.Panel>("Panels");
             const subCommand = interaction.options.getSubcommand(false);
             const group = interaction.options.getSubcommandGroup(false);
             switch(group || subCommand) {
@@ -392,8 +392,8 @@ const command: SlashCommand = {
                             });
                             if (!res.ok) throw new DiscordClientError("Could not find an active role panel from this server created by you with that ID...");
                             await interaction.guild.channels.fetch(res.value.channel)
-                            .then(async channel => {
-                                await (<TextChannel>channel).messages.fetch(res.value.message)
+                            .then(async (channel: TextChannel) => {
+                                await channel.messages.fetch(res.value.message)
                                 .then(async message => {
                                     for (const row of message.components) {
                                         for (const component of row.components) {
@@ -441,8 +441,8 @@ const command: SlashCommand = {
                             const style = <MessageButtonStyleResolvable>interaction.options.getString("style")?.trim();
                             if (style) button.setStyle(style);
                             await interaction.guild.channels.fetch(panel.channel)
-                            .then(async channel => {
-                                await (<TextChannel>channel).messages.fetch(panel.message)
+                            .then(async (channel: TextChannel) => {
+                                await channel.messages.fetch(panel.message)
                                 .then(async message => {
                                     if (!message?.components?.length) {
                                         message.embeds[0].fields[0].value = "";

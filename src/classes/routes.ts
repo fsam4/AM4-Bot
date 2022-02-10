@@ -92,12 +92,12 @@ export default class Routes extends Status {
                 },
                 ticket: {
                     easy: {
-                        default: Route.ticket(destination.distance, 'easy'),
-                        vip: Route.ticket(destination.distance, 'easy', true)
+                        default: Route.ticket(destination.distance, "Easy"),
+                        vip: Route.ticket(destination.distance, "Easy", true)
                     },
                     realism: {
-                        default: Route.ticket(destination.distance, 'realism'),
-                        vip: Route.ticket(destination.distance, 'realism', true)
+                        default: Route.ticket(destination.distance, "Realism"),
+                        vip: Route.ticket(destination.distance, "Realism", true)
                     }
                 }
             }));

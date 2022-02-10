@@ -1,8 +1,8 @@
 import { Collection } from 'discord.js';
 import AM4APIError from './error';
+import { fetch } from 'undici';
 import Airline from './airline';
 import Status from './status';
-import fetch from 'node-fetch';
 
 import compareAsc from 'date-fns/compareAsc';
 import differenceInDays from 'date-fns/differenceInDays';
@@ -31,7 +31,7 @@ export class Member {
     public position: number;
     public online: Date;
     public flights: number;
-    public sv: number;
+    public shareValue: number;
     public joined: Date;
     public contribution: {
         total: number;
@@ -51,7 +51,7 @@ export class Member {
                     access_token: client.accessToken,
                     user: member.company
                 });
-                const response: AM4.Airline = await fetch(`${AM4BaseUrl}?${query}`).then(response => response.json());
+                const response = await fetch(`${AM4BaseUrl}?${query}`).then(res => res.json()) as AM4.Airline;
                 if (response.status.description === 'Missing or invalid access token') throw new AM4APIError(response.status);
                 return new Airline(response, client)
             }
@@ -59,7 +59,7 @@ export class Member {
         this.online = new Date(member.online * 1000);
         this.joined = new Date(member.joined * 1000);
         this.flights = member.flights;
-        this.sv = member.shareValue;
+        this.shareValue = member.shareValue;
         const weeks = Math.abs(differenceInWeeks(this.joined, new Date()));
         const days = Math.abs(differenceInDays(this.joined, new Date()));
         this.contribution = {

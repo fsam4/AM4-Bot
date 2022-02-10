@@ -1,20 +1,22 @@
-import Plane from '../lib/plane';
-import Status from './status';
-import fetch from 'node-fetch';
-import AM4APIError from './error';
 import Alliance, { Member } from './alliance';
+import AM4APIError from './error';
+import { fetch } from 'undici';
+import Status from './status';
+import Plane from '../lib/plane';
 
-import type * as AM4 from '@typings/am4-api';
-import type { AM4_Data } from '@typings/database';
+import type { AM4 as AM4Db } from '@typings/database';
 import type AM4Client from '@source/index';
+import type * as AM4 from '@typings/am4-api';
 
-type Aircraft = AM4_Data.plane & { amount?: number };
+type AircraftWithAmount = { amount?: number };
+type Aircraft = AM4Db.Plane & AircraftWithAmount;
+type AircraftWithStaff = Pick<AM4Db.Plane, "staff"> & AircraftWithAmount;
 
 interface ProfitOptions {
-    fuel_price?: number;
-    co2_price?: number;
+    fuelPrice?: number;
+    co2Price?: number;
     activity?: number;
-    mode: 'realism' | 'easy';
+    gameMode: AM4.GameMode;
     reputation: {
         pax: number;
         cargo: number;
@@ -24,17 +26,17 @@ interface ProfitOptions {
         crew: number;
         engineer: number;
         tech: number;
-    }
+    };
 }
 
-type AllianceMember = { 
+interface AllianceMember { 
     readonly member?: Member, 
     readonly status: {
         readonly requestsRemaining: number;
         success: boolean;
         error?: string;
     }
-}; 
+}
 
 const AM4BaseUrl = "https://www.airline4.net/api";
 
@@ -63,7 +65,7 @@ export default class Airline extends Status {
         level: number;
         achievements: number;
         online: boolean;
-        readonly gameMode: 'Realism' | 'Easy';
+        readonly gameMode: AM4.GameMode;
         readonly displayLogoURL: string;
         readonly founded: Date;
         logo?: string;
@@ -75,25 +77,28 @@ export default class Airline extends Status {
     public readonly fleet?: {
         size: number;
         routes: number;
-        planes: Array<{ name: string, amount: number }>;
+        planes: Array<{ 
+            name: string;
+            amount: number;
+        }>;
     }
     public readonly ipo?: {
-        has: boolean;
-        current: number;
+        readonly has: boolean;
+        currentValue: number;
         shares: {
             available: number;
             sold: number;
             total: number;
-        }
+        };
         growth: Array<{
             value: number;
             date: Date;
-        }>
+        }>;
     }
     public readonly awards?: Array<{
         name: string;
         date: Date;
-    }>
+    }>;
     constructor({ user, awards, fleet, share_development, status }: AM4.Airline, protected client: AM4Client, airlineID?: number) {
         super(status);
         this._user = user;
@@ -124,7 +129,7 @@ export default class Airline extends Status {
                         access_token: client.accessToken,
                         search: user.alliance
                     });
-                    const response: AM4.Alliance = await fetch(`${AM4BaseUrl}?${query}`).then(response => response.json());
+                    const response = await fetch(`${AM4BaseUrl}?${query}`).then(res => res.json()) as AM4.Alliance;
                     if (response.status.description === 'Missing or invalid access token') throw new AM4APIError(response.status);
                     return new Alliance(response, client);
                 },
@@ -133,7 +138,7 @@ export default class Airline extends Status {
                         access_token: client.accessToken,
                         search: user.alliance
                     });
-                    const response: AM4.Alliance = await fetch(`${AM4BaseUrl}?${query}`).then(response => response.json());
+                    const response = await fetch(`${AM4BaseUrl}?${query}`).then(res => res.json()) as AM4.Alliance;
                     if (response.status.description === 'Missing or invalid access token') throw new AM4APIError(response.status);
                     const { members, status } = new Alliance(response, client);
                     if (!status.success) return { status: status };
@@ -150,7 +155,7 @@ export default class Airline extends Status {
             }
             this.ipo = {
                 has: Boolean(user.ipo),
-                current: user.share,
+                currentValue: user.share,
                 shares: {
                     available: user.shares_available,
                     sold: user.shares_sold,
@@ -206,7 +211,7 @@ export default class Airline extends Status {
      * @returns The amount of pilots, crew, engineers and technicians
      */
 
-    static calculateStaff = (planes: Aircraft[]) => ({
+    static calculateStaff = (planes: AircraftWithStaff[]) => ({
         pilots: planes.map(aircraft => aircraft.staff.pilots * aircraft.amount).reduce((a, b) => a + b),
         crew: planes.map(aircraft => aircraft.staff.crew * aircraft.amount).reduce((a, b) => a + b),
         engineers: planes.map(aircraft => aircraft.staff.engineers * aircraft.amount).reduce((a, b) => a + b),
@@ -214,7 +219,7 @@ export default class Airline extends Status {
     })
 
     /**
-     * Calculate the estimated SV growth of an airline
+     * Calculate the estimated share value growth of an airline
      * @param planes The raw plane data array with the plane amount
      * @param options The options for the calculation
      * @returns The estimated share value growth per day
@@ -229,7 +234,7 @@ export default class Airline extends Status {
             });
             return daily * plane.amount;
         });
-        const estimated = growth.length ? growth.reduce((a, b) => a + b) : 0;
+        const estimated = growth.length && growth.reduce((a, b) => a + b);
         return estimated;
     }
 

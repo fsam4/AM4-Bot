@@ -3,10 +3,10 @@ import { MongoDB as Utils } from '../../utils';
 import DiscordClientError from '../error';
 
 import type { SlashCommand } from '@discord/types';
-import type { AM4_Data } from '@typings/database';
 import type { Document } from 'mongodb';
+import type { AM4 } from '@typings/database';
 
-const { createPlaneFilter, createAchievementFilter } = Utils;
+const { createTextFilter } = Utils;
 const name = /\w+$/g;
 
 const command: SlashCommand = {
@@ -121,8 +121,8 @@ const command: SlashCommand = {
         }
         await interaction.deferReply({ ephemeral: true });
         try {
-            const planes = database.am4.collection<AM4_Data.plane>('Planes');
-            const achievements = database.am4.collection<AM4_Data.achievement>('Achievements');
+            const planes = database.am4.collection<AM4.Plane>('Planes');
+            const achievements = database.am4.collection<AM4.Achievement>('Achievements');
             const subCommand = interaction.options.getSubcommand();
             const group = interaction.options.getSubcommandGroup(false);
             if (interaction.guild.premiumTier === "NONE") {
@@ -176,7 +176,7 @@ const command: SlashCommand = {
                     switch(subCommand) {
                         case 'plane': {
                             tags = ":airplane:";
-                            const plane = await planes.findOne(createPlaneFilter(input));
+                            const plane = await planes.findOne(createTextFilter<AM4.Plane>(input));
                             if (!plane) throw new DiscordClientError(`No plane could be found with ${Formatters.bold(input)}...`);
                             description ||= `A sticker representing the plane model ${plane.name}. This sticker has been created via AM4 Bot.`;
                             sticker_name ||= plane.name.replace(/(\s|-)/, '_');
@@ -186,7 +186,7 @@ const command: SlashCommand = {
                         case 'achievement': {
                             tags = ":trophy:";
                             const input = interaction.options.getString("name", true).trimEnd();
-                            const achievement = await achievements.findOne(createAchievementFilter(input));
+                            const achievement = await achievements.findOne(createTextFilter<AM4.Achievement>(input));
                             if (!achievement) throw new DiscordClientError(`No achievement could be found with ${Formatters.bold(input)}...`);
                             description ||= `A sticker representing the achievement ${achievement.name}. This sticker has been created via AM4 Bot.`;
                             sticker_name ||= achievement.name.replace(/(\s|-)/, '_');
@@ -264,11 +264,11 @@ const command: SlashCommand = {
             }
             let choices: ApplicationCommandOptionChoice[];
             if (focused.name === "plane") {
-                const planes = database.am4.collection<AM4_Data.plane>("Planes");
+                const planes = database.am4.collection<AM4.Plane>("Planes");
                 const cursor = planes.aggregate<ApplicationCommandOptionChoice>(pipeline, { maxTimeMS: 2800 });
                 choices = await cursor.toArray();
             } else {
-                const achievements = database.am4.collection<AM4_Data.achievement>("Achievements");
+                const achievements = database.am4.collection<AM4.Achievement>("Achievements");
                 const cursor = achievements.aggregate<ApplicationCommandOptionChoice>(pipeline, { maxTimeMS: 2800 });
                 choices = await cursor.toArray();
             }

@@ -9,14 +9,13 @@ import fs from 'fs';
 
 import type { Message, User, InlineKeyboardMarkup, InputMediaPhoto } from 'typegram';
 import type { Command, DataCallbackQuery } from '@telegram/types';
-import type { Telegram, AM4_Data } from '@typings/database';
+import type { Telegram, AM4 } from '@typings/database';
+import type { GameMode } from '@typings/am4-api';
 import type { Context } from 'telegraf';
-
-type GameMode = "realism" | "easy";
 
 interface SceneSession extends Scenes.SceneSessionData {
     message: Message.TextMessage;
-    gameMode: GameMode;
+    gameMode;
     user: User;
     data: {
         engines: Map<string, string>,
@@ -73,8 +72,8 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('search:plane', <BaseSceneOptions>{ ttl: 600000 }),
             async register({ database }) {
-                const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-                const keyboards = database.telegram.collection<Telegram.keyboard>('Keyboards');
+                const planeCollection = database.am4.collection<AM4.Plane>('Planes');
+                const keyboards = database.telegram.collection<Telegram.Keyboard>('Keyboards');
                 this.scene.use(sessionHandler);
                 this.scene.enter(async (ctx) => {
                     await ctx.deleteMessage().catch(() => void 0);
@@ -98,16 +97,16 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                         const compile = pug.compileFile('client/telegram/layouts/plane.pug');
                         const default_reply = compile({ 
                             plane, locale,
-                            easy: Plane.profit(plane, { mode: 'easy' }),
-                            realism: Plane.profit(plane, { mode: 'realism' })
+                            easy: Plane.profit(plane, { gameMode: "Easy" }),
+                            realism: Plane.profit(plane, { gameMode: "Realism" })
                         });
                         for (const engine of plane.engines) {
                             plane.fuel = engine.fuel;
                             plane.speed = engine.speed;
                             const reply = compile({ 
                                 plane, locale,
-                                easy: Plane.profit(plane, { mode: 'easy' }),
-                                realism: Plane.profit(plane, { mode: 'realism' })
+                                easy: Plane.profit(plane, { gameMode: "Easy" }),
+                                realism: Plane.profit(plane, { gameMode: "Realism" })
                             });
                             ctx.scene.session.data.engines.set(engine.name, reply);
                         }
@@ -187,18 +186,18 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
         {
             scene: new Scenes.BaseScene<SceneContext>('compare:plane', <BaseSceneOptions>{ ttl: 120000 }),
             async register({ database }) {
-                const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
+                const planeCollection = database.am4.collection<AM4.Plane>('Planes');
                 this.scene.use(sessionHandler);
                 this.scene.enter(async ctx => {
                     await ctx.deleteMessage().catch(() => void 0);
                     const keyboard = Markup.inlineKeyboard([
-                        Markup.button.callback("Realism", "realism"),
-                        Markup.button.callback("Easy", "easy"),
+                        Markup.button.callback("Realism", "Realism"),
+                        Markup.button.callback("Easy", "Easy"),
                         Markup.button.callback('❌ Exit', 'exit')
                     ]);
                     await ctx.replyWithMarkdown("Choose the game mode to calculate the statistics by...", keyboard);
                 });
-                this.scene.action(/realism|easy/, async ctx => {
+                this.scene.action(/Realism|Easy/, async ctx => {
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
                     ctx.scene.session.gameMode = (<DataCallbackQuery>ctx.callbackQuery).data as GameMode;
                     const keyboard = Markup.inlineKeyboard([Markup.button.callback('❌ Exit', 'exit')]);
@@ -231,17 +230,21 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                                             "Income"
                                         ],
                                         datasets: planes.map(plane => {
-                                            const options = { mode: ctx.scene.session.gameMode };
                                             const engines = plane.engines.map(engine => {
-                                                const res = Plane.profit({
-                                                    ...plane,
-                                                    fuel: engine.fuel,
-                                                    speed: engine.speed
-                                                }, options);
+                                                const res = Plane.profit(
+                                                    {
+                                                        ...plane,
+                                                        fuel: engine.fuel,
+                                                        speed: engine.speed
+                                                    },
+                                                    {
+                                                        gameMode: ctx.scene.session.gameMode
+                                                    }
+                                                );
                                                 for (const prop in res) values.push(res[prop]);
                                                 return res;
                                             });
-                                            const res = Plane.profit(plane, options);
+                                            const res = Plane.profit(plane, { gameMode: ctx.scene.session.gameMode });
                                             engines.push(res);
                                             for (const prop in res) values.push(res[prop]);
                                             return {
@@ -410,7 +413,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                                             label: name,
                                             data: [
                                                 {
-                                                    x: ctx.scene.session.gameMode === 'easy' ? A_check.price / 2 : A_check.price,
+                                                    x: ctx.scene.session.gameMode === "Easy" ? A_check.price / 2 : A_check.price,
                                                     y: A_check.time
                                                 }
                                             ]
@@ -573,7 +576,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                                             data: [
                                                 {
                                                     x: plane.range,
-                                                    y: ctx.scene.session.gameMode === 'easy' ? plane.speed * 1.5 : plane.speed,
+                                                    y: ctx.scene.session.gameMode === "Easy" ? plane.speed * 1.5 : plane.speed,
                                                 }
                                             ]
                                         }))

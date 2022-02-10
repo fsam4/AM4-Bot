@@ -9,7 +9,7 @@ import addMonths from 'date-fns/addMonths';
 import isFuture from 'date-fns/isFuture';
 import addDays from 'date-fns/addDays';
 
-import type { Discord, AM4_Data } from '@typings/database';
+import type { Discord, AM4 } from '@typings/database';
 import type { Event } from '@discord/types';
 
 const requiredLevel = {
@@ -41,7 +41,7 @@ const event: Event = {
                 let command = args.shift().toLowerCase();
                 if (command !== "control") return;
                 command = args.shift();
-                const users = database.discord.collection<Discord.user>('Users');
+                const users = database.discord.collection<Discord.User>('Users');
                 const account = await users.findOne({ id: message.author.id });
                 const owner = client.application.owner;
                 const isDeveloper = owner instanceof User ? (message.author.id === owner.id) : owner.members.some(member => member.id === message.author.id);
@@ -234,8 +234,8 @@ const event: Event = {
                         break;
                     }
                     case "data": {
-                        const allianceCollection = database.am4.collection<AM4_Data.alliance>("Alliances");
-                        const memberCollection = database.am4.collection<AM4_Data.member>("Members");
+                        const allianceCollection = database.am4.collection<AM4.Alliance>("Alliances");
+                        const memberCollection = database.am4.collection<AM4.AllianceMember>("Members");
                         if (!args.length) throw new DiscordClientError("You need to specify the database action to execute!");
                         command = args.shift();
                         switch(command) {
@@ -272,8 +272,14 @@ const event: Event = {
                                     contribution: member.contribution.total,
                                     flights: member.flights,
                                     dailyContribution: [],
-                                    offline: [{ value: 0, date: message.createdAt }],
-                                    sv: [{ value: member.sv, date: message.createdAt }],
+                                    offline: [{ 
+                                        value: 0, 
+                                        date: message.createdAt 
+                                    }],
+                                    shareValue: [{ 
+                                        value: member.shareValue, 
+                                        date: message.createdAt 
+                                    }],
                                     expireAt: addMonths(message.createdAt, 3)
                                 })));
                                 await message.reply(`Inserted ${Formatters.bold(alliance.name)} and ${Formatters.bold(res.insertedCount.toLocaleString("en"))} members to the database!`);

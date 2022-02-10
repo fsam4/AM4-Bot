@@ -11,11 +11,11 @@ import compareAsc from 'date-fns/compareAsc';
 import addDays from 'date-fns/addDays';
 
 import type { SlashCommand } from '@discord/types';
-import type { AM4_Data } from '@typings/database';
 import type { Member } from '@source/classes/alliance';
 import type Alliance from '@source/classes/alliance';
+import type { AM4 } from '@typings/database';
 
-interface AllianceMember extends AM4_Data.member {
+interface AllianceMember extends AM4.AllianceMember {
     daysOffline: number;
     thisWeek: number;
     left: Date;
@@ -36,7 +36,7 @@ const sort_choices = [
     },
     {
         name: 'Share Value',
-        value: 'sv'
+        value: 'shareValue'
     },
     {
         name: 'Joining date',
@@ -251,8 +251,8 @@ const command: SlashCommand = {
     async execute(interaction, { database, rest, account, ephemeral, locale }) {
         await interaction.deferReply({ ephemeral });
         try {
-            const allianceCollection = database.am4.collection<AM4_Data.alliance>('Alliances');
-            const memberCollection = database.am4.collection<AM4_Data.member>('Members');
+            const allianceCollection = database.am4.collection<AM4.Alliance>('Alliances');
+            const memberCollection = database.am4.collection<AM4.AllianceMember>('Members');
             const subCommand = interaction.options.getSubcommand();
             const group = interaction.options.getSubcommandGroup(false);
             switch(group || subCommand) {
@@ -334,7 +334,7 @@ const command: SlashCommand = {
                                             then: { 
                                                 $last: {
                                                     $map: {
-                                                        input: '$sv',
+                                                        input: '$shareValue',
                                                         as: 'data',
                                                         in: '$$data.date'
                                                     }
@@ -691,7 +691,7 @@ const command: SlashCommand = {
                 }
                 case "compare": {
                     const options = interaction.options.data[0].options.filter(option => option.name.startsWith("alliance"));
-                    type AllianceData = Alliance & { data?: AM4_Data.alliance };
+                    type AllianceData = Alliance & { data?: AM4.Alliance };
                     const alliances = await Promise.all<AllianceData>(
                         options.map(async option => {
                             const response = await rest.fetchAlliance(<string>option.value);
@@ -871,7 +871,7 @@ const command: SlashCommand = {
                                         label: alliance.name,
                                         data: members.map(member => ({
                                             x: member.contribution.daily,
-                                            y: member.sv
+                                            y: member.shareValue
                                         }))
                                     }))
                                 },
@@ -1117,7 +1117,7 @@ const command: SlashCommand = {
                             const amount = interaction.options.getInteger("amount");
                             const { members, alliance, status } = await rest.fetchAlliance(input);
                             if (!status.success) throw new DiscordClientError(status.error);
-                            type AllianceMember = AM4_Data.member & { thisWeek: number, daysOffline: number };
+                            type AllianceMember = AM4.AllianceMember & { thisWeek: number, daysOffline: number };
                             type AllianceMemberData = Member & { data: AllianceMember };
                             let memberList = <AllianceMemberData[]>members.toArray();
                             const allianceDocument = await allianceCollection.findOne({ name: alliance.name });
@@ -1177,7 +1177,7 @@ const command: SlashCommand = {
                                     iconURL: "https://i.ibb.co/8DFpz96/am-logo.png"
                                 }
                             });
-                            const moneyValue = /contribution|sv|thisWeek/;
+                            const moneyValue = /contribution|shareValue|thisWeek/;
                             const formatFunction = (member: AllianceMemberData, i: number) => {
                                 const string = `${Formatters.bold(`${i + 1}.`)} ${member.airline.name}`;
                                 let value: any = member;
@@ -1326,7 +1326,7 @@ const command: SlashCommand = {
                                 fields: [
                                     {
                                         name: Formatters.bold(Formatters.underscore("General Statistics")),
-                                        value: `**Share value:** $${member.sv.toLocaleString(locale)}\n**Joined:** ${Formatters.time(member.joined)}\n**Last online:** ${Formatters.time(member.online, "R")}\n**Flights:** ${(member.flights).toLocaleString(locale)}`,
+                                        value: `**Share value:** $${member.shareValue.toLocaleString(locale)}\n**Joined:** ${Formatters.time(member.joined)}\n**Last online:** ${Formatters.time(member.online, "R")}\n**Flights:** ${(member.flights).toLocaleString(locale)}`,
                                         inline: false
                                     },
                                     {
@@ -1464,7 +1464,7 @@ const command: SlashCommand = {
                                             }
                                         });
                                     }
-                                    if (memberDocument.sv.length) {
+                                    if (memberDocument.shareValue.length) {
                                         charts.push({
                                             emoji: emojis.stock,
                                             data: {
@@ -1477,7 +1477,7 @@ const command: SlashCommand = {
                                                             backgroundColor: "rgb(0, 255, 0, 1)",
                                                             borderColor: "rgb(0, 255, 0, 1)",
                                                             fill: false,
-                                                            data: memberDocument.sv.map(({ value, date }) => ({
+                                                            data: memberDocument.shareValue.map(({ value, date }) => ({
                                                                 x: date,
                                                                 y: value
                                                             }))
@@ -1613,7 +1613,7 @@ const command: SlashCommand = {
                         }
                         case "compare": {
                             const options = interaction.options.data[0].options[0].options.filter(option => option.name.startsWith("member"));
-                            type MemberDocument = AM4_Data.member & { thisWeek: number };
+                            type MemberDocument = AM4.AllianceMember & { thisWeek: number };
                             type AllianceMember = Member & { document?: MemberDocument };
                             let requestsRemaining: number;
                             const members = await Promise.all<AllianceMember>(

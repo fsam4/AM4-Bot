@@ -66,7 +66,7 @@ const command: SlashCommand = {
             await interaction.editReply(`AM4 Bot has ${Formatters.bold(missingPermissions.length.toLocaleString(guildLocale))} missing permissions in this server that it requires. Having some permissions disabled can limit the features of AM4 Bot and cause issues. The missing permissions are:\n${Formatters.blockQuote(perms.join("\n"))}`);
             return;
         }
-        const servers = database.settings.collection<Settings.server>("Servers");
+        const servers = database.settings.collection<Settings.Server>("Servers");
         const server = await servers.findOne({ id: interaction.guildId });
         if (server) {
             if (server.alliance_name) {

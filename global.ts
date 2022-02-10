@@ -3,13 +3,11 @@ import { Client, Collection } from 'discord.js';
 // * Global declarations, types declared in global.d.ts
 
 Map.prototype.toArray = function() {
-    return Array.from(this.values());
+    return [...this.values()];
 }
 
 Map.prototype.toSet = function() {
-    const array = Array.from(this);
-    const keys = array.map(arr => arr[0]);
-    return new Set([...keys]);
+    return new Set([...this.keys()]);
 }
 
 Array.prototype.split = function(chunks, balanced = true) {
@@ -48,11 +46,11 @@ Array.prototype.toMap = function(path) {
 }
 
 Array.prototype.difference = function() {
-    if (this.length === 1) return [];
-    let values: number[] = [], index = 0;
-    while (index < this.length) {
-        if (index) values.push(this[index] - this[index - 1]);
-        index++;
+    if (this.length < 2) return [];
+    let values: number[] = [];
+    for (let index = 0; index < this.length; index++) {
+        if (!index) continue; 
+        values.push(this[index] - this[index - 1]);
     }
     return values;
 }
@@ -71,19 +69,39 @@ Array.prototype.random = function() {
 }
 
 Array.prototype.last = function() {
-    return this[this.length - 1];
+    const lastIndex = this.length - 1;
+    return this[lastIndex];
 }
 
-String.prototype.capitalize = function() {
-    const words = this.split(" ").map(string => {
-        const parts = string.split("'").map(string => {
-            const letter = string.charAt(0).toUpperCase();
-            const word = letter + string.slice(1);
-            return word;
-        });
-        return parts.join("'");
-    });
-    return words.join(" ");
+String.prototype.capitalize = function(options) {
+    let string = this;
+    if (!options?.preserve) string = string.toLowerCase();
+    return string.charAt(0).toUpperCase() + string.substring(1);
+}
+
+const QUOTE = /['"`’]/;
+const WORD = /[0-9a-zA-Z\u00C0-\u017F\u0400-\u04FF]/;
+
+String.prototype.capitalizeWords = function(options) {
+    let string = this;
+    if (!options?.preserve) string = string.toLowerCase();
+    let startOfWord = 0, match: RegExpExecArray, out = "", count = 0;
+    const nonWord = /[^0-9a-zA-Z\u00C0-\u017F\u0400-\u04FF]+|$/g;
+    while (match = nonWord.exec(string)) {
+        if (startOfWord === string.length) break;
+        const sep = match[0], sepStart = nonWord.lastIndex - sep.length;
+        if ((!options?.capitalizeAfterQuote && QUOTE.test(string[sepStart])) && WORD.test(string[sepStart + 1])) continue;
+        let word = string.substring(startOfWord, nonWord.lastIndex - sep.length);
+        if (!options?.capitalizeAfterQuote && QUOTE.test(word[0])) {
+            out += word[0];
+            word = word.substring(1);
+        }
+        const skipWord = "skipWord" in options && options.skipWord(word, count);
+        out += (skipWord ? word : word.capitalize(options)) + sep;
+        startOfWord = nonWord.lastIndex;
+        count++;
+    }
+    return out;
 }
 
 Math.percentage = function(value, of_value) {
@@ -92,23 +110,22 @@ Math.percentage = function(value, of_value) {
 }
 
 Math.difference = function(x, y) {
-    if (Math.sign(x) === Math.sign(y)) {
-        return Math.abs(x - y);
-    } else {
-        return Math.abs(x) + Math.abs(y);
-    };
+    return Math.sign(x) === Math.sign(y) 
+        ? Math.abs(x - y)
+        : Math.abs(x) + Math.abs(y);
 }
 
-const suffixes = ["", "k", "m", "b", "t"];
+const suffixes = ["", "k", "m", "b", "t", "q"];
 
 Number.prototype.abbreviate = function(fractionDigits = 1) {
-    let newValue: string | number = this;
+    type AbbrevationValue = string | number;
+    let newValue: AbbrevationValue = this;
     if (this >= 1000) {
         let suffixNum = Math.floor(this.toString().length / 3);
-        let shortValue: string | number = '';
+        let shortValue: AbbrevationValue = '';
         for (let precision = 2; precision >= 1; precision--) {
             shortValue = parseFloat((suffixNum != 0 ? (this / Math.pow(1000, suffixNum)) : this).toPrecision(precision));
-            let dotLessShortValue = (shortValue + '').replace(/[^a-zA-Z 0-9]+/g, '');
+            let dotLessShortValue = shortValue.toString().replace(/[^a-zA-Z 0-9]+/g, '');
             if (dotLessShortValue.length <= 2) break;
         }
         if (<number>shortValue % 1 != 0)  shortValue = (<number>shortValue).toFixed(fractionDigits);

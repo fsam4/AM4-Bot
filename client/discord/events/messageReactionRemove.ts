@@ -15,7 +15,7 @@ const event: Event = {
             }
         }
         if (reaction.message.channel.type === "DM") return;
-        const panels = database.discord.collection<Discord.panel>("Panels");
+        const panels = database.discord.collection<Discord.Panel>("Panels");
         const panel = await panels.findOne({ 
             type: "message",
             message: reaction.message.id,

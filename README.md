@@ -20,7 +20,7 @@ The source code for v4.9.0 contains some new features along with minor changes. 
 - Alliance comparing: [User Context Menu](client/discord/context/compareAlliance.ts)
 
 ### License
-This source code is licensed under the [MIT License](LICENSE).
+This source code is licensed under the [MIT License](LICENSE). Certain parts of the code might be under different licenses and/or copyrights. Those parts are mentioned in the code with comments.
 
 ## Credits
 Thank you to the AM4 Bot team and other people who supported me in developing, moderating and maintaining this bot. If you have contributed in anyway to this project and specifically want credit in here, or if you want your credit to be removed, please open a new dicussion on the [Discussions page](https://github.com/fsam4/AM4-Bot/discussions). In addition, thank you to the [Air France KLM Discord server](https://discord.gg/f8WHuRX) for being the home server of this bot.

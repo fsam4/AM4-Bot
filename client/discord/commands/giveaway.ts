@@ -134,7 +134,7 @@ const command: SlashCommand = {
         }
         await interaction.deferReply({ ephemeral: true });
         try {
-            const giveaways = database.discord.collection<Discord.giveaway>("Giveaways");
+            const giveaways = database.discord.collection<Discord.Giveaway>("Giveaways");
             const subCommand = interaction.options.getSubcommand();
             switch(subCommand) {
                 case "reroll": {
@@ -221,19 +221,17 @@ const command: SlashCommand = {
                     if (giveaway.finished) throw new DiscordClientError("This giveaway has already finished...");
                     if (giveaway.author !== interaction.user.id) throw new DiscordClientError("Only the author of this giveaway can close it!");
                     await interaction.guild.channels.fetch(giveaway.channel)
-                    .then(async channel => {
-                        if (channel.isText()) {
-                            await channel.messages.fetch(giveaway.message)
-                            .then(async message => {
-                                message.components[0].components[0].setDisabled(true);
-                                await message.edit({ components: message.components });
-                                await interaction.editReply("Your giveaway has been closed! This means that no more users can join it!");
-                            })
-                            .catch(async err => {
-                                console.error("Failed to fetch giveaway message:", err);
-                                await interaction.editReply("Failed to fetch the message of this giveaway...");
-                            });
-                        }
+                    .then(async (channel: TextChannel) => {
+                        await channel.messages.fetch(giveaway.message)
+                        .then(async message => {
+                            message.components[0].components[0].setDisabled(true);
+                            await message.edit({ components: message.components });
+                            await interaction.editReply("Your giveaway has been closed! This means that no more users can join it!");
+                        })
+                        .catch(async err => {
+                            console.error("Failed to fetch giveaway message:", err);
+                            await interaction.editReply("Failed to fetch the message of this giveaway...");
+                        });
                     })
                     .catch(async err => {
                         console.error("Failed to fetch giveaway channel:", err);
@@ -358,7 +356,7 @@ const command: SlashCommand = {
                         embeds: [embed],
                         components: [row]
                     });
-                    const docs: Discord.giveaway = {
+                    const docs: Discord.Giveaway = {
                         finished: false,
                         author: interaction.user.id,
                         server: interaction.guildId,
@@ -371,7 +369,7 @@ const command: SlashCommand = {
                     const createEvent = interaction.options.getBoolean("create_event", true);
                     if (createEvent) {
                         const event = await interaction.guild.scheduledEvents.create({
-                            name: `Giveaway by ${(<GuildMember>interaction.member).displayName}`,
+                            name: `Giveaway by ${interaction.member.displayName}`,
                             description: description,
                             privacyLevel: "GUILD_ONLY",
                             scheduledStartTime: new Date(),

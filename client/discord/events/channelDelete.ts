@@ -8,15 +8,15 @@ const event: Event = {
         if (channel.type === "DM") return;
         if (channel.isText()) {
             const query = { channel: channel.id };
-            await database.settings.collection<Settings.webhook>("Webhooks").deleteMany(query);
-            await database.discord.collection<Discord.giveaway>("Giveaways").deleteMany(query);
-            await database.discord.collection<Discord.panel>("Panels").deleteMany(query);
-            await database.discord.collection<Discord.notification>("Notifications").deleteMany({ 
+            await database.settings.collection<Settings.Webhook>("Webhooks").deleteMany(query);
+            await database.discord.collection<Discord.Giveaway>("Giveaways").deleteMany(query);
+            await database.discord.collection<Discord.Panel>("Panels").deleteMany(query);
+            await database.discord.collection<Discord.Notification>("Notifications").deleteMany({ 
                 webhooks: { 
                     $elemMatch: query 
                 } 
             });
-            await database.settings.collection<Settings.server>("Servers").updateOne(
+            await database.settings.collection<Settings.Server>("Servers").updateOne(
                 { 
                     id: channel.guildId, 
                     $or: [

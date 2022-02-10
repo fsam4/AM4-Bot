@@ -1,15 +1,14 @@
-import Plane from '../lib/plane';
+import defaultSettings from '../settings.json';
 import Status from './status';
-import fetch from 'node-fetch';
+import Plane from '../lib/plane';
 
-import type { AM4_Data } from '@typings/database';
-import type * as AM4 from '@typings/am4-api';
+import type { AM4 as AM4Db } from '@typings/database';
 import type AM4Client from '@source/index';
+import type * as AM4 from '@typings/am4-api';
 
 type CargoLoadType = "L" | "H";
 type PaxSeatType = "Y" | "J" | "F";
 type SeatType = CargoLoadType | PaxSeatType;
-type GameMode = "realism" | "easy";
 
 type CargoConfiguration = Record<CargoLoadType, number>;
 type PaxConfiguration = Record<PaxSeatType, number>;
@@ -17,18 +16,18 @@ type PaxConfiguration = Record<PaxSeatType, number>;
 type Coordinates = [number, number];
 
 interface ProfitOptions {
-    options: {
-        fuel_price: number;
-        co2_price: number;
-        activity: number;
-        mode: GameMode;
-        reputation: number;
-    }
     route: {
         distance: number;
         flights: number;
         configuration: PaxConfiguration | CargoConfiguration;
-    }
+    };
+    options: {
+        fuelPrice?: number;
+        co2Price?: number;
+        activity?: number;
+        gameMode: AM4.GameMode;
+        reputation?: number;
+    };
 }
 
 interface ConfigurationOptions {
@@ -43,18 +42,12 @@ interface ConfigurationOptions {
         };
     }
     options: {
-        amount?: number;
-        preference?: [CargoLoadType, CargoLoadType] | [PaxSeatType, PaxSeatType, PaxSeatType]
+        preference?: [CargoLoadType, CargoLoadType] | [PaxSeatType, PaxSeatType, PaxSeatType];
         reputation?: number;
         flights: number;
-        activity: number;
-        mode: GameMode;
+        activity?: number;
+        gameMode: AM4.GameMode;
     }
-}
-
-interface SearchQuery { 
-    dep_icao: string;
-    arr_icao: string; 
 }
 
 const R = 6371 * (Math.pow(10, 3));
@@ -70,7 +63,6 @@ function padNumber(number: number, padding: number) {
  * @constructor
  * @param route - The raw API data of the route
  * @param client - The AM4 rest client that was used
- * @param searchQuery - The given options for this route
  */
 
 export default class Route extends Status {
@@ -97,7 +89,7 @@ export default class Route extends Status {
             vip: Record<SeatType, number>;
         }
     }
-    constructor({ status, route, demand }: AM4.Route, protected client: AM4Client, searchQuery: SearchQuery) {
+    constructor({ status, route, demand }: AM4.Route, protected client: AM4Client) {
         super(status);
         this._route = route;
         this._demand = demand;
@@ -120,12 +112,12 @@ export default class Route extends Status {
             },
             this.ticket = {
                 easy: {
-                    default: Route.ticket(route.distance, 'easy'),
-                    vip: Route.ticket(route.distance, 'easy', true)
+                    default: Route.ticket(route.distance, "Easy"),
+                    vip: Route.ticket(route.distance, "Easy", true)
                 },
                 realism: {
-                    default: Route.ticket(route.distance, 'realism'),
-                    vip: Route.ticket(route.distance, 'realism', true)
+                    default: Route.ticket(route.distance, "Realism"),
+                    vip: Route.ticket(route.distance, "Realism", true)
                 }
             }
         }
@@ -139,7 +131,7 @@ export default class Route extends Status {
      * @returns The flights per day
      */
 
-    static flights(distance: number, speed: number, activity = 18) {
+    static flights(distance: number, speed: number, activity = defaultSettings.activity) {
         const flightTime = distance / speed;
         return Math.floor(activity / flightTime) + 1;
     }
@@ -154,15 +146,13 @@ export default class Route extends Status {
     static flightTime(distance: number, speed: number) {
         const time = Math.round((distance / speed) * 3600)
         const remainder = time % 3600;
-        interface FlightTime {
-            hours: number;
-            minutes: number;
-            seconds: number;
-        }
-        return {
+        const flightTime = {
             hours: Math.trunc(time / 3600), 
             minutes: Math.trunc(remainder / 60), 
             seconds: Math.trunc(remainder % 60),
+        };
+        return {
+            ...flightTime,
 
             /**
              * Formats the flight time to the give format.
@@ -171,7 +161,7 @@ export default class Route extends Status {
              * @returns The formatted time
              */
 
-            format(this: FlightTime, format: string) {
+            format(this: typeof flightTime, format: string) {
                 let formattedString = format;
                 formattedString = formattedString
                 .replace(/h{1,}/g, hourFormat => padNumber(this.hours, hourFormat.length))
@@ -179,6 +169,7 @@ export default class Route extends Status {
                 .replace(/s{1,}/g, secondFormat => padNumber(this.seconds, secondFormat.length));
                 return formattedString;
             }
+            
         };
     }
 
@@ -186,11 +177,11 @@ export default class Route extends Status {
      * Calculates the best ticket prices for a route
      * @param distance - The distance of the route
      * @param mode - The game mode (easy or realism)
-     * @param vip - Whether to use VIP ticket prices. Please note that these prices are experimental!
+     * @param vip - Whether to use VIP ticket prices, by default false. Please note that these prices are experimental!
      * @returns The ticket prices of each class
      */
 
-    static ticket(distance: number, mode: 'realism' | 'easy', vip?: boolean) {
+    static ticket(distance: number, mode: AM4.GameMode, vip = false) {
         type TicketPrices = Record<"Y" | "J" | "F" | "L" | "H", number>;
         let ticket: TicketPrices = { Y: null, J: null, F: null, L: null, H: null };
         if (vip) {
@@ -199,13 +190,13 @@ export default class Route extends Status {
             ticket.F = ((Math.floor(((1.2 * distance) + 1200) * 1.7489 * 1.17) / 10) * 10);
         } else {
             switch(mode) {
-                case "realism": {
+                case "Realism": {
                     ticket.Y = ((Math.floor(((0.3 * distance) + 150) * 1.10) / 10) * 10);
                     ticket.J = ((Math.floor(((0.6 * distance) + 500) * 1.08) / 10) * 10);
                     ticket.F = ((Math.floor(((0.9 * distance) + 1000) * 1.06) / 10) * 10);
                     break;
                 }
-                case "easy": {
+                case "Easy": {
                     ticket.Y = ((Math.floor(((0.4 * distance) + 170) * 1.10) / 10) * 10);
                     ticket.J = ((Math.floor(((0.8 * distance) + 560) * 1.08) / 10) * 10);
                     ticket.F = ((Math.floor(((1.2 * distance) + 1200) * 1.06) / 10) * 10);
@@ -214,12 +205,12 @@ export default class Route extends Status {
             }
         }
         switch(mode) {
-            case "realism": {
+            case "Realism": {
                 ticket.L = (Math.floor((((((0.000776321822039374 * distance) + 0.860567600367807000) - 0.01) * 1.10)) * 100) / 100);
                 ticket.H = (Math.floor((((((0.000517742799409248 * distance) + 0.256369915396414000) - 0.01) * 1.08)) * 100) / 100);
                 break;
             }
-            case "easy": {
+            case "Easy": {
                 ticket.L = (Math.floor((((((0.000948283724581252 * distance) + 0.862045432642377000) - 0.01) * 1.10)) * 100) / 100);
                 ticket.H = (Math.floor((((((0.000689663577640275 * distance) + 0.292981124272893000) - 0.01) * 1.08)) * 100) / 100);
                 break;
@@ -294,8 +285,10 @@ export default class Route extends Status {
      * @returns The configuration of each class
      */
 
-    static configure(plane: AM4_Data.plane, { route, options }: ConfigurationOptions) {
-        const change = options.reputation ? ((100 + (100 - options.reputation)) / 100) : 1;
+    static configure(plane: AM4Db.Plane, { route, options }: ConfigurationOptions) {
+        options.activity ??= defaultSettings.activity;
+        options.reputation ??= defaultSettings.reputation;
+        const change = (100 + (100 - options.reputation)) / 100;
         let capacity = plane.capacity, configuration = { Y: 0, J: 0, F: 0, H: 0, L: 0 };
         const maxDemand =  { 
             F: Math.round((route.demand.F * change / options.flights) * 3),
@@ -321,13 +314,13 @@ export default class Route extends Status {
         } else {
             if (!options.preference) {
                 options.preference = [ 'F', 'J', 'Y' ];
-                switch(options.mode) {
-                    case 'realism':
+                switch(options.gameMode) {
+                    case "Realism":
                         if (route.distance > 13889) options.preference = [ 'J', 'F', 'Y' ];
                         if (route.distance > 15694) options.preference = [ 'J', 'Y', 'F' ];
                         if (route.distance > 17500) options.preference = [ 'Y', 'J', 'F' ];
                         break;
-                    case 'easy': 
+                    case "Easy": 
                         if (route.distance > 14425) options.preference = [ 'F', 'Y', 'J' ];
                         if (route.distance > 14812) options.preference = [ 'Y', 'F', 'J' ];
                         if (route.distance > 15200) options.preference = [ 'Y', 'J', 'F' ];
@@ -371,16 +364,16 @@ export default class Route extends Status {
      * @returns The income, expenses and final profit of the route
      */
         
-    static profit(plane: AM4_Data.plane, { route, options }: ProfitOptions) {
-        options.fuel_price ??= 500;
-        options.co2_price ??= 125;
-        options.activity ||= 18;
-        options.reputation ||= 100;
+    static profit(plane: AM4Db.Plane, { route, options }: ProfitOptions) {
+        options.fuelPrice ??= defaultSettings.fuelPrice;
+        options.co2Price ??= defaultSettings.co2Price;
+        options.activity ??= defaultSettings.activity;
+        options.reputation ??= defaultSettings.reputation;
         const { distance, flights, configuration } = route;
         const change = options.reputation / 100;
         const A_checkExpenses = plane.A_check.price / plane.A_check.time * options.activity;
-        const fuelExpenses = (distance * plane.fuel * (options.fuel_price / 1000)) * flights;
-        const ticket = Route.ticket(distance, options.mode, plane.type === "vip");
+        const fuelExpenses = (distance * plane.fuel * (options.fuelPrice / 1000)) * flights;
+        const ticket = Route.ticket(distance, options.gameMode, plane.type === "vip");
         let income: number, expenses: number;
         if (plane.type === "cargo") {
             const config = {
@@ -388,7 +381,7 @@ export default class Route extends Status {
                 H: configuration['H'] * change
             }
             income = ((config.L * ticket.L) + (config.H * ticket.H)) * flights;
-            const co2_expenses = ((plane.co2 * distance * (plane.capacity / 500)) * (options.co2_price / 1000)) * flights;
+            const co2_expenses = ((plane.co2 * distance * (plane.capacity / 500)) * (options.co2Price / 1000)) * flights;
             expenses = A_checkExpenses + fuelExpenses + co2_expenses;
         } else {
             const config = {
@@ -397,7 +390,7 @@ export default class Route extends Status {
                 F: Math.trunc(configuration['F'] * change)
             }
             income = ((config.Y * ticket.Y) + (config.J * ticket.J) + (config.F * ticket.F)) * flights;
-            const co2_expenses = ((plane.co2 * distance * plane.capacity) * (options.co2_price / 1000)) * flights;
+            const co2_expenses = ((plane.co2 * distance * plane.capacity) * (options.co2Price / 1000)) * flights;
             expenses = A_checkExpenses + fuelExpenses + co2_expenses;
         }
         return { 
@@ -415,7 +408,7 @@ export default class Route extends Status {
      * @returns The estimated SV growth per day for the route
      */
 
-    static estimatedShareValueGrowth(plane: AM4_Data.plane, options: ProfitOptions) {
+    static estimatedShareValueGrowth(plane: AM4Db.Plane, options: ProfitOptions) {
         const { income, expenses } = Route.profit(plane, options);
         const decrease = expenses / 40000000;
         const growth = income / 40000000;
@@ -431,8 +424,8 @@ export default class Route extends Status {
      * @returns All possible stopovers out of the given airports
      */
 
-    static filterStopovers(route: AM4_Data.airport[], airports: AM4_Data.airport[], plane: AM4_Data.plane, amount = 1) {
-        const stopovers: Array<{ distance: number, airports: AM4_Data.airport[] }> = [];
+    static filterStopovers(route: AM4Db.Airport[], airports: AM4Db.Airport[], plane: AM4Db.Plane, amount = 1) {
+        const stopovers: Array<{ distance: number, airports: AM4Db.Airport[] }> = [];
         for (const airport of airports) {
             const currentRoute = [...route];
             const destination = currentRoute.pop();
@@ -465,8 +458,8 @@ export default class Route extends Status {
      * @returns An array of the stopovers from best to worst with the new route distance and an array of the route's airports in order from departure to arrival
      */
 
-    static findStopovers(route: AM4_Data.airport[], airports: AM4_Data.airport[], plane: AM4_Data.plane, mode: GameMode, amount?: number) {
-        if (mode === "realism") airports = airports.filter(airport => airport.runway >= plane.runway);
+    static findStopovers(route: AM4Db.Airport[], airports: AM4Db.Airport[], plane: AM4Db.Plane, mode: AM4.GameMode, amount?: number) {
+        if (mode === "Realism") airports = airports.filter(airport => airport.runway >= plane.runway);
         const locations = route.map(airport => airport.location.coordinates);
         type Locations = Parameters<typeof Route.distance>;
         const { distances, distance } = Route.distance(...locations as Locations);

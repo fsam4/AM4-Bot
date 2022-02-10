@@ -1,14 +1,13 @@
 import { MessageEmbed, Formatters, type ButtonInteraction } from 'discord.js';
 import DiscordClientError from '../error';
 import QuickChart from 'quickchart-js';
-import { User } from '../../utils';
 import Airline from '../../../src/classes/airline';
 import format from 'date-fns/format';
 
-import type { AM4_Data, Settings } from '@typings/database';
+import type { AM4, Settings } from '@typings/database';
 import type { Component } from '@discord/types';
 
-type Aircraft = AM4_Data.plane & { amount?: number };
+type Aircraft = AM4.Plane & { amount?: number };
 
 const component: Component<ButtonInteraction> = {
     name: "airline",
@@ -18,12 +17,12 @@ const component: Component<ButtonInteraction> = {
         await interaction.deferReply({ ephemeral: true });
         try {
             const airlineID = parseInt(parsedCustomId[0]);
-            const settings = database.settings.collection<Settings.user>('Users');
-            const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-            const planeSettings = database.settings.collection<Settings.plane>('Planes');
-            const { training, options, salaries } = new User(interaction.user.id, await settings.findOne({ id: interaction.user.id }));
+            const settings = database.settings.collection<Settings.User>('Users');
+            const planeCollection = database.am4.collection<AM4.Plane>('Planes');
+            const planeSettings = database.settings.collection<Settings.Plane>('Planes');
             const { status, airline, fleet, ipo, awards } = await rest.fetchAirline(airlineID);
             if (!status.success) throw new DiscordClientError(status.error);
+            const user = await settings.findOne({ id: interaction.user.id });
             const planes = await planeCollection.aggregate<Aircraft>([
                 {
                     $match: { 
@@ -74,18 +73,17 @@ const component: Component<ButtonInteraction> = {
                     if (modifications.speed) plane.speed *= 1.1;
                     if (modifications.co2) plane.co2 *= 0.9;
                 }
-                plane.fuel *= (100 - training.fuel) / 100;
-                plane.co2 *= (100 - training.co2) / 100;
+                if (user?.training.fuel) plane.fuel *= (100 - user.training.fuel) / 100;
+                if (user?.training.co2) plane.co2 *= (100 - user.training.co2) / 100;
             }
 
-            type GameMode = Lowercase<typeof airline.gameMode>;
             const profitOptions = {
-                fuel_price: options.fuel_price,
-                co2_price: options.co2_price,
-                activity: options.activity,
-                mode: <GameMode>airline.gameMode.toLowerCase(),
+                fuelPrice: user?.options.fuel_price,
+                co2Price: user?.options.co2_price,
+                activity: user?.options.activity,
+                gameMode: airline.gameMode,
                 reputation: airline.reputation,
-                salaries: salaries
+                salaries: user?.salaries
             };
             const res = Airline.profit(planes, profitOptions);
             const aircrafts = {
@@ -124,7 +122,7 @@ const component: Component<ButtonInteraction> = {
                     },
                     {
                         name: Formatters.bold(Formatters.underscore("Profitability")),
-                        value: `**Per hour:** $${Math.round(res.airline.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${res.airline.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(res.airline.profit * 7).toLocaleString(locale)}`
+                        value: `**Per hour:** $${Math.round(res.airline.profit / (user?.options.activity ?? 18)).toLocaleString(locale)}\n**Per day:** $${res.airline.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(res.airline.profit * 7).toLocaleString(locale)}`
                     }
                 ]
             });
@@ -133,7 +131,7 @@ const component: Component<ButtonInteraction> = {
                 const estimatedGrowth = Airline.estimatedShareValueGrowth(planes, profitOptions);
                 embed.addFields({
                     name: Formatters.bold(Formatters.underscore("Share Value")),
-                    value: `**Share value:** $${ipo.current.toLocaleString(locale)}\n**Company value:** $${Math.round(ipo.current * ipo.shares.total).toLocaleString(locale)}\n**Shares available:** ${ipo.shares.available.toLocaleString(locale)}/${ipo.shares.total.toLocaleString(locale)}\n**Estimated growth:** $${estimatedGrowth.toFixed(2)}/day`,
+                    value: `**Share value:** $${ipo.currentValue.toLocaleString(locale)}\n**Company value:** $${Math.round(ipo.currentValue * ipo.shares.total).toLocaleString(locale)}\n**Shares available:** ${ipo.shares.available.toLocaleString(locale)}/${ipo.shares.total.toLocaleString(locale)}\n**Estimated growth:** $${estimatedGrowth.toFixed(2)}/day`,
                     inline: false
                 }, field);
                 const sv = ipo.growth.reverse();

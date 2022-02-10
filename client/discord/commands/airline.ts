@@ -3,7 +3,6 @@ import DiscordClientError from '../error';
 import { ObjectId } from 'bson';
 import QuickChart from 'quickchart-js';
 import { emojis } from '../../../config.json';
-import { User } from '../../utils';
 import Airline from '../../../src/classes/airline';
 import Plane from '../../../src/lib/plane';
 
@@ -13,11 +12,11 @@ import addMonths from 'date-fns/addMonths';
 import subMonths from 'date-fns/subMonths';
 import format from 'date-fns/format';
 
-import type { AM4_Data, Settings } from '@typings/database';
+import type { AM4, Settings } from '@typings/database';
 import type { SlashCommand } from '@discord/types';
 
-type AllianceMember = AM4_Data.member & { left: Date, alliance: AM4_Data.alliance };
-type Aircraft = AM4_Data.plane & { amount?: number };
+type AllianceMember = AM4.AllianceMember & { left: Date, alliance: AM4.Alliance };
+type Aircraft = AM4.Plane & { amount?: number };
 
 const command: SlashCommand = {
     get name() {
@@ -121,11 +120,11 @@ const command: SlashCommand = {
     async execute(interaction, { database, rest, account, ephemeral, locale }) {
         await interaction.deferReply({ ephemeral });
         try {
-            const settings = database.settings.collection<Settings.user>('Users');
-            const planeCollection = database.am4.collection<AM4_Data.plane>('Planes');
-            const memberCollection = database.am4.collection<AM4_Data.member>('Members');
-            const planeSettings = database.settings.collection<Settings.plane>('Planes');
-            const { training, options, salaries } = new User(interaction.user.id, await settings.findOne({ id: interaction.user.id }));
+            const userCollection = database.settings.collection<Settings.User>('Users');
+            const planeCollection = database.am4.collection<AM4.Plane>('Planes');
+            const memberCollection = database.am4.collection<AM4.AllianceMember>('Members');
+            const planeSettings = database.settings.collection<Settings.Plane>('Planes');
+            const user = await userCollection.findOne({ id: interaction.user.id });
             const subCommand = interaction.options.getSubcommand();
             switch(subCommand) {
                 case "search": {
@@ -183,19 +182,19 @@ const command: SlashCommand = {
                             if (modifications.speed) plane.speed *= 1.1;
                             if (modifications.co2) plane.co2 *= 0.9;
                         }
-                        plane.fuel *= (100 - training.fuel) / 100;
-                        plane.co2 *= (100 - training.co2) / 100;
+                        if (user?.training.fuel) plane.fuel *= (100 - user.training.fuel) / 100;
+                        if (user?.training.co2) plane.co2 *= (100 - user.training.co2) / 100;
                     }
         
-                    type GameMode = Lowercase<typeof airline.gameMode>;
                     const profitOptions = {
-                        fuel_price: options.fuel_price,
-                        co2_price: options.co2_price,
-                        activity: options.activity,
-                        mode: <GameMode>airline.gameMode.toLowerCase(),
+                        fuel_price: user?.options.fuel_price,
+                        co2_price: user?.options.co2_price,
+                        activity: user?.options.activity,
+                        gameMode: airline.gameMode,
                         reputation: airline.reputation,
-                        salaries: salaries
+                        salaries: user?.salaries
                     };
+
                     const res = Airline.profit(planes, profitOptions);
         
                     const select = new MessageSelectMenu({
@@ -225,10 +224,11 @@ const command: SlashCommand = {
                         cargo: planes.filter(plane => plane.type === "cargo"),
                         vip: planes.filter(plane => plane.type === "vip")
                     };
+                    const activity = user?.options.activity ?? 18;
                     const statistics = {
-                        fuelUsage: planes.length && planes.map(plane => plane.fuel * (options.activity * plane.speed) * plane.amount).reduce((a, b) => a + b),
-                        co2Usage: planes.length && planes.map(plane => plane.co2 * (options.activity * plane.speed) * (plane.type === "cargo" ? (plane.capacity / 500) : plane.capacity) * plane.amount).reduce((a, b) => a + b),
-                        A_check: planes.length && planes.map(plane => plane.A_check.price / plane.A_check.time * options.activity * plane.amount).reduce((a, b) => a + b),
+                        fuelUsage: planes.length && planes.map(plane => plane.fuel * (activity * plane.speed) * plane.amount).reduce((a, b) => a + b),
+                        co2Usage: planes.length && planes.map(plane => plane.co2 * (activity * plane.speed) * (plane.type === "cargo" ? (plane.capacity / 500) : plane.capacity) * plane.amount).reduce((a, b) => a + b),
+                        A_check: planes.length && planes.map(plane => plane.A_check.price / plane.A_check.time * activity * plane.amount).reduce((a, b) => a + b),
                         capacity: {
                             pax: aircrafts.pax.length && aircrafts.pax.concat(aircrafts.vip).map(plane => plane.capacity * plane.amount).reduce((a, b) => a + b),
                             cargo: aircrafts.cargo.length && aircrafts.cargo.map(plane => plane.capacity * plane.amount).reduce((a, b) => a + b)
@@ -261,7 +261,7 @@ const command: SlashCommand = {
                                 },
                                 {
                                     name: Formatters.bold(Formatters.underscore("Profitability")),
-                                    value: `**Per hour:** $${Math.round(res.airline.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${res.airline.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(res.airline.profit * 7).toLocaleString(locale)}`
+                                    value: `**Per hour:** $${Math.round(res.airline.profit / activity).toLocaleString(locale)}\n**Per day:** $${res.airline.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(res.airline.profit * 7).toLocaleString(locale)}`
                                 }
                             ]
                         }),
@@ -301,7 +301,7 @@ const command: SlashCommand = {
                         const estimatedGrowth = Airline.estimatedShareValueGrowth(planes, profitOptions);
                         embeds[0].addFields({
                             name: Formatters.bold(Formatters.underscore("Share Value")),
-                            value: `**Share value:** $${ipo.current.toLocaleString(locale)}\n**Company value:** $${Math.round(ipo.current * ipo.shares.total).toLocaleString(locale)}\n**Shares available:** ${ipo.shares.available.toLocaleString(locale)}/${ipo.shares.total.toLocaleString(locale)}\n**Estimated growth:** $${estimatedGrowth.toFixed(2)}/day`,
+                            value: `**Share value:** $${ipo.currentValue.toLocaleString(locale)}\n**Company value:** $${Math.round(ipo.currentValue * ipo.shares.total).toLocaleString(locale)}\n**Shares available:** ${ipo.shares.available.toLocaleString(locale)}/${ipo.shares.total.toLocaleString(locale)}\n**Estimated growth:** $${estimatedGrowth.toFixed(2)}/day`,
                             inline: false
                         }, field);
                         const sv = ipo.growth.reverse();
@@ -469,7 +469,7 @@ const command: SlashCommand = {
                                 left: {
                                     $last: {
                                         $map: {
-                                            input: '$sv',
+                                            input: '$shareValue',
                                             as: 'object',
                                             in: '$$object.date'
                                         }
@@ -677,8 +677,8 @@ const command: SlashCommand = {
                             if (modifications.speed) plane.speed *= 1.1;
                             if (modifications.co2) plane.co2 *= 0.9;
                         }
-                        plane.fuel *= (100 - training.fuel) / 100;
-                        plane.co2 *= (100 - training.co2) / 100;
+                        if (user?.training.fuel) plane.fuel *= (100 - user.training.fuel) / 100;
+                        if (user?.training.co2) plane.co2 *= (100 - user.training.co2) / 100;
                     }
                     const select = new MessageSelectMenu({
                         customId: "plane",
@@ -694,10 +694,16 @@ const command: SlashCommand = {
                     });
                     let plane = planes[0];
                     let image = new MessageAttachment(plane.image.buffer, "plane.jpg");
-                    type GameMode = Lowercase<typeof airline.gameMode>;
+                    const options = {
+                        activity: user?.options.activity ?? 18,
+                        fuelPrice: user?.options.fuel_price,
+                        co2Price: user?.options.co2_price,
+                        reputation: airline.reputation[plane.type],
+                        gameMode: airline.gameMode
+                    };
                     let statistics = {
-                        profit: Plane.profit(plane, { ...options, mode: <GameMode>airline.gameMode.toLowerCase() }).profit,
-                        sv: Plane.estimatedShareValueGrowth(plane, { ...options, mode: <GameMode>airline.gameMode.toLowerCase() })
+                        profit: Plane.profit(plane, options).profit,
+                        sv: Plane.estimatedShareValueGrowth(plane, options)
                     };
                     const embed = new MessageEmbed({
                         color: "BLURPLE",
@@ -751,9 +757,10 @@ const command: SlashCommand = {
                             const [plane_id] = interaction.values;
                             plane = planes.find(plane => plane._id.equals(plane_id));
                             image = new MessageAttachment(plane.image.buffer, "plane.jpg");
+                            options.reputation = airline.reputation[plane.type];
                             statistics = {
-                                profit: Plane.profit(plane, { ...options, mode: <GameMode>airline.gameMode.toLowerCase() }).profit,
-                                sv: Plane.estimatedShareValueGrowth(plane, { ...options, mode: <GameMode>airline.gameMode.toLowerCase() })
+                                profit: Plane.profit(plane, options).profit,
+                                sv: Plane.estimatedShareValueGrowth(plane, options)
                             };
                             embed.setDescription(`**Amount:** ${plane.amount} planes\n**Plane type:** ${plane.type === "vip" ? plane.type.toUpperCase() : plane.type}`);
                             embed.setImage(`attachment://${image.name}`);
@@ -813,7 +820,6 @@ const command: SlashCommand = {
                             return response;
                         })
                     );
-                    type GameMode = "realism" | "easy";
                     const graphs = [
                         {
                             id: new ObjectId(),
@@ -827,7 +833,7 @@ const command: SlashCommand = {
                                         data: [
                                             {
                                                 x: Airline.profit(<Aircraft[]>fleet.planes, { 
-                                                    mode: <GameMode>airline.gameMode.toLowerCase(),
+                                                    gameMode: airline.gameMode,
                                                     reputation: {
                                                         pax: 100,
                                                         cargo: 100
@@ -1094,7 +1100,7 @@ const command: SlashCommand = {
                                             backgroundColor: 'rgb(11, 245, 97)',
                                             data: airlines.map(({ fleet, airline }) => {
                                                 return Airline.profit(<Aircraft[]>fleet.planes, { 
-                                                    mode: <GameMode>airline.gameMode.toLowerCase(),
+                                                    gameMode: airline.gameMode,
                                                     reputation: {
                                                         pax: 100,
                                                         cargo: 100
@@ -1107,7 +1113,7 @@ const command: SlashCommand = {
                                             backgroundColor: 'rgb(245, 11, 11)',
                                             data: airlines.map(({ fleet, airline }) => {
                                                 return Airline.profit(<Aircraft[]>fleet.planes, { 
-                                                    mode: <GameMode>airline.gameMode.toLowerCase(),
+                                                    gameMode: airline.gameMode,
                                                     reputation: {
                                                         pax: 100,
                                                         cargo: 100

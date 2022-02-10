@@ -17,7 +17,7 @@ const event: Event = {
     name: 'ready',
     once: true,
     async execute(client, { log, database, timeouts }) {
-        const giveawayCollection = database.discord.collection<Discord.giveaway>("Giveaways");
+        const giveawayCollection = database.discord.collection<Discord.Giveaway>("Giveaways");
         client.application ||= await client.application.fetch();
         client.user.setStatus("online");
         if (client.user.id === config.clientId) {
@@ -33,7 +33,7 @@ const event: Event = {
                     console.log(chalk.green("Scheduled tournament rewards for today!"));
                     const ms = Math.abs(differenceInMilliseconds(endAt, Date.now()));
                     setTimeout(async () => {
-                        const users = database.quiz.collection<Quiz.user & { name?: string }>('Users');
+                        const users = database.quiz.collection<Quiz.User & { name?: string }>('Users');
                         const winnerAmount = config.tournament?.winners || 1;
                         const winners = await users.find({ score: { $exists: true } }).sort({ score: -1 }).limit(winnerAmount).toArray();
                         const codes = Array(winnerAmount).fill(null).map((_, i) => process.env[`TOURNAMENT_CODE_${i + 1}`]);
@@ -58,7 +58,7 @@ const event: Event = {
         }
         const key = process.env.HASH_SECRET;
         if (key === undefined) throw new Error("HASH_SECRET must be provided!");
-        const query: Filter<Discord.giveaway> = {};
+        const query: Filter<Discord.Giveaway> = {};
         if (client.user.id !== config.clientId) {
             const guildId = process.env.TEST_GUILD_ID;
             if (guildId === undefined) throw new Error("TEST_GUILD_ID must be provided!");
@@ -66,7 +66,7 @@ const event: Event = {
         }
         const giveaways = await giveawayCollection.find(query).toArray();
         if (giveaways.length) {
-            const triggerGiveaway = async (giveaway: Discord.giveaway) => {
+            const triggerGiveaway = async (giveaway: Discord.Giveaway) => {
                 timeouts.delete(giveaway._id);
                 await client.channels.fetch(giveaway.channel)
                 .then(async (channel: TextChannel) => {

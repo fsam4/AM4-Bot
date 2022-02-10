@@ -135,9 +135,9 @@ const command: SlashCommand = {
         }
         await interaction.deferReply({ ephemeral: true });
         try {
-            const users = database.discord.collection<Discord.user>("Users");
-            const notificationCollection = database.discord.collection<Discord.notification>("Notifications");
-            const webhookCollection = database.settings.collection<Settings.webhook>("Webhooks");
+            const users = database.discord.collection<Discord.User>("Users");
+            const notificationCollection = database.discord.collection<Discord.Notification>("Notifications");
+            const webhookCollection = database.settings.collection<Settings.Webhook>("Webhooks");
             const webhooks = await webhookCollection.find({ id: { $type: "string" } }).toArray();
             const subCommand = interaction.options.getSubcommand();
             switch(subCommand) {
@@ -195,7 +195,7 @@ const command: SlashCommand = {
                         await webhookClient.send({ content, ...options })
                         .then(message => {
                             if (message) {
-                                message.guild_id = webhook.server;
+                                message.guild_id ||= webhook.server;
                                 messages.push(message);
                             }
                         })

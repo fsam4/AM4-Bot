@@ -26,7 +26,7 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
         }
         await interaction.deferReply({ ephemeral: true });
         try {
-            const giveaways = database.discord.collection<Discord.giveaway>("Giveaways");
+            const giveaways = database.discord.collection<Discord.Giveaway>("Giveaways");
             if (interaction.targetMessage.author.id !== interaction.client.user.id) throw new DiscordClientError("This command can only be used on giveaways created by AM4 Bot...");
             const isMessage = interaction.targetMessage instanceof Message;
             const giveaway = await giveaways.findOne({ message: interaction.targetId });

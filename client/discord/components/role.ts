@@ -10,7 +10,7 @@ const component: Component<ButtonInteraction> = {
     async execute(interaction, { parsedCustomId }) {
         if (!interaction.inCachedGuild()) {
             await interaction.reply({
-                content: "This command can only be used in servers where the bot is in...",
+                content: "This component can only be used in servers where the bot is in...",
                 ephemeral: true
             });
             return;
@@ -21,11 +21,11 @@ const component: Component<ButtonInteraction> = {
             await interaction.guild.roles.fetch(roleId)
             .then(async role => {
                 if (role.position > interaction.guild.me.roles.highest.position) throw new DiscordClientError("I cannot give you this role as it is higher in the hierarchy than the bot's highest role...");
-                if ((<GuildMember>interaction.member).roles.cache.has(roleId)) {
-                    await (<GuildMember>interaction.member).roles.remove(role, "Added via role panel");
+                if (interaction.member.roles.cache.has(roleId)) {
+                    await interaction.member.roles.remove(role, "Added via role panel");
                     await interaction.editReply(`Removed role ${Formatters.roleMention(roleId)}`);
                 } else {
-                    await (<GuildMember>interaction.member).roles.add(role, "Removed via role panel");
+                    await interaction.member.roles.add(role, "Removed via role panel");
                     await interaction.editReply(`Added role ${Formatters.roleMention(roleId)}`);
                 }
             })
