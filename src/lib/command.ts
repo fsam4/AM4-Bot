@@ -2,15 +2,15 @@ import type { ApplicationCommandData, ApplicationCommandOptionData } from 'disco
 
 interface ApplicationCommandOption {
     type: number;
-	name: string;
-	description: string;
-	required?: boolean;
+    name: string;
+    description: string;
+    required?: boolean;
     min_value?: number;
     max_value?: number;
     options?: ApplicationCommandOption[];
     channel_types?: number[];
     autocomplete?: boolean;
-	choices?: Array<{
+    choices?: Array<{
 		name: string;
 		value: string | number;
 	}>;
@@ -25,13 +25,13 @@ type Constructable<T> = void | T;
  */
 
 function ApplicationCommandOption(this: ApplicationCommandOption, option: ApplicationCommandOptionData): Constructable<ApplicationCommandOption> {
-    const matchFunction = (match: string) => `_${match.toLowerCase()}`;
+    const decamelCase = (match: string) => `_${match.toLowerCase()}`;
     if (new.target) {
         Object.keys(option).forEach(key => {
             if (key === "options") {
                 this[key] = option[key].map(ApplicationCommandOption);
             } else {
-                const thisKey = key.replace(/[A-Z]/g, matchFunction);
+                const thisKey = key.replace(/[A-Z]/g, decamelCase);
                 this[thisKey] = option[key];
             }
         });
@@ -40,10 +40,10 @@ function ApplicationCommandOption(this: ApplicationCommandOption, option: Applic
         const optionBody: Partial<ApplicationCommandOption> = {};
         Object.keys(option).forEach(key => {
             if (key === "options") {
-                this[key] = option[key].map(ApplicationCommandOption);
+                optionBody[key] = option[key].map(ApplicationCommandOption);
             } else {
-                const thisKey = key.replace(/[A-Z]/g, matchFunction);
-                this[thisKey] = option[key];
+                const thisKey = key.replace(/[A-Z]/g, decamelCase);
+                optionBody[thisKey] = option[key];
             }
         });
         // Casted as ApplicationCommandOption as optionBody is not partial anymore

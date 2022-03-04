@@ -8,8 +8,10 @@ import fs from 'fs';
 
 import type { SlashCommand, ContextMenu } from '@discord/types';
 
-const chatCommandFiles = fs.readdirSync('./client/discord/commands').filter(file => file.endsWith('.js'));
-const menuCommandFiles = fs.readdirSync('./client/discord/context').filter(file => file.endsWith('.js'));
+const isJavaScript = (fileName: string) => fileName.endsWith(".js");
+
+const chatCommandFiles = fs.readdirSync('./client/discord/commands').filter(isJavaScript);
+const menuCommandFiles = fs.readdirSync('./client/discord/context').filter(isJavaScript);
 
 const commands: ApplicationCommand[] = [];
 const isDev = process.argv.includes("--dev");
@@ -23,7 +25,7 @@ if (clientId === undefined) throw new Error("CLIENT_ID must be provided!");
 
 const botToken = process.env.DISCORD_BOT_TOKEN;
 if (botToken === undefined) throw new Error("DISCORD_BOT_TOKEN must be provided!");
-const rest = new REST({ version: '9' }).setToken(botToken);
+const rest = new REST({ version: "9" }).setToken(botToken);
 
 void async function () {
 
