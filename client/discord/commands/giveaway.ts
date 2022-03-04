@@ -1,4 +1,4 @@
-import { Permissions, MessageButton, MessageEmbed, Formatters, MessageActionRow, Constants, GuildMember, Team, type TextChannel, type Message } from 'discord.js';
+import { Permissions, MessageButton, MessageEmbed, Formatters, MessageActionRow, Constants, Team, type TextChannel } from 'discord.js';
 import DiscordClientError from '../error';
 import { ObjectId } from 'bson';
 import CryptoJS from 'crypto-js';
@@ -165,12 +165,12 @@ const command: SlashCommand = {
                         const reply = await interaction.editReply({
                             content: `The new winner of this giveaway is ${Formatters.bold(`${user.username}#${user.discriminator}`)}`,
                             components: [row]
-                        }) as Message;
-                        await reply.awaitMessageComponent({ time: 5 * 60 * 1000 })
+                        });
+                        await reply.awaitMessageComponent({ time: 5 * 60 * 1000, componentType: "BUTTON" })
                         .then(async component => {
                             for (const button of row.components) button.setDisabled(true);
                             await component.update({ components: [row] });
-                            if (component.isButton() && component.customId === "confirm") {
+                            if (component.customId === "confirm") {
                                 await interaction.guild.channels.fetch(giveaway.channel)
                                 .then(async (channel: TextChannel) => {
                                     const message = await channel.send({
@@ -306,7 +306,7 @@ const command: SlashCommand = {
                                     ]
                                 })
                             ]
-                        }) as Message;
+                        });
                         const status = await message.awaitMessageComponent({ time: 5 * 60 * 1000 })
                         .then(async component => {
                             const agreed = component.customId === "agree";

@@ -1,4 +1,4 @@
-import { MessageEmbed, Permissions, MessageAttachment, MessageSelectMenu, MessageButton, Formatters, MessageActionRow, Constants, type MessageComponentInteraction, type Message, type ApplicationCommandOptionChoice } from 'discord.js';
+import { MessageEmbed, Permissions, MessageAttachment, MessageSelectMenu, MessageButton, Formatters, MessageActionRow, Constants, type ApplicationCommandOptionChoice } from 'discord.js';
 import { ObjectId, type Document, type Filter } from 'mongodb';
 import DiscordClientError from '../error';
 import QuickChart from 'quickchart-js';
@@ -11,8 +11,8 @@ import type { Settings, AM4 } from '@typings/database';
 import type { SlashCommand } from '@discord/types';
 import type { GameMode } from '@typings/am4-api';
 
+const { formatCode, formatSeats, createAttachmentUrl, isCachedCommandInteraction } = Utils.Discord;
 const { createAirportFilter, createTextFilter, createLocationSphere } = Utils.MongoDB;
-const { formatCode, formatSeats } = Utils.Discord;
 
 const command: SlashCommand = {
     get name() {
@@ -288,7 +288,7 @@ const command: SlashCommand = {
                         const cost_index = interaction.options.getInteger("cost_index") ?? user?.options.cost_index
                         const change = (100 + (100 - reputation)) / 100;
                         const image = new MessageAttachment(plane.image.buffer, "plane.jpg");
-                        embed.setThumbnail(`attachment://${image.name}`);
+                        embed.setThumbnail(createAttachmentUrl(image));
                         files.push(image);
                         const plane_settings = await planeSettings.findOne({ 
                             planeID: plane._id, 
@@ -570,16 +570,19 @@ const command: SlashCommand = {
                             })
                         ]);
                     }
-                    const reply = await interaction.editReply({ embeds: [embed], components: [row], files }) as Message;
-                    for (const options of followups) {
-                        await interaction.followUp(options)
-                        .catch(() => void 0);
-                    }
-                    const filter = ({ user, customId }: MessageComponentInteraction) => customId === "plane" || user.id === interaction.user.id;
-                    const collector = reply.createMessageComponentCollector({ filter, time: 10 * 60 * 1000 });
-                    collector.on("collect", async interaction => {
-                        if (interaction.isButton()) {
-                            const button = <MessageButton>interaction.component;
+                    if (isCachedCommandInteraction(interaction)) {
+                        const reply = await interaction.editReply({ embeds: [embed], components: [row], files });
+                        for (const options of followups) {
+                            await interaction.followUp(options)
+                            .catch(() => void 0);
+                        }
+                        const collector = reply.createMessageComponentCollector({ 
+                            filter: ({ user, customId }) => customId === "plane" || user.id === interaction.user.id, 
+                            time: 10 * 60 * 1000, 
+                            componentType: "BUTTON" 
+                        });
+                        collector.on("collect", async interaction => {
+                            const button = interaction.component;
                             if (interaction.customId === "plane") {
                                 if (!plane) return interaction.reply("Something went wrong with displaying this plane...");
                                 await interaction.deferReply({ ephemeral: true });
@@ -588,7 +591,7 @@ const command: SlashCommand = {
                                     timestamp: plane._id.getTimestamp(),
                                     description: `**Plane type:** ${plane.type === "vip" ? plane.type.toUpperCase() : plane.type}`,
                                     image: {
-                                        url: `attachment://${files[0].name}`
+                                        url: createAttachmentUrl(files[0].name)
                                     },
                                     author: {
                                         name: plane.name,
@@ -638,16 +641,23 @@ const command: SlashCommand = {
                                     });
                                 }
                             }
+                        });
+                        collector.once("end", async collected => {
+                            row.components.forEach(component => component.setDisabled(true));
+                            const reply = collected.last() || interaction;
+                            await reply.editReply({ components: [row] }).catch(() => void 0);
+                        });
+                    } else {
+                        await interaction.editReply({ embeds: [embed], files });
+                        for (const options of followups) {
+                            await interaction.followUp(options)
+                            .catch(() => void 0);
                         }
-                    });
-                    collector.once("end", async collected => {
-                        row.components.forEach(component => component.setDisabled(true));
-                        const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(() => void 0);
-                    });
+                    }
                     break;
                 }
                 case "research": {
+                    if (!isCachedCommandInteraction(interaction)) throw new DiscordClientError("This command can only be used in servers where the bot is in...");
                     let gameMode = <GameMode>interaction.options.getString("mode")?.trim();
                     if (!gameMode) {
                         if (!user?.mode) throw new DiscordClientError('You need to either login with `/user login` or define the game mode option!');
@@ -702,19 +712,20 @@ const command: SlashCommand = {
                     const message = await interaction.editReply({ 
                         embeds: [embeds[0]], 
                         components: [row] 
-                    }) as Message;
-                    const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                    const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                    });
+                    const collector = message.createMessageComponentCollector({ 
+                        filter: ({ user }) => user.id === interaction.user.id, 
+                        idle: 10 * 60 * 1000,
+                        componentType: "SELECT_MENU" 
+                    });
                     collector.on("collect", async interaction => {
-                        if (interaction.isSelectMenu()) {
-                            const [index] = interaction.values;
-                            for (const option of select.options) option.default = option.value === index;
-                            row.setComponents(select);
-                            await interaction.update({
-                                embeds: [embeds[index]],
-                                components: [row]
-                            });
-                        }
+                        const [index] = interaction.values;
+                        for (const option of select.options) option.default = option.value === index;
+                        row.setComponents(select);
+                        await interaction.update({
+                            embeds: [embeds[index]],
+                            components: [row]
+                        });
                     });
                     collector.once('end', async collected => {
                         row.setComponents(select.setDisabled(true));
@@ -724,6 +735,7 @@ const command: SlashCommand = {
                     break;
                 }
                 case "compare": {
+                    if (!isCachedCommandInteraction(interaction)) throw new DiscordClientError("This command can only be used in servers where the bot is in...");
                     const departure_code = interaction.options.getString("departure", true).trim();
                     const departure = await airportCollection.findOne(createAirportFilter(departure_code));
                     if (!departure) throw new DiscordClientError("Invalid departure airport");
@@ -1038,25 +1050,26 @@ const command: SlashCommand = {
                         const message = await interaction.editReply({ 
                             embeds: [embed], 
                             components: [row] 
-                        }) as Message;
-                        const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                        const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                        });
+                        const collector = message.createMessageComponentCollector({ 
+                            filter: ({ user }) => user.id === interaction.user.id, 
+                            idle: 10 * 60 * 1000,
+                            componentType: "SELECT_MENU" 
+                        });
                         collector.on("collect", async interaction => {
-                            if (interaction.isSelectMenu()) {
-                                const value = interaction.values[0];
-                                const graph = graphs.find(graph => graph.id.equals(value));
-                                embed.setDescription(graph.description);
-                                const chart = new QuickChart()
-                                .setConfig(graph.data)
-                                .setBackgroundColor("transparent");
-                                const url = await chart.getShortUrl();
-                                for (const option of select.options) option.default = (value === option.value);
-                                row.setComponents(select);
-                                await interaction.update({ 
-                                    embeds: [embed.setImage(url)],
-                                    components: [row]
-                                });
-                            }
+                            const value = interaction.values[0];
+                            const graph = graphs.find(graph => graph.id.equals(value));
+                            embed.setDescription(graph.description);
+                            const chart = new QuickChart()
+                            .setConfig(graph.data)
+                            .setBackgroundColor("transparent");
+                            const url = await chart.getShortUrl();
+                            for (const option of select.options) option.default = (value === option.value);
+                            row.setComponents(select);
+                            await interaction.update({ 
+                                embeds: [embed.setImage(url)],
+                                components: [row]
+                            });
                         });
                         collector.once("end", async collected => {
                             row.setComponents(select.setDisabled(true));
@@ -1168,8 +1181,7 @@ const command: SlashCommand = {
                         const plane = await planeCollection.findOne(createTextFilter<AM4.Plane>(planeValue));
                         const stopovers = Route.filterStopovers(route, airports, plane);
                         choices = stopovers.map(stopover => {
-                            const lastIndex = stopover.airports.length - 1;
-                            const [airport] = stopover.airports.slice(1, lastIndex);
+                            const [airport] = stopover.airports.slice(1, stopover.airports.lastIndex());
                             return {
                                 name: `${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}, ${airport.country_code.toUpperCase()} (${airport.iata.toUpperCase()}/${airport.icao.toUpperCase()})`,
                                 value: airport._id.toHexString()

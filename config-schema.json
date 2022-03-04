@@ -89,6 +89,7 @@
                     "type": "integer",
                     "description": "HThe amount of winners each month.",
                     "minimum": 1,
+                    "maximum": 3,
                     "default": 1
                 }
             }

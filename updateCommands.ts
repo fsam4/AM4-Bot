@@ -1,19 +1,12 @@
+import { Routes, type RESTPutAPIApplicationCommandsResult } from 'discord-api-types/v9';
 import ApplicationCommand from './src/lib/command';
 import dotenvExpand from 'dotenv-expand';
-import { Routes } from 'discord-api-types/v9';
 import { REST } from '@discordjs/rest';
 import dotenv from 'dotenv';
 import chalk from 'chalk';
 import fs from 'fs';
 
 import type { SlashCommand, ContextMenu } from '@discord/types';
-
-interface APIApplicationCommand extends ApplicationCommand {
-	id: string;
-	application_id: string;
-	guild_id?: string;
-	version: string;
-}
 
 const chatCommandFiles = fs.readdirSync('./client/discord/commands').filter(file => file.endsWith('.js'));
 const menuCommandFiles = fs.readdirSync('./client/discord/context').filter(file => file.endsWith('.js'));
@@ -60,7 +53,7 @@ void async function () {
 		} else {
 			fullRoute = Routes.applicationCommands(clientId);
 		}
-		const applicationCommands = await rest.put(fullRoute, { body: commands }) as APIApplicationCommand[];
+		const applicationCommands = await rest.put(fullRoute, { body: commands }) as RESTPutAPIApplicationCommandsResult;
 		console.log(chalk.green('Successfully reloaded application commands.'));
 		console.table(
 			applicationCommands.map(command => ({

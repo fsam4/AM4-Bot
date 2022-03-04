@@ -30,12 +30,8 @@ interface ProfitOptions {
 }
 
 interface AllianceMember { 
-    readonly member?: Member, 
-    readonly status: {
-        readonly requestsRemaining: number;
-        success: boolean;
-        error?: string;
-    }
+    readonly member?: Member;
+    readonly status: Status["status"];
 }
 
 const AM4BaseUrl = "https://www.airline4.net/api";
@@ -100,11 +96,29 @@ export default class Airline extends Status {
         date: Date;
     }>;
     constructor({ user, awards, fleet, share_development, status }: AM4.Airline, protected client: AM4Client, airlineID?: number) {
-        super(status);
-        this._user = user;
-        this._fleet = fleet;
-        this._awards = awards;
-        this._share_development = share_development;
+        super(status, client.accessToken);
+        Object.defineProperties(this, {
+            "_user": {
+                value: user,
+                writable: true,
+                configurable: true
+            },
+            "_fleet": {
+                value: fleet,
+                writable: true,
+                configurable: true
+            },
+            "_awards": {
+                value: awards,
+                writable: true,
+                configurable: true
+            },
+            "_share_development": {
+                value: share_development,
+                writable: true,
+                configurable: true
+            }
+        });
         if (this.status.success) {
             this.airline = {
                 name: user.company,
@@ -141,11 +155,8 @@ export default class Airline extends Status {
                     const response = await fetch(`${AM4BaseUrl}?${query}`).then(res => res.json()) as AM4.Alliance;
                     if (response.status.description === 'Missing or invalid access token') throw new AM4APIError(response.status);
                     const { members, status } = new Alliance(response, client);
-                    if (!status.success) return { status: status };
-                    return {
-                        member: members.get(user.company),
-                        status: status
-                    };
+                    if (!status.success) return { status };
+                    return { member: members.get(user.company), status };
                 }
             };
             this.fleet = {
@@ -220,8 +231,8 @@ export default class Airline extends Status {
 
     /**
      * Calculate the estimated share value growth of an airline
-     * @param planes The raw plane data array with the plane amount
-     * @param options The options for the calculation
+     * @param planes - The raw plane data array with the plane amount
+     * @param options - The options for the calculation
      * @returns The estimated share value growth per day
      */
 

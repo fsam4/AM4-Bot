@@ -1,4 +1,5 @@
-import { MessageEmbed, MessageActionRow, MessageSelectMenu, Formatters, Constants, type Message, type MessageComponentInteraction, type UserContextMenuInteraction } from 'discord.js';
+import { MessageEmbed, MessageActionRow, MessageSelectMenu, Formatters, Constants, type UserContextMenuInteraction } from 'discord.js';
+import { Discord as Utils } from '../../utils';
 import DiscordClientError from '../error';
 import QuickChart from 'quickchart-js';
 import { emojis } from '../../../config.json';
@@ -11,6 +12,8 @@ import type { AM4, Settings, Discord } from '@typings/database';
 import type { ContextMenu } from '@discord/types';
 
 type AllianceMember = AM4.AllianceMember & { left: Date, alliance: AM4.Alliance };
+
+const { isCachedUserContextMenuInteraction } = Utils;
 
 const command: ContextMenu<UserContextMenuInteraction> = {
     get name() {
@@ -298,210 +301,213 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                 name: Formatters.bold(Formatters.underscore("Awards")),
                 value: Formatters.codeBlock(awards.map(award => `${award.name} • ${format(award.date, 'dd/MM/yyyy')}`).join('\n'))
             });
-            const chart = new QuickChart()
-            .setConfig({
-                type: 'pie',
-                data: {
-                    labels: res.fleet.map(plane => `${plane.name} (${plane.amount}x)`),
-                    datasets: [{ data: res.fleet.map(plane => plane.profit < 0 ? 0 : plane.profit) }]
-                },
-                options: {
-                    legend: {
-                        position: 'right',
-                        align: 'start',
-                        labels: {
-                            fontFamily: 'Serif',
-                            fontColor: 'white',
-                            usePointStyle: true
-                        }
-                    },
-                    plugins: {
-                        colorschemes: {
-                            scheme: 'tableau.Classic20'
-                        },
-                        datalabels: {
-                            display: planes.length < 10,
-                            align: 'center',
-                            backgroundColor: 'white',
-                            borderColor: "black",
-                            borderWidth: 1,
-                            borderRadius: 3,
-                            font: {
-                                color: 'black'
-                            },
-                            formatter: (value: number) => {
-                                let s = value < 1000000000 
-                                ? (value / 1000000).toFixed(1) + 'm' 
-                                : (value / 1000000000).toFixed(1) + 'b'
-                                return '$' + s;
-                            }
-                        },
-                    },
-                    title: {
-                        display: true,
-                        position: 'left',
-                        text: 'Profit per plane type',
-                        fontFamily: 'Serif',
-                        fontColor: 'white',
-                    },
-                },
-            }).setBackgroundColor('transparent');
-            embeds[1].setImage(await chart.getShortUrl());
-            const alliances = await memberCollection.aggregate<AllianceMember>([
-                {
-                    $match: {
-                        name: airline.name
-                    }
-                },
-                {
-                    $sort: {
-                        expire: 1
-                    }
-                },
-                {
-                    $limit: 5
-                },
-                {
-                    $lookup: {
-                        from: "Alliances",
-                        localField: "allianceID",
-                        foreignField: "_id",
-                        as: "alliance"
-                    }
-                },
-                {
-                    $unwind: "$alliance"
-                },
-                {
-                    $addFields: {
-                        left: {
-                            $last: {
-                                $map: {
-                                    input: '$shareValue',
-                                    as: 'object',
-                                    in: '$$object.date'
-                                }
-                            }
-                        }
-                    }
-                }
-            ]).toArray();
-            if (alliances.length) {
-                select.addOptions({
-                    label: "Alliance log",
-                    value: "member",
-                    emoji: "📅",
-                    description: "Alliance history log"
-                });
-                const embed = new MessageEmbed({
-                    color: "BLURPLE",
-                    timestamp: airline.founded,
-                    author: {
-                        name: `${airline.alliance ? `${airline.name} (${airline.alliance.name})` : airline.name} ${airline.online ? '🟢': '🔴'}`,
-                        url: airline.displayLogoURL,
-                        iconURL: airline.displayLogoURL
-                    },
-                    description: `**Airline ID:** ${targetAccount.airlineID}`,
-                    footer: {
-                        text: `Requests remaining: ${status.requestsRemaining.toLocaleString(locale)}`,
-                        iconURL: "https://i.ibb.co/8DFpz96/am-logo.png"
-                    },
-                    fields: alliances.map(member => {
-                        const days = Math.abs(differenceInDays(new Date(member.joined), new Date(member.left)));
-                        return {
-                            name: Formatters.underscore(Formatters.bold(member.alliance.name)),
-                            value: `**Joined:** ${Formatters.time(member.joined)}${(airline.alliance && member.alliance.name === airline.alliance.name) ? `\n` : `\n**Left:** ${Formatters.time(member.left, "D")}\n`}**Contribution:** $${member.contribution.toLocaleString(locale)}\n**Flights:** ${member.flights.toLocaleString(locale)}\n**Avg/day:** $${Math.round(days > 0 ? (member.contribution / days) : member.contribution).toLocaleString(locale)}`,
-                            inline: false
-                        }
-                    })
-                });
-                const activity = new QuickChart()
+            if (isCachedUserContextMenuInteraction(interaction)) {
+                const chart = new QuickChart()
                 .setConfig({
-                    type: 'bar',
+                    type: 'pie',
                     data: {
-                        datasets: alliances.map(member => ({
-                            label: member.alliance.name,
-                            data: member.offline.map(({ date, value }) => ({
-                                x: date,
-                                y: value
-                            }))
-                        }))
+                        labels: res.fleet.map(plane => `${plane.name} (${plane.amount}x)`),
+                        datasets: [{ data: res.fleet.map(plane => plane.profit < 0 ? 0 : plane.profit) }]
                     },
                     options: {
-                        plugins: {
-                            tickFormat: {
-                                style: 'unit',
-                                unit: 'day'
-                            },
-                            colorschemes: {
-                                scheme: 'office.Celestial6'
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Offline History',
-                            fontFamily: 'Serif',
-                            fontColor: 'white',
-                        },
                         legend: {
+                            position: 'right',
+                            align: 'start',
                             labels: {
                                 fontFamily: 'Serif',
                                 fontColor: 'white',
+                                usePointStyle: true
                             }
                         },
-                        scales: {
-                            yAxes: [
-                                {
-                                    gridLines: {
-                                        drawBorder: true,
-                                        color: 'gray'
-                                    },
-                                    ticks: {
-                                        padding: 5,
-                                        min: 0,
-                                        max: 31,
-                                        maxTicksLimit: 12,
-                                        stepSize: 1,
-                                        fontFamily: 'Serif',
-                                        fontColor: 'white'
+                        plugins: {
+                            colorschemes: {
+                                scheme: 'tableau.Classic20'
+                            },
+                            datalabels: {
+                                display: planes.length < 10,
+                                align: 'center',
+                                backgroundColor: 'white',
+                                borderColor: "black",
+                                borderWidth: 1,
+                                borderRadius: 3,
+                                font: {
+                                    color: 'black'
+                                },
+                                formatter: (value: number) => {
+                                    let s = value < 1000000000 
+                                    ? (value / 1000000).toFixed(1) + 'm' 
+                                    : (value / 1000000000).toFixed(1) + 'b'
+                                    return '$' + s;
+                                }
+                            },
+                        },
+                        title: {
+                            display: true,
+                            position: 'left',
+                            text: 'Profit per plane type',
+                            fontFamily: 'Serif',
+                            fontColor: 'white',
+                        },
+                    },
+                }).setBackgroundColor('transparent');
+                embeds[1].setImage(await chart.getShortUrl());
+                const alliances = await memberCollection.aggregate<AllianceMember>([
+                    {
+                        $match: {
+                            name: airline.name
+                        }
+                    },
+                    {
+                        $sort: {
+                            expire: 1
+                        }
+                    },
+                    {
+                        $limit: 5
+                    },
+                    {
+                        $lookup: {
+                            from: "Alliances",
+                            localField: "allianceID",
+                            foreignField: "_id",
+                            as: "alliance"
+                        }
+                    },
+                    {
+                        $unwind: "$alliance"
+                    },
+                    {
+                        $addFields: {
+                            left: {
+                                $last: {
+                                    $map: {
+                                        input: '$shareValue',
+                                        as: 'object',
+                                        in: '$$object.date'
                                     }
                                 }
-                            ],
-                            xAxes: [
-                                {
-                                    type: 'time',
-                                    time: {
-                                        isoWeekday: true,
-                                        parser: "MM/DD/YYYY HH:mm",
-                                        unit: "month",
-                                        displayFormats: {
-                                            month: "MMMM YYYY"
-                                        }
-                                    },
-                                    ticks: {
-                                        maxTicksLimit: 12,
-                                        fontFamily: 'Serif',
-                                        fontColor: 'white',
-                                    }
-                                }
-                            ]
+                            }
                         }
                     }
-                })
-                .setBackgroundColor('transparent');
-                embed.setImage(await activity.getShortUrl());
-                embeds.push(embed);
-            }
-            const row = new MessageActionRow({ components: [select] });
-            let [embed] = embeds;
-            const message = await interaction.editReply({
-                embeds: [embed],
-                components: [row]
-            }) as Message;
-            const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-            const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
-            collector.on("collect", async interaction => {
-                if (interaction.isSelectMenu()) {
+                ]).toArray();
+                if (alliances.length) {
+                    select.addOptions({
+                        label: "Alliance log",
+                        value: "member",
+                        emoji: "📅",
+                        description: "Alliance history log"
+                    });
+                    const embed = new MessageEmbed({
+                        color: "BLURPLE",
+                        timestamp: airline.founded,
+                        author: {
+                            name: `${airline.alliance ? `${airline.name} (${airline.alliance.name})` : airline.name} ${airline.online ? '🟢': '🔴'}`,
+                            url: airline.displayLogoURL,
+                            iconURL: airline.displayLogoURL
+                        },
+                        description: `**Airline ID:** ${targetAccount.airlineID}`,
+                        footer: {
+                            text: `Requests remaining: ${status.requestsRemaining.toLocaleString(locale)}`,
+                            iconURL: "https://i.ibb.co/8DFpz96/am-logo.png"
+                        },
+                        fields: alliances.map(member => {
+                            const days = Math.abs(differenceInDays(new Date(member.joined), new Date(member.left)));
+                            return {
+                                name: Formatters.underscore(Formatters.bold(member.alliance.name)),
+                                value: `**Joined:** ${Formatters.time(member.joined)}${(airline.alliance && member.alliance.name === airline.alliance.name) ? `\n` : `\n**Left:** ${Formatters.time(member.left, "D")}\n`}**Contribution:** $${member.contribution.toLocaleString(locale)}\n**Flights:** ${member.flights.toLocaleString(locale)}\n**Avg/day:** $${Math.round(days > 0 ? (member.contribution / days) : member.contribution).toLocaleString(locale)}`,
+                                inline: false
+                            }
+                        })
+                    });
+                    const activity = new QuickChart()
+                    .setConfig({
+                        type: 'bar',
+                        data: {
+                            datasets: alliances.map(member => ({
+                                label: member.alliance.name,
+                                data: member.offline.map(({ date, value }) => ({
+                                    x: date,
+                                    y: value
+                                }))
+                            }))
+                        },
+                        options: {
+                            plugins: {
+                                tickFormat: {
+                                    style: 'unit',
+                                    unit: 'day'
+                                },
+                                colorschemes: {
+                                    scheme: 'office.Celestial6'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Offline History',
+                                fontFamily: 'Serif',
+                                fontColor: 'white',
+                            },
+                            legend: {
+                                labels: {
+                                    fontFamily: 'Serif',
+                                    fontColor: 'white',
+                                }
+                            },
+                            scales: {
+                                yAxes: [
+                                    {
+                                        gridLines: {
+                                            drawBorder: true,
+                                            color: 'gray'
+                                        },
+                                        ticks: {
+                                            padding: 5,
+                                            min: 0,
+                                            max: 31,
+                                            maxTicksLimit: 12,
+                                            stepSize: 1,
+                                            fontFamily: 'Serif',
+                                            fontColor: 'white'
+                                        }
+                                    }
+                                ],
+                                xAxes: [
+                                    {
+                                        type: 'time',
+                                        time: {
+                                            isoWeekday: true,
+                                            parser: "MM/DD/YYYY HH:mm",
+                                            unit: "month",
+                                            displayFormats: {
+                                                month: "MMMM YYYY"
+                                            }
+                                        },
+                                        ticks: {
+                                            maxTicksLimit: 12,
+                                            fontFamily: 'Serif',
+                                            fontColor: 'white',
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    })
+                    .setBackgroundColor('transparent');
+                    embed.setImage(await activity.getShortUrl());
+                    embeds.push(embed);
+                }
+                const row = new MessageActionRow({ components: [select] });
+                let [embed] = embeds;
+                const message = await interaction.editReply({
+                    embeds: [embed],
+                    components: [row]
+                });
+                const collector = message.createMessageComponentCollector({ 
+                    filter: ({ user }) => user.id === interaction.user.id, 
+                    idle: 10 * 60 * 1000,
+                    componentType: "SELECT_MENU" 
+                });
+                collector.on("collect", async interaction => {
                     let embed: MessageEmbed;
                     await interaction.deferUpdate();
                     const [value] = interaction.values;
@@ -513,13 +519,13 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                         embeds: [embed],
                         components: [row]
                     });
-                }
-            });
-            collector.once("end", async collected => {
-                row.setComponents(select.setDisabled(true));
-                const reply = collected.last() || interaction;
-                await reply.editReply({ components: [row] }).catch(() => void 0);
-            });
+                });
+                collector.once("end", async collected => {
+                    row.setComponents(select.setDisabled(true));
+                    const reply = collected.last() || interaction;
+                    await reply.editReply({ components: [row] }).catch(() => void 0);
+                });
+            }
         }
         catch(error) {
             if (error instanceof DiscordClientError) {

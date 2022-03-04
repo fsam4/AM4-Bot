@@ -1,7 +1,7 @@
 /**
  * A base class for client errors
  * @constructor
- * @param message The error message
+ * @param message - The error message
  */
 
 export default abstract class ClientError {

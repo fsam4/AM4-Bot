@@ -1,4 +1,5 @@
-import { MessageEmbed, Permissions, MessageActionRow, MessageSelectMenu, MessageAttachment, Formatters, Constants, type Message, type MessageComponentInteraction } from 'discord.js';
+import { MessageEmbed, Permissions, MessageActionRow, MessageSelectMenu, MessageAttachment, Formatters, Constants } from 'discord.js';
+import { Discord as Utils } from '../../utils';
 import DiscordClientError from '../error';
 import { ObjectId } from 'bson';
 import QuickChart from 'quickchart-js';
@@ -17,6 +18,8 @@ import type { SlashCommand } from '@discord/types';
 
 type AllianceMember = AM4.AllianceMember & { left: Date, alliance: AM4.Alliance };
 type Aircraft = AM4.Plane & { amount?: number };
+
+const { createAttachmentUrl, isCachedCommandInteraction } = Utils;
 
 const command: SlashCommand = {
     get name() {
@@ -385,218 +388,223 @@ const command: SlashCommand = {
                         const url = await history.getShortUrl();
                         embeds[0].setImage(url);
                     }
-                    if (awards.length) embeds[0].addFields({
-                        name: Formatters.bold(Formatters.underscore("Awards")),
-                        value: Formatters.codeBlock(awards.map(award => `${award.name} • ${format(award.date, 'dd/MM/yyyy')}`).join('\n'))
-                    });
-                    const chart = new QuickChart()
-                    .setConfig({
-                        type: 'pie',
-                        data: {
-                            labels: res.fleet.map(plane => `${plane.name} (${plane.amount}x)`),
-                            datasets: [{ data: res.fleet.map(plane => plane.profit < 0 ? 0 : plane.profit) }]
-                        },
-                        options: {
-                            legend: {
-                                position: 'right',
-                                align: 'start',
-                                labels: {
-                                    fontFamily: 'Serif',
-                                    fontColor: 'white',
-                                    usePointStyle: true
-                                }
-                            },
-                            plugins: {
-                                colorschemes: {
-                                    scheme: 'tableau.Classic20'
-                                },
-                                datalabels: {
-                                    display: planes.length < 10,
-                                    align: 'center',
-                                    backgroundColor: 'white',
-                                    borderColor: "black",
-                                    borderWidth: 1,
-                                    borderRadius: 3,
-                                    font: {
-                                        color: 'black'
-                                    },
-                                    formatter: (value: number) => {
-                                        let s = value < 1000000000 
-                                        ? (value / 1000000).toFixed(1) + 'm' 
-                                        : (value / 1000000000).toFixed(1) + 'b'
-                                        return '$' + s;
-                                    }
-                                }
-                            },
-                            title: {
-                                display: true,
-                                position: 'left',
-                                text: 'Profit per plane type',
-                                fontFamily: 'Serif',
-                                fontColor: 'white',
-                            }
-                        }
-                    }).setBackgroundColor('transparent');
-                    embeds[1].setImage(await chart.getShortUrl());
-
-                    const alliances = await memberCollection.aggregate<AllianceMember>([
-                        {
-                            $match: {
-                                name: airline.name
-                            }
-                        },
-                        {
-                            $sort: {
-                                expire: 1
-                            }
-                        },
-                        {
-                            $limit: 5
-                        },
-                        {
-                            $lookup: {
-                                from: "Alliances",
-                                localField: "allianceID",
-                                foreignField: "_id",
-                                as: "alliance"
-                            }
-                        },
-                        {
-                            $unwind: "$alliance"
-                        },
-                        {
-                            $addFields: {
-                                left: {
-                                    $last: {
-                                        $map: {
-                                            input: '$shareValue',
-                                            as: 'object',
-                                            in: '$$object.date'
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    ]).toArray();
-                    if (alliances.length) {
-                        select.addOptions({
-                            label: "Alliance log",
-                            value: "member",
-                            emoji: "📅",
-                            description: "Alliance history log"
+                    if (awards.length) {
+                        embeds[0].addFields({
+                            name: Formatters.bold(Formatters.underscore("Awards")),
+                            value: Formatters.codeBlock(awards.map(award => `${award.name} • ${format(award.date, 'dd/MM/yyyy')}`).join('\n'))
                         });
-                        const embed = new MessageEmbed({
-                            color: "BLURPLE",
-                            timestamp: airline.founded,
-                            author: {
-                                name: `${airline.alliance ? `${airline.name} (${airline.alliance.name})` : airline.name} ${airline.online ? '🟢': '🔴'}`,
-                                url: airline.displayLogoURL,
-                                iconURL: airline.displayLogoURL
-                            },
-                            footer: {
-                                text: `Requests remaining: ${status.requestsRemaining.toLocaleString(locale)}`,
-                                iconURL: "https://i.ibb.co/8DFpz96/am-logo.png"
-                            },
-                            fields: alliances.map(member => {
-                                const days = Math.abs(differenceInDays(new Date(member.joined), new Date(member.left)));
-                                return {
-                                    name: Formatters.underscore(member.alliance.name),
-                                    value: `**Joined:** ${Formatters.time(member.joined)}${(airline.alliance && member.alliance.name === airline.alliance.name) ? `\n` : `\n**Left:** ${Formatters.time(member.left, "D")}\n`}**Contribution:** $${member.contribution.toLocaleString(locale)}\n**Flights:** ${member.flights.toLocaleString(locale)}\n**Avg/day:** $${Math.round(days > 0 ? (member.contribution / days) : member.contribution).toLocaleString(locale)}`,
-                                    inline: false
-                                }
-                            })
-                        });
-                        const dates = alliances.flatMap(member => member.offline.map(({ date }) => date));
-                        const [oldestDate] = dates.sort(compareAsc);
-                        const activity = new QuickChart()
+                    }
+                    if (isCachedCommandInteraction(interaction)) {
+                        const chart = new QuickChart()
                         .setConfig({
-                            type: 'bar',
+                            type: 'pie',
                             data: {
-                                datasets: alliances.map(member => ({
-                                    label: member.alliance.name,
-                                    data: member.offline.map(({ date, value }) => ({
-                                        x: date,
-                                        y: value
-                                    }))
-                                }))
+                                labels: res.fleet.map(plane => `${plane.name} (${plane.amount}x)`),
+                                datasets: [{ data: res.fleet.map(plane => plane.profit < 0 ? 0 : plane.profit) }]
                             },
                             options: {
+                                legend: {
+                                    position: 'right',
+                                    align: 'start',
+                                    labels: {
+                                        fontFamily: 'Serif',
+                                        fontColor: 'white',
+                                        usePointStyle: true
+                                    }
+                                },
                                 plugins: {
-                                    tickFormat: {
-                                        style: 'unit',
-                                        unit: 'day'
-                                    },
                                     colorschemes: {
-                                        scheme: 'office.Celestial6'
+                                        scheme: 'tableau.Classic20'
+                                    },
+                                    datalabels: {
+                                        display: planes.length < 10,
+                                        align: 'center',
+                                        backgroundColor: 'white',
+                                        borderColor: "black",
+                                        borderWidth: 1,
+                                        borderRadius: 3,
+                                        font: {
+                                            color: 'black'
+                                        },
+                                        formatter: (value: number) => {
+                                            let s = value < 1000000000 
+                                            ? (value / 1000000).toFixed(1) + 'm' 
+                                            : (value / 1000000000).toFixed(1) + 'b'
+                                            return '$' + s;
+                                        }
                                     }
                                 },
                                 title: {
                                     display: true,
-                                    text: 'Offline History',
+                                    position: 'left',
+                                    text: 'Profit per plane type',
                                     fontFamily: 'Serif',
                                     fontColor: 'white',
-                                },
-                                legend: {
-                                    labels: {
-                                        fontFamily: 'Serif',
-                                        fontColor: 'white',
-                                    }
-                                },
-                                scales: {
-                                    yAxes: [
-                                        {
-                                            gridLines: {
-                                                drawBorder: true,
-                                                color: 'gray'
-                                            },
-                                            ticks: {
-                                                padding: 5,
-                                                min: 0,
-                                                max: 31,
-                                                maxTicksLimit: 12,
-                                                stepSize: 1,
-                                                fontFamily: 'Serif',
-                                                fontColor: 'white'
-                                            }
-                                        }
-                                    ],
-                                    xAxes: [
-                                        {
-                                            type: 'time',
-                                            time: {
-                                                isoWeekday: true,
-                                                parser: "MM/DD/YYYY HH:mm",
-                                                unit: "month",
-                                                displayFormats: {
-                                                    month: "MMMM YYYY"
-                                                }
-                                            },
-                                            ticks: {
-                                                maxTicksLimit: 12,
-                                                fontFamily: 'Serif',
-                                                fontColor: 'white',
-                                                min: subMonths(oldestDate || interaction.createdAt, 1),
-                                                max: addMonths(interaction.createdAt, 1)
-                                            }
-                                        }
-                                    ]
                                 }
                             }
-                        })
-                        .setBackgroundColor('transparent');
-                        embed.setImage(await activity.getShortUrl());
-                        embeds.push(embed);
-                    }
-                    const row = new MessageActionRow({ components: [select] });
-                    let [embed] = embeds;
-                    const message = await interaction.editReply({
-                        embeds: [embed],
-                        components: [row]
-                    }) as Message;
-                    const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                    const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
-                    collector.on("collect", async interaction => {
-                        if (interaction.isSelectMenu()) {
+                        }).setBackgroundColor('transparent');
+                        embeds[1].setImage(await chart.getShortUrl());
+    
+                        const alliances = await memberCollection.aggregate<AllianceMember>([
+                            {
+                                $match: {
+                                    name: airline.name
+                                }
+                            },
+                            {
+                                $sort: {
+                                    expire: 1
+                                }
+                            },
+                            {
+                                $limit: 5
+                            },
+                            {
+                                $lookup: {
+                                    from: "Alliances",
+                                    localField: "allianceID",
+                                    foreignField: "_id",
+                                    as: "alliance"
+                                }
+                            },
+                            {
+                                $unwind: "$alliance"
+                            },
+                            {
+                                $addFields: {
+                                    left: {
+                                        $last: {
+                                            $map: {
+                                                input: '$shareValue',
+                                                as: 'object',
+                                                in: '$$object.date'
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        ]).toArray();
+                        if (alliances.length) {
+                            select.addOptions({
+                                label: "Alliance log",
+                                value: "member",
+                                emoji: "📅",
+                                description: "Alliance history log"
+                            });
+                            const embed = new MessageEmbed({
+                                color: "BLURPLE",
+                                timestamp: airline.founded,
+                                author: {
+                                    name: `${airline.alliance ? `${airline.name} (${airline.alliance.name})` : airline.name} ${airline.online ? '🟢': '🔴'}`,
+                                    url: airline.displayLogoURL,
+                                    iconURL: airline.displayLogoURL
+                                },
+                                footer: {
+                                    text: `Requests remaining: ${status.requestsRemaining.toLocaleString(locale)}`,
+                                    iconURL: "https://i.ibb.co/8DFpz96/am-logo.png"
+                                },
+                                fields: alliances.map(member => {
+                                    const days = Math.abs(differenceInDays(new Date(member.joined), new Date(member.left)));
+                                    return {
+                                        name: Formatters.underscore(member.alliance.name),
+                                        value: `**Joined:** ${Formatters.time(member.joined)}${(airline.alliance && member.alliance.name === airline.alliance.name) ? `\n` : `\n**Left:** ${Formatters.time(member.left, "D")}\n`}**Contribution:** $${member.contribution.toLocaleString(locale)}\n**Flights:** ${member.flights.toLocaleString(locale)}\n**Avg/day:** $${Math.round(days > 0 ? (member.contribution / days) : member.contribution).toLocaleString(locale)}`,
+                                        inline: false
+                                    }
+                                })
+                            });
+                            const dates = alliances.flatMap(member => member.offline.map(({ date }) => date));
+                            const [oldestDate] = dates.sort(compareAsc);
+                            const activity = new QuickChart()
+                            .setConfig({
+                                type: 'bar',
+                                data: {
+                                    datasets: alliances.map(member => ({
+                                        label: member.alliance.name,
+                                        data: member.offline.map(({ date, value }) => ({
+                                            x: date,
+                                            y: value
+                                        }))
+                                    }))
+                                },
+                                options: {
+                                    plugins: {
+                                        tickFormat: {
+                                            style: 'unit',
+                                            unit: 'day'
+                                        },
+                                        colorschemes: {
+                                            scheme: 'office.Celestial6'
+                                        }
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: 'Offline History',
+                                        fontFamily: 'Serif',
+                                        fontColor: 'white',
+                                    },
+                                    legend: {
+                                        labels: {
+                                            fontFamily: 'Serif',
+                                            fontColor: 'white',
+                                        }
+                                    },
+                                    scales: {
+                                        yAxes: [
+                                            {
+                                                gridLines: {
+                                                    drawBorder: true,
+                                                    color: 'gray'
+                                                },
+                                                ticks: {
+                                                    padding: 5,
+                                                    min: 0,
+                                                    max: 31,
+                                                    maxTicksLimit: 12,
+                                                    stepSize: 1,
+                                                    fontFamily: 'Serif',
+                                                    fontColor: 'white'
+                                                }
+                                            }
+                                        ],
+                                        xAxes: [
+                                            {
+                                                type: 'time',
+                                                time: {
+                                                    isoWeekday: true,
+                                                    parser: "MM/DD/YYYY HH:mm",
+                                                    unit: "month",
+                                                    displayFormats: {
+                                                        month: "MMMM YYYY"
+                                                    }
+                                                },
+                                                ticks: {
+                                                    maxTicksLimit: 12,
+                                                    fontFamily: 'Serif',
+                                                    fontColor: 'white',
+                                                    min: subMonths(oldestDate || interaction.createdAt, 1),
+                                                    max: addMonths(interaction.createdAt, 1)
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            })
+                            .setBackgroundColor('transparent');
+                            embed.setImage(await activity.getShortUrl());
+                            embeds.push(embed);
+                        }
+                        const row = new MessageActionRow({ components: [select] });
+                        let [embed] = embeds;
+                        const message = await interaction.editReply({
+                            embeds: [embed],
+                            components: [row]
+                        });
+                        const collector = message.createMessageComponentCollector({ 
+                            filter: ({ user }) => user.id === interaction.user.id, 
+                            idle: 10 * 60 * 1000, 
+                            componentType: "SELECT_MENU" 
+                        });
+                        collector.on("collect", async interaction => {
                             let embed: MessageEmbed;
                             await interaction.deferUpdate();
                             const [value] = interaction.values;
@@ -608,17 +616,20 @@ const command: SlashCommand = {
                                 embeds: [embed],
                                 components: [row]
                             });
-                        }
-                    });
-                    collector.once("end", async collected => {
-                        select.setDisabled(true);
-                        row.components[0] = select;
-                        const reply = collected.last() || interaction;
-                        await reply.editReply({ components: [row] }).catch(() => void 0);
-                    });
+                        });
+                        collector.once("end", async collected => {
+                            select.setDisabled(true);
+                            row.components[0] = select;
+                            const reply = collected.last() || interaction;
+                            await reply.editReply({ components: [row] }).catch(() => void 0);
+                        });
+                    } else {
+                        await interaction.editReply({ embeds });
+                    }
                     break;
                 }
                 case "fleet": {
+                    if (!isCachedCommandInteraction(interaction)) throw new DiscordClientError("This command can only be used in servers where the bot is in...");
                     const input = interaction.options.getInteger("id") || interaction.options.getString("name");
                     if (!input && !account?.airlineID) throw new DiscordClientError("You need define at least one of the arguments or login with `/user login` to see your own airline!");
                     const { status, airline, fleet } = await rest.fetchAirline(input || account.airlineID);
@@ -665,7 +676,7 @@ const command: SlashCommand = {
                     if (!planes.length) throw new DiscordClientError("This airline does not have any planes in it's fleet...");
                     const planeOptions = await planeSettings.find({ id: interaction.user.id }).toArray();
                     for (const plane of planes) {
-                        const options = planeOptions.find(({ id: planeID }) => plane._id.equals(planeID));
+                        const options = planeOptions.find(({ planeID }) => plane._id.equals(planeID));
                         if (options) {
                             const { modifications, engine: engineName } = options;
                             if (engineName) {
@@ -683,14 +694,12 @@ const command: SlashCommand = {
                     const select = new MessageSelectMenu({
                         customId: "plane",
                         placeholder: "Select an aircraft...",
-                        options: planes.map(plane => {
-                            return {
-                                label: plane.name,
-                                value: plane._id.toHexString(),
-                                description: `${plane.amount} planes`,
-                                emoji: emojis[plane.type]
-                            }
-                        })
+                        options: planes.map(plane => ({
+                            label: plane.name,
+                            value: plane._id.toHexString(),
+                            description: `${plane.amount} planes`,
+                            emoji: emojis[plane.type]
+                        }))
                     });
                     let plane = planes[0];
                     let image = new MessageAttachment(plane.image.buffer, "plane.jpg");
@@ -710,7 +719,7 @@ const command: SlashCommand = {
                         timestamp: airline.founded,
                         description: `**Amount:** ${plane.amount} planes\n**Plane type:** ${plane.type === "vip" ? plane.type.toUpperCase() : plane.type}`,
                         image: {
-                            url: `attachment://${image.name}`
+                            url: createAttachmentUrl(image)
                         },
                         author: {
                             name: `${airline.alliance ? `${airline.name} (${airline.alliance.name})` : airline.name} ${airline.online ? '🟢': '🔴'}`,
@@ -749,51 +758,52 @@ const command: SlashCommand = {
                         embeds: [embed],
                         files: [image],
                         components: [row]
-                    }) as Message;
-                    const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                    const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                    });
+                    const collector = message.createMessageComponentCollector({
+                        filter: ({ user }) => user.id === interaction.user.id, 
+                        idle: 10 * 60 * 1000, 
+                        componentType: "SELECT_MENU"
+                    });
                     collector.on("collect", async interaction => {
-                        if (interaction.isSelectMenu()) {
-                            const [plane_id] = interaction.values;
-                            plane = planes.find(plane => plane._id.equals(plane_id));
-                            image = new MessageAttachment(plane.image.buffer, "plane.jpg");
-                            options.reputation = airline.reputation[plane.type];
-                            statistics = {
-                                profit: Plane.profit(plane, options).profit,
-                                sv: Plane.estimatedShareValueGrowth(plane, options)
-                            };
-                            embed.setDescription(`**Amount:** ${plane.amount} planes\n**Plane type:** ${plane.type === "vip" ? plane.type.toUpperCase() : plane.type}`);
-                            embed.setImage(`attachment://${image.name}`);
-                            embed.setFields([
-                                { 
-                                    name: Formatters.bold(Formatters.underscore("General statistics")), 
-                                    value: `**Speed:** ${Math.round(airline.gameMode === "Easy" ? plane.speed * 1.5 : plane.speed).toLocaleString(locale)} km/h\n**Fuel usage:** ${plane.fuel.toFixed(2)} lbs/km\n**Co2 usage:** ${plane.co2.toFixed(2)} kg/${plane.type === "cargo" ? "1k": "pax"}/km\n**Runway:** ${plane.runway.toLocaleString(locale)} ft\n**Range:** ${plane.range.toLocaleString(locale)} km\n**Capacity:** ${plane.capacity.toLocaleString(locale)} ${plane.type === "cargo" ? "lbs" : "seats"}`, 
-                                    inline: true 
-                                },
-                                { 
-                                    name: '\u200B', 
-                                    value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round(airline.gameMode === "Realism" ? plane.A_check.price * 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
-                                    inline: true 
-                                },
-                                { 
-                                    name: Formatters.bold(Formatters.underscore("Profitability")), 
-                                    value: `**Per hour:** $${Math.round(statistics.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${statistics.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(statistics.profit * 7).toLocaleString(locale)}\n**Share value:** $${statistics.sv.toFixed(2)}/day`, 
-                                    inline: false 
-                                }
-                            ]);
-                            if (plane.price) {
-                                const profitability = Math.round(plane.price / statistics.profit);
-                                embed.fields.last().value += `\n**Profitability:** ${profitability > 0 ? `in ${profitability.toLocaleString(locale)} days` : 'never' }`;
+                        const [planeId] = interaction.values;
+                        plane = planes.find(plane => plane._id.equals(planeId));
+                        image = new MessageAttachment(plane.image.buffer, "plane.jpg");
+                        options.reputation = airline.reputation[plane.type];
+                        statistics = {
+                            profit: Plane.profit(plane, options).profit,
+                            sv: Plane.estimatedShareValueGrowth(plane, options)
+                        };
+                        embed.setDescription(`**Amount:** ${plane.amount} planes\n**Plane type:** ${plane.type === "vip" ? plane.type.toUpperCase() : plane.type}`);
+                        embed.setImage(createAttachmentUrl(image));
+                        embed.setFields([
+                            { 
+                                name: Formatters.bold(Formatters.underscore("General statistics")), 
+                                value: `**Speed:** ${Math.round(airline.gameMode === "Easy" ? plane.speed * 1.5 : plane.speed).toLocaleString(locale)} km/h\n**Fuel usage:** ${plane.fuel.toFixed(2)} lbs/km\n**Co2 usage:** ${plane.co2.toFixed(2)} kg/${plane.type === "cargo" ? "1k": "pax"}/km\n**Runway:** ${plane.runway.toLocaleString(locale)} ft\n**Range:** ${plane.range.toLocaleString(locale)} km\n**Capacity:** ${plane.capacity.toLocaleString(locale)} ${plane.type === "cargo" ? "lbs" : "seats"}`, 
+                                inline: true 
+                            },
+                            { 
+                                name: '\u200B', 
+                                value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round(airline.gameMode === "Realism" ? plane.A_check.price * 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
+                                inline: true 
+                            },
+                            { 
+                                name: Formatters.bold(Formatters.underscore("Profitability")), 
+                                value: `**Per hour:** $${Math.round(statistics.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${statistics.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(statistics.profit * 7).toLocaleString(locale)}\n**Share value:** $${statistics.sv.toFixed(2)}/day`, 
+                                inline: false 
                             }
-                            for (const option of select.options) option.default = plane._id.equals(option.value);
-                            await (<Message>interaction.message).removeAttachments();
-                            row.setComponents(select);
-                            await interaction.update({
-                                embeds: [embed],
-                                files: [image],
-                                components: [row]
-                            });
+                        ]);
+                        if (plane.price) {
+                            const profitability = Math.round(plane.price / statistics.profit);
+                            embed.fields.last().value += `\n**Profitability:** ${profitability > 0 ? `in ${profitability.toLocaleString(locale)} days` : 'never' }`;
                         }
+                        for (const option of select.options) option.default = plane._id.equals(option.value);
+                        await interaction.message.removeAttachments();
+                        row.setComponents(select);
+                        await interaction.update({
+                            embeds: [embed],
+                            files: [image],
+                            components: [row]
+                        });
                     });
                     collector.on("end", async collected => {
                         row.setComponents(select.setDisabled(true));
@@ -807,6 +817,7 @@ const command: SlashCommand = {
                     break;
                 }
                 case "compare": {
+                    if (!isCachedCommandInteraction(interaction)) throw new DiscordClientError("This command can only be used in servers where the bot is in...");
                     const planes = await planeCollection.find().toArray();
                     const options = interaction.options.data[0].options.filter(option => option.name.startsWith("airline"));
                     const airlines = await Promise.all(
@@ -1206,25 +1217,26 @@ const command: SlashCommand = {
                     const message = await interaction.editReply({ 
                         embeds: [embed], 
                         components: [row] 
-                    }) as Message;
-                    const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                    const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                    })
+                    const collector = message.createMessageComponentCollector({ 
+                        filter: ({ user }) => user.id === interaction.user.id, 
+                        idle: 10 * 60 * 1000,
+                        componentType: "SELECT_MENU" 
+                    });
                     collector.on("collect", async interaction => {
-                        if (interaction.isSelectMenu()) {
-                            const value = interaction.values[0];
-                            const graph = graphs.find(graph => graph.id.equals(value));
-                            embed.setDescription(graph.description);
-                            const chart = new QuickChart()
-                            .setConfig(graph.data)
-                            .setBackgroundColor("transparent");
-                            const url = await chart.getShortUrl();
-                            for (const option of select.options) option.default = (value === option.value);
-                            row.setComponents(select);
-                            await interaction.update({ 
-                                embeds: [embed.setImage(url)],
-                                components: [row]
-                            });
-                        }
+                        const value = interaction.values[0];
+                        const graph = graphs.find(graph => graph.id.equals(value));
+                        embed.setDescription(graph.description);
+                        const chart = new QuickChart()
+                        .setConfig(graph.data)
+                        .setBackgroundColor("transparent");
+                        const url = await chart.getShortUrl();
+                        for (const option of select.options) option.default = (value === option.value);
+                        row.setComponents(select);
+                        await interaction.update({ 
+                            embeds: [embed.setImage(url)],
+                            components: [row]
+                        });
                     });
                     collector.once("end", async collected => {
                         row.setComponents(select.setDisabled(true));

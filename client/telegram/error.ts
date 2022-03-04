@@ -8,8 +8,8 @@ const message = "An unknown error occured. Please report this in [AM4 Bot Telegr
 /**
  * A class representing a Telegram client error.
  * @constructor
- * @param message The error message
- * @param parse_mode The parse mode to use on the error message
+ * @param message - The error message
+ * @param parse_mode - The parse mode to use on the error message
  */
 
 export default class TelegramClientError extends ClientError {
@@ -20,7 +20,7 @@ export default class TelegramClientError extends ClientError {
 
     /**
      * Send the error as a reply
-     * @param ctx The context to reply to
+     * @param ctx - The context to reply to
      */
 
     async send(ctx: Context) {
@@ -30,7 +30,7 @@ export default class TelegramClientError extends ClientError {
 
     /**
      * Send the error as an answer to a callback query
-     * @param ctx The contect to answer to
+     * @param ctx - The callback query context to answer to
      */
 
     async answerCbQuery(ctx: Context) {
@@ -40,7 +40,7 @@ export default class TelegramClientError extends ClientError {
 
     /**
      * Send an unknown error reply
-     * @param ctx The context to reply to
+     * @param ctx - The context to reply to
      */
 
     static async sendUnknownError(ctx: Context) {

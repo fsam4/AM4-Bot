@@ -26,8 +26,8 @@ type GeoNear<T> = T & {
 };
 
 type LogValue = { 
-    value: number, 
-    date: Date 
+    value: number; 
+    date: Date;
 };
 
 export namespace AM4 {
@@ -85,22 +85,22 @@ export namespace AM4 {
         manufacturer: {
             name: string;
             icon: string;
-        }
+        };
         A_check: {
             price: number;
             time: number;
-        }
+        };
         staff: {
             pilots: number;
             crew: number;
             engineers: number;
             tech: number;
-        }
+        };
         engines: Array<{
             name: string;
             fuel: number;
             speed: number;
-        }>
+        }>;
     }
 
     interface Route extends BaseDocument {
@@ -213,22 +213,23 @@ export namespace Telegram {
 }
 
 type GameTag = "airport" | "am4" | "plane" | "aviation" | "logo";
+type UserIdentifier = string | number;
 
 export namespace Quiz {
 
     interface User extends BaseDocument {
-        id: string | number,
-        points: number,
-        score?: number
+        id: UserIdentifier;
+        points: number;
+        score?: number;
     }
 
     interface Game extends BaseDocument {
         base_question?: string;
-        author: string,
-        name: string,
+        author: string;
+        name: string;
         tag: GameTag;
-        played: number,
-        reward: number
+        played: number;
+        reward: number;
     }
 
     interface Question extends BaseDocument {
@@ -244,13 +245,13 @@ export namespace Quiz {
 export namespace Settings {
 
     interface User extends BaseDocument {
-        id: string;
+        id: UserIdentifier;
         mode?: GameMode;
         training: {
-            fuel: number,
-            co2: number,
-            cargo_heavy: number,
-            cargo_large: number
+            fuel: number;
+            co2: number;
+            cargo_heavy: number;
+            cargo_large: number;
         };
         salaries: {
             pilot: number;
@@ -302,19 +303,19 @@ export namespace Settings {
         roles: {
             default?: string;
             realism?: string;
-            easy?: string;
             member?: string;
+            easy?: string;
         };
     }
 
     interface Plane extends BaseDocument {
-        id: string;
+        id: UserIdentifier;
         planeID: ObjectId;
         engine?: string;
         modifications: {
-            fuel: boolean,
-            co2: boolean,
-            speed: boolean
+            fuel: boolean;
+            co2: boolean;
+            speed: boolean;
         };
     }
     

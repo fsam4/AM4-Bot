@@ -11,14 +11,16 @@ import type * as AM4 from '@typings/am4-api';
 const AM4BaseUrl = "https://www.airline4.net/api";
 
 type FieldType = "demand" | "research";
-type RouteOptions<T extends FieldType> = T extends "demand"
-    ? { dep_icao: string, arr_icao: string } 
-    : { dep_icao: string, min_runway: number, max_distance: number };
+type RouteOptions<T extends FieldType> = { dep_icao: string } & (
+    T extends "research" 
+        ? { min_runway: number, max_distance: number }
+        : { arr_icao: string }
+);
 
 /**
  * AM4 API rest client for communicating with the API.
  * @constructor
- * @param accessToken The AM4 API access token to use
+ * @param accessToken - The AM4 API access token to use
  */
 
 export default class AM4RestClient {
@@ -41,7 +43,7 @@ export default class AM4RestClient {
 
     /**
      * Set a new access token for the rest client
-     * @param accessToken The new access token
+     * @param accessToken - The new access token
      * @returns The updated client
      */
 
@@ -65,7 +67,7 @@ export default class AM4RestClient {
         const response = await fetch(`${AM4BaseUrl}?${query}`).then(res => res.json()) as AM4.Airline;
         if (response.status.description === 'Missing or invalid access token') throw new AM4APIError(response.status);
         this.requestsRemaining = response.status.requests_remaining; 
-        return new Airline(response, this, typeof input === "number" ? input : null);
+        return new Airline(response, this, typeof input === "number" && input);
     }
 
     /**
@@ -89,7 +91,7 @@ export default class AM4RestClient {
     /**
      * Fetches routes from the AM4 API
      * @param mode - Demand to search for a demand of a route, research for searching multiple routes from a hub.
-     * @param options - Additional required options for the search
+     * @param parameters - Additional required options for the search
      * @returns The constructed route data
      */
 
@@ -107,8 +109,9 @@ export default class AM4RestClient {
         const response = await fetch(`${AM4BaseUrl}?${query}`).then(res => res.json()) as RouteResponse;
         if (response.status.description === 'Missing or invalid access token') throw new AM4APIError(response.status);
         this.requestsRemaining = response.status.requests_remaining; 
+        const RouteConstructor = mode === "demand" ? Route : Routes;
         // @ts-ignore: the return type will always be correct at runtime
-        return (mode === "demand" ? new Route(response, this) : new Routes(response));
+        return new RouteConstructor(response, this);
     }
 
 }

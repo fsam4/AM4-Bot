@@ -4,8 +4,8 @@ const command: Command = {
     name: 'dice',
     cooldown: 0,
     description: 'Roll a dice',
-    async execute(ctx) {
-        await ctx.replyWithDice();
+    execute(ctx) {
+        ctx.replyWithDice();
     },
     actions: [],
     scenes: []

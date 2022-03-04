@@ -1,5 +1,6 @@
-import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, Formatters, Constants, type ButtonInteraction, type Message, type TextChannel, type ThreadChannel } from 'discord.js';
-import { ObjectId, type Binary, type Filter } from 'mongodb';
+import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, Formatters, Constants, type Message, type ThreadChannel } from 'discord.js';
+import { ObjectId, type Filter } from 'mongodb';
+import { Discord as Utils } from '../../utils';
 import DiscordClientError from '../error';
 import { promisify } from 'util';
 import config from '../../../config.json';
@@ -28,6 +29,7 @@ const modes = {
 };
 
 const addScore = (multiplier: number) => parseFloat((Math.random() * multiplier * eventMultiplier).toFixed(2));
+const { createAttachmentUrl } = Utils;
 const wait = promisify(setTimeout);
 
 const command: SlashCommand = {
@@ -165,20 +167,20 @@ const command: SlashCommand = {
         ]
     },
     async execute(interaction, { database, ephemeral, guildLocale, locale }) {
-        if (ephemeral) {
+        const subCommand = interaction.options.getSubcommand();
+        if (ephemeral && subCommand === "play") {
             await interaction.reply({
                 content: "This channel is blacklisted from using commands! Quiz games can only be played in non-blacklisted channels...",
                 ephemeral: true
             });
             return;
         }
-        await interaction.deferReply();
+        await interaction.deferReply({ ephemeral });
         const games = database.quiz.collection<Quiz.Game>('Games');
         const quizUserCollection = database.quiz.collection<Quiz.User>('Users');
         const questionCollection = database.quiz.collection<Quiz.Question>('Questions');
         const userCollection = database.discord.collection<Discord.User>("Users");
         try {
-            const subCommand = interaction.options.getSubcommand();
             type Difficulty = Quiz.Question["difficulty"] | "normal";
             switch(subCommand) {
                 case "play": {
@@ -234,9 +236,12 @@ const command: SlashCommand = {
                             ]
                         })
                     ];
-                    const message = await interaction.editReply({ embeds: [embed], components }) as Message;
-                    const filter = ({ user }: ButtonInteraction) => user.id === interaction.user.id;
-                    await message.awaitMessageComponent({ filter, time: 5 * 60 * 1000, componentType: "BUTTON" })
+                    const message = await interaction.editReply({ embeds: [embed], components });
+                    await message.awaitMessageComponent({ 
+                        filter: ({ user }) => user.id === interaction.user.id, 
+                        time: 5 * 60 * 1000, 
+                        componentType: "BUTTON" 
+                    })
                     .then(async component => {
                         for (const component of components[0].components) component.setDisabled(true);
                         await component.update({ embeds: [embed], components });
@@ -258,7 +263,7 @@ const command: SlashCommand = {
                                     name: game.name,
                                     autoArchiveDuration: 60,
                                     reason: `Quiz started by ${interaction.user.username}#${interaction.user.discriminator}`,
-                                    startMessage: <Message>component.message
+                                    startMessage: component.message
                                 });
                                 await thread.members.add(interaction.user, "Started a quiz game");
                             }
@@ -293,7 +298,7 @@ const command: SlashCommand = {
                                     if (doc.type === "image") {
                                         display.setTitle(`${game.base_question} (${round}/${rounds})`);
                                         const attachment = new MessageAttachment(doc.question.buffer, "question.jpg");
-                                        display.setImage('attachment://question.jpg');
+                                        display.setImage(createAttachmentUrl(attachment));
                                         questionMessage = await thread.send({ embeds: [display], files: [attachment] })
                                         .catch(closeCursorAndThrowError);
                                     } else {

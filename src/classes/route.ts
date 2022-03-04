@@ -90,9 +90,19 @@ export default class Route extends Status {
         }
     }
     constructor({ status, route, demand }: AM4.Route, protected client: AM4Client) {
-        super(status);
-        this._route = route;
-        this._demand = demand;
+        super(status, client.accessToken);
+        Object.defineProperties(this, {
+            "_route": {
+                value: route,
+                writable: true,
+                configurable: true
+            },
+            "_demand": {
+                value: demand,
+                writable: true,
+                configurable: true
+            }
+        });
         if (this.status.success) {
             this.route = {
                 departure: route.departure,
@@ -402,9 +412,8 @@ export default class Route extends Status {
 
     /**
      * A function for calculating the estimted SV growth per day for a route
-     * @param plane The raw plane data
-     * @param income The total income of the plane (per day)
-     * @param options The options for the calculation
+     * @param plane - The raw plane data
+     * @param options - The options for the calculation
      * @returns The estimated SV growth per day for the route
      */
 
@@ -417,10 +426,10 @@ export default class Route extends Status {
 
     /**
      * A function for filtering all possible stopovers from an array of airports
-     * @param route An array of the route's airports (in order from departure to arrival and stopovers inbetween, if the route has any yet)
-     * @param airports The airports to filter the stopover from. Recommended to prefilter useless airports out to increase the speed.
-     * @param plane The plane to use on the route
-     * @param amount The amount of stopovers to add to the route, by default 1. This algorithm scales pretty quickly so be careful!
+     * @param route - An array of the route's airports (in order from departure to arrival and stopovers inbetween, if the route has any yet)
+     * @param airports - The airports to filter the stopover from. Recommended to prefilter useless airports out to increase the speed.
+     * @param plane - The plane to use on the route
+     * @param amount - The amount of stopovers to add to the route, by default 1. This algorithm scales pretty quickly so be careful!
      * @returns All possible stopovers out of the given airports
      */
 
@@ -450,11 +459,11 @@ export default class Route extends Status {
 
     /**
      * A function for finding the best stopovers for a route
-     * @param route An array of the route's airports (in order from departure to arrival and stopovers inbetween, if the route has any yet)
-     * @param airports The airports to filter the stopover from. Recommended to prefilter useless airports out to increase the speed.
-     * @param plane The plane to use on the route
-     * @param mode The game mode to use for the calculations
-     * @param amount The amount of stopovers to add to the route, by default 1. This algorithm scales pretty quickly so be careful!
+     * @param route - An array of the route's airports (in order from departure to arrival and stopovers inbetween, if the route has any yet)
+     * @param airports - The airports to filter the stopover from. Recommended to prefilter useless airports out to increase the speed.
+     * @param plane - The plane to use on the route
+     * @param mode - The game mode to use for the calculations
+     * @param amount - The amount of stopovers to add to the route, by default 1. This algorithm scales pretty quickly so be careful!
      * @returns An array of the stopovers from best to worst with the new route distance and an array of the route's airports in order from departure to arrival
      */
 

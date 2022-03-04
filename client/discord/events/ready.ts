@@ -1,4 +1,4 @@
-import { MessageButton, MessageActionRow, Formatters, type TextChannel } from 'discord.js';
+import { MessageButton, MessageActionRow, MessageEmbed, Formatters, type TextChannel } from 'discord.js';
 import CryptoJS from 'crypto-js';
 import config from '../../../config.json';
 import chalk from 'chalk';
@@ -7,6 +7,8 @@ import differenceInMilliseconds from 'date-fns/differenceInMilliseconds';
 import differenceInHours from 'date-fns/differenceInHours';
 import isLastDayOfMonth from 'date-fns/isLastDayOfMonth';
 import isFuture from 'date-fns/isFuture';
+import addDays from 'date-fns/addDays';
+import setTime from 'date-fns/set';
 import isPast from 'date-fns/isPast';
 
 import type { Discord, Quiz } from '@typings/database';
@@ -27,33 +29,92 @@ const event: Event = {
                     name: `Used in ${client.guilds.cache.size} servers`
                 }]
             });
-            if (config.tournament?.enabled && isLastDayOfMonth(Date.now())) {
-                const endAt = new Date().setHours(21, 0, 0, 0);
-                if (isFuture(endAt)) {
-                    console.log(chalk.green("Scheduled tournament rewards for today!"));
-                    const ms = Math.abs(differenceInMilliseconds(endAt, Date.now()));
-                    setTimeout(async () => {
-                        const users = database.quiz.collection<Quiz.User & { name?: string }>('Users');
-                        const winnerAmount = config.tournament?.winners || 1;
-                        const winners = await users.find({ score: { $exists: true } }).sort({ score: -1 }).limit(winnerAmount).toArray();
-                        const codes = Array(winnerAmount).fill(null).map((_, i) => process.env[`TOURNAMENT_CODE_${i + 1}`]);
-                        for (let i = 0; i < winnerAmount ; i++) {
-                            const code = codes[i];
-                            const winner = winners[i];
-                            const user = await client.users.fetch(<string>winner.id);
-                            await user.send(`Your final rank in this month's tournament was ${Formatters.bold((i + 1).toString())} with a score of ${Formatters.bold(winner.score.toLocaleString('en'))}! Here is your bonus code reward: ${Formatters.spoiler(code)}.`)
-                            .then(() => console.log(`Successfully sent code to ${user.username}#${user.discriminator} (${winner.id})!`))
-                            .catch(() => console.log(`Failed to send code to ${user.username}#${user.discriminator} (${winner.id})!`));
-                        }
-                        const [first, second] = winners;
-                        await log.send(`${Formatters.bold(`Tournament results for ${client.readyAt.toLocaleString('en', { month: 'long' })}`)}\n🥇 ${first.name || "unknown"}\n🥈 ${second.name || "unknown"}`);
-                        await users.updateMany({ score: { $exists: true } }, {
-                            $unset: {
-                                score: ""
-                            }
+            if (config.tournament?.enabled) {
+                const checkTournamentState = async () => {
+                    const today = new Date();
+                    const tomorrow = addDays(today, 1);
+                    const isTomorrow = isLastDayOfMonth(tomorrow);
+                    if (isLastDayOfMonth(today) || isTomorrow) {
+                        const endAt = setTime(isTomorrow ? tomorrow : today, {
+                            hours: 21,
+                            minutes: 0,
+                            seconds: 0,
+                            milliseconds: 0
                         });
-                    }, ms);
+                        if (isFuture(endAt)) {
+                            console.log(chalk.green(`Scheduled tournament rewards to ${endAt}`));
+                            const ms = Math.abs(differenceInMilliseconds(endAt, Date.now()));
+                            setTimeout(async () => {
+                                const users = database.quiz.collection<Quiz.User & { id: string }>("Users");
+                                const userCollection = database.discord.collection<Discord.User>("Users");
+                                const winnerAmount = config.tournament?.winners || 1;
+                                const cursor = users.find(
+                                    { 
+                                        score: { $exists: true },
+                                        id: { $type: "string" } 
+                                    },
+                                    {
+                                        sort: { score: -1 }
+                                    }
+                                );
+                                const playerAmount = await cursor.count();
+                                const winners = await cursor.limit(winnerAmount).toArray();
+                                const accounts = await userCollection.aggregate<Discord.User>([
+                                    {
+                                        $match: {
+                                            id: { 
+                                                $in: winners.map(user => user.id)
+                                            } 
+                                        }
+                                    },
+                                    {
+                                        $project: {
+                                            _id: false,
+                                            id: true,
+                                            name: { $ifNull: [ "$name", "unknown" ] }
+                                        }
+                                    }
+                                ]).toArray();
+                                const codes = Array(winnerAmount).fill(null).map((_, i) => process.env[`TOURNAMENT_CODE_${i + 1}`]);
+                                const medalEmojis = ["🥇", "🥈", "🥉"];
+                                let leaderboard = "";
+                                for (let i = 0; i < winnerAmount ; i++) {
+                                    const code = codes[i];
+                                    const winner = winners[i];
+                                    const account = accounts.find(account => account.id === winner.id);
+                                    leaderboard += `${medalEmojis[i]} ${account?.name || "unknown"}\n`;
+                                    await client.users.fetch(winner.id)
+                                    .then(async user => {
+                                        await user.send(`Your final rank in this month's tournament was ${Formatters.bold((i + 1).toString())} with a score of ${Formatters.bold(winner.score.toLocaleString('en'))}! Here is your bonus code reward: ${Formatters.spoiler(code)}.`)
+                                        .then(() => console.log(`Successfully sent code to ${user.username}#${user.discriminator} (${winner.id})!`))
+                                        .catch(() => console.log(`Failed to send code to ${user.username}#${user.discriminator} (${winner.id})!`));
+                                    })
+                                    .catch(() => console.log(`Failed to fetch ${winner.id}!`));
+                                }
+                                const embed = new MessageEmbed({
+                                    title: `Tournament results for ${today.toLocaleString('en', { month: 'long' })}`,
+                                    color: "ORANGE",
+                                    timestamp: Date.now(),
+                                    description: leaderboard,
+                                    footer: {
+                                        text: `Total players: ${playerAmount.toLocaleString("en")}`,
+                                        iconURL: client.user.displayAvatarURL()
+                                    }
+                                });
+                                await log.send({ embeds: [embed] });
+                                await users.updateMany({ score: { $exists: true } }, {
+                                    $unset: {
+                                        score: ""
+                                    }
+                                });
+                                setTimeout(checkTournamentState, 24 * 60 * 60 * 1000);
+                            }, ms);
+                        }
+                    } else {
+                        setTimeout(checkTournamentState, 24 * 60 * 60 * 1000);
+                    }
                 }
+                checkTournamentState();
             }
         }
         const key = process.env.HASH_SECRET;
@@ -137,7 +198,7 @@ const event: Event = {
             for (const giveaway of giveaways) {
                 if (giveaway.finished) continue;
                 if (isPast(giveaway.expireAt)) {
-                    await triggerGiveaway(giveaway);
+                    triggerGiveaway(giveaway);
                 } else {
                     const hours = Math.abs(differenceInHours(Date.now(), giveaway.expireAt));
                     if (hours < 48) {

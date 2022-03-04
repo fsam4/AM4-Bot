@@ -54,7 +54,7 @@ declare global {
 
         /**
          * Turn this array into a map
-         * @param path The path to the key value as a string
+         * @param path - The path to the key value as a string
          * @returns A map with the path value as the key and the array element as the value
          */
 
@@ -62,8 +62,8 @@ declare global {
 
         /**
          * Split this array into chunks
-         * @param chunks The amount of chunks
-         * @param balanced Whether to make the chunks balanced. If false will have an extra element with values that did not fit equally into the chunks. If true will try to balance the chunks as equally as possible, if not possible some chunks may be larger than others. By default true.
+         * @param chunks - The amount of chunks
+         * @param balanced - Whether to make the chunks balanced. If false will have an extra element with values that did not fit equally into the chunks. If true will try to balance the chunks as equally as possible, if not possible some chunks may be larger than others. By default true.
          * @returns A multidimensional array of the chunks
          */
 
@@ -99,13 +99,21 @@ declare global {
 
         last(this: this): T;
 
+        /**
+         * 
+         * A shortcut function to get the last index of this array
+         * @returns The last index of this array
+         */
+
+        lastIndex(this: this): number;
+
     }
 
     interface String {
 
         /**
          * Capitalizes the first letter of a string only
-         * @param options The capitalization options
+         * @param options - The capitalization options
          * @returns The capitalized string
          * @license https://github.com/grncdr/js-capitalize/blob/master/LICENSE
          */
@@ -114,7 +122,7 @@ declare global {
 
         /**
          * Capitalizes the first letter of each word in a string
-         * @param options The capitalization options
+         * @param options - The capitalization options
          * @returns The capitalized string
          * @license https://github.com/grncdr/js-capitalize/blob/master/LICENSE
          */
@@ -127,8 +135,8 @@ declare global {
 
         /**
          * Calculates the percentage of a value in a value
-         * @param value The value to calculate the percentage of
-         * @param of_value The value to calculate the percentage from
+         * @param value - The value to calculate the percentage of
+         * @param of_value - The value to calculate the percentage from
          * @returns The percentage of `value` in `of_value`
          */
 
@@ -136,8 +144,8 @@ declare global {
 
         /**
          * Returns the distance between the two numbers
-         * @param x The first value
-         * @param y The second value
+         * @param x - The first value
+         * @param y - The second value
          * @returns The difference between the two numbers
          */
 
@@ -160,7 +168,7 @@ declare global {
 
         /**
          * Abbreviates a value equal to or above 1000. Can only abbreviate up to trillions
-         * @param fractionDigits fraction digits of the value, by default 1
+         * @param fractionDigits - fraction digits of the value, by default 1
          * @returns The abbreviated value as a string
          */
 
@@ -172,8 +180,8 @@ declare global {
 
         /**
          * Convert JSON to CSV format
-         * @param array An array of JSON objects
-         * @param seperator The seperator to use in the CSV
+         * @param array - An array of JSON objects
+         * @param seperator - The seperator to use in the CSV
          * @returns A string containing the formatted JSON
          */
         

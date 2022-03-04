@@ -127,8 +127,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                                 const stopovers = Route.findStopovers([departure, arrival], airports, plane, mode);
                                 if (!stopovers.length) throw new TelegramClientError("No suitable stopover could be found for this route...");
                                 const [stopover] = stopovers;
-                                const lastIndex = stopovers.length - 1;
-                                const [stopoverAirport] = stopover.airports.slice(1, lastIndex);
+                                const [stopoverAirport] = stopover.airports.slice(1, stopover.airports.lastIndex());
                                 options = { ...options, stopover: stopoverAirport };
                             }
                         }

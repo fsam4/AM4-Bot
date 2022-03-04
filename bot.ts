@@ -3,7 +3,7 @@ import './global.ts';
 // * Importing clients & main modules
 import Discord, { type ClientEvents } from 'discord.js';
 import { Scenes, session, Telegraf } from 'telegraf';
-import { EventEmitter } from 'events';
+import { TypedEmitter } from './src/lib/emitter';
 import { MongoClient } from 'mongodb';
 import AM4RestClient from './src/index';
 import dotenvExpand from 'dotenv-expand';
@@ -19,12 +19,13 @@ import formatDistanceToNowStrict from 'date-fns/formatDistanceToNowStrict';
 import differenceInMilliseconds from 'date-fns/differenceInMilliseconds';
 import addSeconds from 'date-fns/addSeconds';
 import addDays from 'date-fns/addDays';
+import setTime from 'date-fns/set';
 import isPast from 'date-fns/isPast';
 
 // * Importing types
 import type * as TelegramClientTypes from '@telegram/types';
 import type * as DiscordClientTypes from '@discord/types';
-import type * as ClientTypes from '@client/types';
+import type * as ClientTypes from '@client/base/types';
 import type { BotCommand } from 'typegram';
 import type * as Database from '@typings/database';
 
@@ -84,29 +85,34 @@ if (cluster.isPrimary) {
                 token: logWebhookToken
             }) 
         };
-        const events = new EventEmitter({ captureRejections: true });
-        fs.readdir("./client/events", async (err, files) => {
+        
+        const events = new TypedEmitter<ClientTypes.EventListeners>({ captureRejections: true });
+        fs.readdir("./client/base/events", async (err, files) => {
             if (err) throw err;
             files = files.filter(isJavaScript);
             for (const file of files) {
-                const event: ClientTypes.Event = await import(`./client/events/${file}`);
+                const event: ClientTypes.Event = await import(`./client/base/events/${file}`);
                 if (event.once) {
                     events.once(event.name, event.execute);
                 } else {
                     events.on(event.name, event.execute);
                 }
             }
-            let updateAt: number | Date = new Date().setHours(12, 0, 0, 0);
+            let updateAt = setTime(new Date(), {
+                hours: 12,
+                minutes: 0,
+                seconds: 0,
+                milliseconds: 0
+            });
             if (isPast(updateAt)) updateAt = addDays(updateAt, 1);
             const ms = Math.abs(differenceInMilliseconds(updateAt, Date.now()));
             setTimeout(() => events.emit("dataUpdate", options), ms);
-            console.log(chalk.green(`Scheduled next data update to ${new Date(updateAt)}`));
+            console.log(chalk.green(`Scheduled next data update to ${updateAt}`));
         });
 
-        process.on("message", message => {
-            if (typeof message !== "string") return;
+        process.on("message", (message: ClientTypes.EventNames) => {
             const eventNames = events.eventNames();
-            if (eventNames.includes(message)) {
+            if (typeof message === "string" && eventNames.includes(message)) {
                 events.emit(message, options);
             } else {
                 console.log(`Primary received unknown message: ${message}`);
@@ -230,7 +236,6 @@ if (cluster.isPrimary) {
             });
 
             process.on("message", message => {
-                if (typeof message !== "string") return;
                 switch (message) {
                     case "shutdown": {
                         console.log(chalk.red("Disconnected from Discord cluster..."));
@@ -388,7 +393,6 @@ if (cluster.isPrimary) {
             });
 
             process.on("message", message => {
-                if (typeof message !== "string") return;
                 switch(message) {
                     case "shutdown": {
                         console.log(chalk.red("Disconnected from Discord cluster..."));

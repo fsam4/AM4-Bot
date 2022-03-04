@@ -1,4 +1,5 @@
-import { Constants, Formatters, MessageSelectMenu, MessageEmbed, MessageActionRow, type MessageComponentInteraction, type Message, type UserContextMenuInteraction } from 'discord.js';
+import { Constants, Formatters, MessageSelectMenu, MessageEmbed, MessageActionRow, type UserContextMenuInteraction } from 'discord.js';
+import { Discord as Utils } from '../../utils';
 import DiscordClientError from '../error';
 import { ObjectId } from 'bson';
 import QuickChart from 'quickchart-js';
@@ -8,6 +9,8 @@ import type { ContextMenu } from '@discord/types';
 import type Alliance from '@source/classes/alliance';
 
 type AllianceData = Alliance & { data?: AM4.Alliance };
+
+const { isCachedUserContextMenuInteraction } = Utils;
 
 // This command was never released to AM4 Bot due to Discord's context menu command cap (5).
 
@@ -27,6 +30,13 @@ const command: ContextMenu<UserContextMenuInteraction> = {
         defaultPermission: true
     },
     async execute(interaction, { database, rest, account, locale }) {
+        if (!isCachedUserContextMenuInteraction(interaction)) {
+            await interaction.reply({
+                content: "This command can only be used in servers where the bot is in...",
+                ephemeral: true
+            });
+            return;
+        }
         await interaction.deferReply();
         try {
             const userCollection = database.discord.collection<Discord.User>("Users");
@@ -427,25 +437,26 @@ const command: ContextMenu<UserContextMenuInteraction> = {
             const message = await interaction.editReply({ 
                 embeds: [embed], 
                 components: [row] 
-            }) as Message;
-            const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-            const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+            });
+            const collector = message.createMessageComponentCollector({ 
+                filter: ({ user }) => user.id === interaction.user.id, 
+                idle: 10 * 60 * 1000,
+                componentType: "SELECT_MENU"
+            });
             collector.on("collect", async interaction => {
-                if (interaction.isSelectMenu()) {
-                    const value = interaction.values[0];
-                    const graph = graphs.find(graph => graph.id.equals(value));
-                    embed.setDescription(graph.description);
-                    const chart = new QuickChart()
-                    .setConfig(graph.data)
-                    .setBackgroundColor("transparent");
-                    const url = await chart.getShortUrl();
-                    for (const option of select.options) option.default = (value === option.value);
-                    row.setComponents(select);
-                    await interaction.update({ 
-                        embeds: [embed.setImage(url)],
-                        components: [row]
-                    });
-                }
+                const value = interaction.values[0];
+                const graph = graphs.find(graph => graph.id.equals(value));
+                embed.setDescription(graph.description);
+                const chart = new QuickChart()
+                .setConfig(graph.data)
+                .setBackgroundColor("transparent");
+                const url = await chart.getShortUrl();
+                for (const option of select.options) option.default = (value === option.value);
+                row.setComponents(select);
+                await interaction.update({ 
+                    embeds: [embed.setImage(url)],
+                    components: [row]
+                });
             });
             collector.on("end", async collected => {
                 select.setDisabled(true);

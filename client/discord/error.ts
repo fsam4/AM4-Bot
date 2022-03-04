@@ -9,7 +9,7 @@ const message = "An unknown error occured. Please report this in https://discord
 /**
  * A class representing a Discord client error.
  * @constructor
- * @param message The error message
+ * @param message - The error message
  */
 
  export default class DiscordClientError extends ClientError {
@@ -20,7 +20,7 @@ const message = "An unknown error occured. Please report this in https://discord
 
     /**
      * Send the error as an interaction response
-     * @param interaction The interaction to reply to
+     * @param interaction - The interaction to reply to
      */
 
     async send(interaction: Interaction) {
@@ -38,7 +38,7 @@ const message = "An unknown error occured. Please report this in https://discord
 
     /**
      * Send an unknown error reply to an interaction
-     * @param interaction The interaction to reply to
+     * @param interaction - The interaction to reply to
      */
 
     static async sendUnknownError(interaction: Interaction) {

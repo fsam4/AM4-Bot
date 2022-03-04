@@ -2,6 +2,9 @@
 jsconfig.json
 *.js
 
+# Exclude the emitter.js file as it does not have a TypeScript file
+!src/lib/emitter.js
+
 # Ignore node_modules, database folders & image folders
 documents/json/questions
 documents/json/todo

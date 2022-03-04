@@ -7,7 +7,7 @@ import isFirstDayOfMonth from 'date-fns/isFirstDayOfMonth';
 import addMonths from 'date-fns/addMonths';
 
 import type { AnyBulkWriteOperation } from 'mongodb';
-import type { Event } from '@client/types';
+import type { Event } from '@client/base/types';
 import type { AM4 } from '@typings/database';
 
 type AllianceDocument = AM4.Alliance & { members: AM4.AllianceMember[] };

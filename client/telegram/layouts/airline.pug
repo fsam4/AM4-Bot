@@ -6,7 +6,7 @@ b <u>Airline Information</u>
         |
         | <b>Alliance:</b> #{airline.alliance.name}
 
-- var founded = format(subHours(airline.founded, 3), 'dd/MM/yyyy • kk:mm')
+- var founded = format(airline.founded.getTime() + airline.founded.getTimezoneOffset() * 60000, 'dd/MM/yyyy • kk:mm')
 |
 | <b>Founded:</b> #{founded} (UTC)
 |

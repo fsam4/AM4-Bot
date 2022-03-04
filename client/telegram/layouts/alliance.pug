@@ -3,7 +3,7 @@ b <u>General statistics</u>
 | <b>Rank:</b> #{alliance.rank}
 | <b>Value:</b> $#{alliance.value}
 | <b>Flights:</b> #{alliance.flights.toLocaleString(locale)}
-| <b>Founded:</b> #{format(alliance.founded, 'dd/MM/yyyy')}
+| <b>Founded:</b> #{format(alliance.founded.getTime() + alliance.founded.getTimezoneOffset() * 60000, 'dd/MM/yyyy')}
 |
 |
 b <u>Member statistics</u>

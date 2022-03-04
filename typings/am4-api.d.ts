@@ -1,4 +1,4 @@
-export interface Request {
+export interface Status {
     status: {
         request: "failed" | "success";
         requests_remaining: number;
@@ -10,7 +10,7 @@ export type GameMode = "Realism" | "Easy";
 
 type BooleanNumber = 0 | 1;
 
-export interface Airline extends Request {
+export interface Airline extends Status {
     user: {
         company: string;
         level: number;
@@ -44,7 +44,7 @@ export interface Airline extends Request {
     }>;
 }
 
-export interface Alliance extends Request {
+export interface Alliance extends Status {
     alliance: [
         {
             name: string;
@@ -68,7 +68,7 @@ export interface Alliance extends Request {
     }>;
 }
 
-export interface Route extends Request {
+export interface Route extends Status {
     route: {
         distance: number;
         departure: string;
@@ -83,7 +83,7 @@ export interface Route extends Request {
     };
 }
 
-export interface Routes extends Request {
+export interface Routes extends Status {
     route: {
         departure: string;
         data: Array<{

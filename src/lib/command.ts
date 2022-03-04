@@ -20,7 +20,7 @@ type Constructable<T> = void | T;
 
 /**
  * A function that can be called as a function or with `new` keyword. Constructs `ApplicationCommandOptionData` to raw API data.
- * @param option The `ApplicationCommandOptionData` of the option
+ * @param option - The `ApplicationCommandOptionData` of the option
  * @returns The raw API data, if not called with `new` keyword
  */
 
@@ -54,7 +54,7 @@ function ApplicationCommandOption(this: ApplicationCommandOption, option: Applic
 /**
  * A class that constructs `ApplicationCommandData` to raw API data.
  * @constructor 
- * @param command The `ApplicationCommandData` of the command
+ * @param command - The `ApplicationCommandData` of the command
  */
 
 export default class ApplicationCommand {

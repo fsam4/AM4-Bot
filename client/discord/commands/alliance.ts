@@ -1,4 +1,5 @@
-import { MessageEmbed, Permissions, MessageSelectMenu, Formatters, MessageActionRow, Constants, type MessageComponentInteraction, type Message } from 'discord.js';
+import { MessageEmbed, Permissions, MessageSelectMenu, Formatters, MessageActionRow, Constants } from 'discord.js';
+import { Discord as Utils } from '../../utils';
 import DiscordClientError from '../error';
 import { ObjectId } from 'bson';
 import QuickChart from 'quickchart-js';
@@ -20,6 +21,8 @@ interface AllianceMember extends AM4.AllianceMember {
     thisWeek: number;
     left: Date;
 }
+
+const { isCachedCommandInteraction } = Utils;
 
 const sort_choices = [
     {
@@ -299,7 +302,7 @@ const command: SlashCommand = {
                     });
                     if (alliance.inSeason) embed.fields[0].value += `\n**Season contribution:** $${alliance.contribution.season.toLocaleString(locale)}`;
                     const allianceData = await allianceCollection.findOne({ name: alliance.name });
-                    if (allianceData) {
+                    if (allianceData && isCachedCommandInteraction(interaction)) {
                         const memberDocuments = await memberCollection.aggregate<AllianceMember>([
                             {
                                 $match: {
@@ -665,19 +668,20 @@ const command: SlashCommand = {
                         const message = await interaction.editReply({
                             embeds: [embed],
                             components: [row]
-                        }) as Message;
-                        const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                        const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                        });
+                        const collector = message.createMessageComponentCollector({ 
+                            filter: ({ user }) => user.id === interaction.user.id, 
+                            idle: 10 * 60 * 1000,
+                            componentType: "SELECT_MENU" 
+                        });
                         collector.on("collect", async interaction => {
-                            if (interaction.isSelectMenu()) {
-                                const url = interaction.values[0];
-                                for (const option of select.options) option.default = (url === option.value);
-                                row.setComponents(select);
-                                await interaction.update({
-                                    embeds: [embed.setImage(url)],
-                                    components: [row]
-                                });
-                            }
+                            const url = interaction.values[0];
+                            for (const option of select.options) option.default = (url === option.value);
+                            row.setComponents(select);
+                            await interaction.update({
+                                embeds: [embed.setImage(url)],
+                                components: [row]
+                            });
                         });
                         collector.once("end", async collected => {
                             row.setComponents(select.setDisabled(true));
@@ -690,6 +694,7 @@ const command: SlashCommand = {
                     break;
                 }
                 case "compare": {
+                    if (!isCachedCommandInteraction(interaction)) throw new DiscordClientError("This command can only be used in servers where the bot is in...");
                     const options = interaction.options.data[0].options.filter(option => option.name.startsWith("alliance"));
                     type AllianceData = Alliance & { data?: AM4.Alliance };
                     const alliances = await Promise.all<AllianceData>(
@@ -1080,25 +1085,26 @@ const command: SlashCommand = {
                     const message = await interaction.editReply({ 
                         embeds: [embed], 
                         components: [row] 
-                    }) as Message;
-                    const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                    const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                    });
+                    const collector = message.createMessageComponentCollector({ 
+                        filter: ({ user }) => user.id === interaction.user.id, 
+                        idle: 10 * 60 * 1000,
+                        componentType: "SELECT_MENU"
+                    });
                     collector.on("collect", async interaction => {
-                        if (interaction.isSelectMenu()) {
-                            const value = interaction.values[0];
-                            const graph = graphs.find(graph => graph.id.equals(value));
-                            embed.setDescription(graph.description);
-                            const chart = new QuickChart()
-                            .setConfig(graph.data)
-                            .setBackgroundColor("transparent");
-                            const url = await chart.getShortUrl();
-                            for (const option of select.options) option.default = (value === option.value);
-                            row.setComponents(select);
-                            await interaction.update({ 
-                                embeds: [embed.setImage(url)],
-                                components: [row]
-                            });
-                        }
+                        const value = interaction.values[0];
+                        const graph = graphs.find(graph => graph.id.equals(value));
+                        embed.setDescription(graph.description);
+                        const chart = new QuickChart()
+                        .setConfig(graph.data)
+                        .setBackgroundColor("transparent");
+                        const url = await chart.getShortUrl();
+                        for (const option of select.options) option.default = (value === option.value);
+                        row.setComponents(select);
+                        await interaction.update({ 
+                            embeds: [embed.setImage(url)],
+                            components: [row]
+                        });
                     });
                     collector.once("end", async collected => {
                         row.setComponents(select.setDisabled(true));
@@ -1154,7 +1160,7 @@ const command: SlashCommand = {
                                 for (const member of memberList) member.data = users.find(user => user.name === member.airline.name);
                             }
                             let path = sort.split('.');
-                            type F = Parameters<typeof memberList.sort>[number]
+                            type F = Parameters<typeof memberList.sort>[number];
                             const sortFunction: F = (a, b) => {
                                 let value_a: any = a, value_b: any = b;
                                 for (const prop of path) {
@@ -1202,61 +1208,63 @@ const command: SlashCommand = {
                                 }
                                 return `${string} (${Formatters.italic(value)})`;
                             };
-                            let values = memberList.map(formatFunction);
-                            let sections = 1;
-                            let fields = values.split(sections);
-                            while(fields.some(values => values.map(string => string.length).reduce((a, b) => a + b) > 1000)) {
+                            let values = memberList.map(formatFunction), sections = 0, fields: string[][] = values.split(sections), valid = false;
+                            do {
                                 sections++;
                                 fields = values.split(sections);
-                            }
+                                valid = fields.some(values => values.map(string => string.length).reduce((a, b) => a + b) > 1000);
+                            } while(valid);
                             embed.addFields(fields.map(values => ({
                                 name: '\u200B',
                                 value: values.join('\n'),
                                 inline: true
                             })));
-                            const sortSelect = new MessageSelectMenu({
-                                customId: "sort",
-                                maxValues: 1,
-                                minValues: 1,
-                                placeholder: "Sorting by...",
-                                options: sort_choices.map(choice => ({
-                                    label: choice.name,
-                                    value: choice.value,
-                                    default: choice.value === sort
-                                }))
-                            });
-                            const orderSelect = new MessageSelectMenu({
-                                customId: "order",
-                                maxValues: 1,
-                                minValues: 1,
-                                placeholder: "Order...",
-                                options: [
-                                    {
-                                        label: "Ascending",
-                                        value: "asc",
-                                        default: order === "asc"
-                                    },
-                                    {
-                                        label: "Descending",
-                                        value: "desc",
-                                        default: order === "desc"
-                                    }
-                                ]
-                            });
-                            const sortRow = new MessageActionRow({ components: [sortSelect] });
-                            const orderRow = new MessageActionRow({ components: [orderSelect] });
-                            const message = await interaction.editReply({ 
-                                embeds: [embed],
-                                components: [
-                                    sortRow,
-                                    orderRow
-                                ]
-                            }) as Message;
-                            const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                            const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
-                            collector.on("collect", async interaction => {
-                                await interaction.deferUpdate();
-                                if (interaction.isSelectMenu()) {
+                            if (isCachedCommandInteraction(interaction)) {
+                                const sortSelect = new MessageSelectMenu({
+                                    customId: "sort",
+                                    maxValues: 1,
+                                    minValues: 1,
+                                    placeholder: "Sorting by...",
+                                    options: sort_choices.map(choice => ({
+                                        label: choice.name,
+                                        value: choice.value,
+                                        default: choice.value === sort
+                                    }))
+                                });
+                                const orderSelect = new MessageSelectMenu({
+                                    customId: "order",
+                                    maxValues: 1,
+                                    minValues: 1,
+                                    placeholder: "Order...",
+                                    options: [
+                                        {
+                                            label: "Ascending",
+                                            value: "asc",
+                                            default: order === "asc"
+                                        },
+                                        {
+                                            label: "Descending",
+                                            value: "desc",
+                                            default: order === "desc"
+                                        }
+                                    ]
+                                });
+                                const sortRow = new MessageActionRow({ components: [sortSelect] });
+                                const orderRow = new MessageActionRow({ components: [orderSelect] });
+                                const message = await interaction.editReply({ 
+                                    embeds: [embed],
+                                    components: [
+                                        sortRow,
+                                        orderRow
+                                    ]
+                                });
+                                const collector = message.createMessageComponentCollector({ 
+                                    filter: ({ user }) => user.id === interaction.user.id, 
+                                    idle: 10 * 60 * 1000,
+                                    componentType: "SELECT_MENU"
+                                });
+                                collector.on("collect", async interaction => {
+                                    await interaction.deferUpdate();
                                     if (interaction.customId === "sort") {
                                         sort = interaction.values[0];
                                         path = sort.split('.');
@@ -1269,35 +1277,38 @@ const command: SlashCommand = {
                                             option.default = option.value === order;
                                         }
                                     }
-                                }
-                                memberList.sort(sortFunction);
-                                values = memberList.map(formatFunction);
-                                sections = 1;
-                                fields = values.split(sections);
-                                while(fields.some(values => values.map(string => string.length).reduce((a, b) => a + b) > 1000)) {
-                                    sections++;
+                                    memberList.sort(sortFunction);
+                                    values = memberList.map(formatFunction);
+                                    sections = 0;
                                     fields = values.split(sections);
-                                }
-                                embed.fields = fields.map(values => ({
-                                    name: '\u200B',
-                                    value: values.join('\n'),
-                                    inline: true
-                                }));
-                                await interaction.editReply({ 
-                                    embeds: [embed],
-                                    components: [
-                                        new MessageActionRow({ components: [sortSelect] }),
-                                        new MessageActionRow({ components: [orderSelect] })
-                                    ]
+                                    do {
+                                        sections++;
+                                        fields = values.split(sections);
+                                        valid = fields.some(values => values.map(string => string.length).reduce((a, b) => a + b) > 1000);
+                                    } while(valid);
+                                    embed.fields = fields.map(values => ({
+                                        name: '\u200B',
+                                        value: values.join('\n'),
+                                        inline: true
+                                    }));
+                                    await interaction.editReply({ 
+                                        embeds: [embed],
+                                        components: [
+                                            new MessageActionRow({ components: [sortSelect] }),
+                                            new MessageActionRow({ components: [orderSelect] })
+                                        ]
+                                    });
                                 });
-                            });
-                            collector.once("end", async collected => {
-                                const reply = collected.last() || interaction;
-                                sortRow.setComponents(sortSelect.setDisabled(true));
-                                orderRow.setComponents(orderSelect.setDisabled(true));
-                                await reply.editReply({ components: [sortRow, orderRow] })
-                                .catch(() => void 0);
-                            });
+                                collector.once("end", async collected => {
+                                    const reply = collected.last() || interaction;
+                                    sortRow.setComponents(sortSelect.setDisabled(true));
+                                    orderRow.setComponents(orderSelect.setDisabled(true));
+                                    await reply.editReply({ components: [sortRow, orderRow] })
+                                    .catch(() => void 0);
+                                });
+                            } else {
+                                await interaction.editReply({ embeds: [embed] });
+                            }
                             break;
                         }
                         case "search": {
@@ -1563,7 +1574,7 @@ const command: SlashCommand = {
                                 }
                             }
                             if (member.contribution.season) embed.fields[1].value += `\n**Season:** $${member.contribution.season.toLocaleString(locale)}`;
-                            if (charts.length) {
+                            if (charts.length && isCachedCommandInteraction(interaction)) {
                                 const options = await Promise.all(
                                     charts.map(async (chart, i) => {
                                         const graph = new QuickChart()
@@ -1587,19 +1598,20 @@ const command: SlashCommand = {
                                 const message = await interaction.editReply({
                                     embeds: [embed],
                                     components: [row]
-                                }) as Message;
-                                const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                                const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                                });
+                                const collector = message.createMessageComponentCollector({ 
+                                    filter: ({ user }) => user.id === interaction.user.id, 
+                                    idle: 10 * 60 * 1000,
+                                    componentType: "SELECT_MENU"
+                                });
                                 collector.on("collect", async interaction => {
-                                    if (interaction.isSelectMenu()) {
-                                        const url = interaction.values[0];
-                                        for (const option of select.options) option.default = (url === option.value);
-                                        row.setComponents(select);
-                                        await interaction.update({
-                                            embeds: [embed.setImage(url)],
-                                            components: [row]
-                                        });
-                                    }
+                                    const url = interaction.values[0];
+                                    for (const option of select.options) option.default = (url === option.value);
+                                    row.setComponents(select);
+                                    await interaction.update({
+                                        embeds: [embed.setImage(url)],
+                                        components: [row]
+                                    });
                                 });
                                 collector.once("end", async collected => {
                                     row.setComponents(select.setDisabled(true));
@@ -1612,6 +1624,7 @@ const command: SlashCommand = {
                             break;
                         }
                         case "compare": {
+                            if (!isCachedCommandInteraction(interaction)) throw new DiscordClientError("This command can only be used in servers where the bot is in...");
                             const options = interaction.options.data[0].options[0].options.filter(option => option.name.startsWith("member"));
                             type MemberDocument = AM4.AllianceMember & { thisWeek: number };
                             type AllianceMember = Member & { document?: MemberDocument };
@@ -2109,25 +2122,26 @@ const command: SlashCommand = {
                             const message = await interaction.editReply({ 
                                 embeds: [embed], 
                                 components: [row] 
-                            }) as Message;
-                            const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                            const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                            });
+                            const collector = message.createMessageComponentCollector({ 
+                                filter: ({ user }) => user.id === interaction.user.id, 
+                                idle: 10 * 60 * 1000,
+                                componentType: "SELECT_MENU"
+                            });
                             collector.on("collect", async interaction => {
-                                if (interaction.isSelectMenu()) {
-                                    const value = interaction.values[0];
-                                    const graph = graphs.find(graph => graph.id.equals(value));
-                                    embed.setDescription(graph.description);
-                                    const chart = new QuickChart()
-                                    .setConfig(graph.data)
-                                    .setBackgroundColor("transparent");
-                                    const url = await chart.getShortUrl();
-                                    for (const option of select.options) option.default = (value === option.value);
-                                    row.setComponents(select);
-                                    await interaction.update({ 
-                                        embeds: [embed.setImage(url)],
-                                        components: [row]
-                                    });
-                                }
+                                const value = interaction.values[0];
+                                const graph = graphs.find(graph => graph.id.equals(value));
+                                embed.setDescription(graph.description);
+                                const chart = new QuickChart()
+                                .setConfig(graph.data)
+                                .setBackgroundColor("transparent");
+                                const url = await chart.getShortUrl();
+                                for (const option of select.options) option.default = (value === option.value);
+                                row.setComponents(select);
+                                await interaction.update({ 
+                                    embeds: [embed.setImage(url)],
+                                    components: [row]
+                                });
                             });
                             collector.once("end", async collected => {
                                 row.setComponents(select.setDisabled(true));

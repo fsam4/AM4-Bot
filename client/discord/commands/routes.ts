@@ -1,4 +1,4 @@
-import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, Formatters, Constants, type MessageComponentInteraction, type Message, type ApplicationCommandOptionChoice } from 'discord.js';
+import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, Formatters, Constants, type ApplicationCommandOptionChoice } from 'discord.js';
 import { activity as defaultActivity } from '../../../src/settings.json';
 import DiscordClientError from '../error';
 import * as Utils from '../../utils';
@@ -34,8 +34,8 @@ interface RouteDocument extends BaseDocument {
 const R = 6371 * (Math.pow(10, 3));
 const P = (Math.PI / 180);
 
+const { formatCode, formatSeats, createAttachmentUrl, isCachedCommandInteraction } = Utils.Discord;
 const { createAirportFilter, createTextFilter } = Utils.MongoDB;
-const { formatCode, formatSeats } = Utils.Discord;
 
 const command: SlashCommand = {
     get name() {
@@ -142,6 +142,13 @@ const command: SlashCommand = {
         ]
     },
     async execute(interaction, { database, ephemeral, locale }) {
+        if (!isCachedCommandInteraction(interaction)) {
+            await interaction.reply({
+                content: "This command can only be used in servers where the bot is in...",
+                ephemeral: true
+            });
+            return;
+        }
         await interaction.deferReply({ ephemeral });
         try {
             const planeSettings = database.settings.collection<Settings.Plane>('Planes');
@@ -406,8 +413,7 @@ const command: SlashCommand = {
                     }
                     const [stopover] = stopovers;
                     route.distance = stopover.distance;
-                    const lastIndex = stopover.airports.length - 1;
-                    const [stopoverAirport] = stopover.airports.slice(1, lastIndex);
+                    const [stopoverAirport] = stopover.airports.slice(1, stopover.airports.lastIndex());
                     route.stopover = stopoverAirport;
                 }
                 const { preference, configuration } = Route.configure(plane, {
@@ -469,7 +475,7 @@ const command: SlashCommand = {
                         iconURL: interaction.client.user.displayAvatarURL()
                     },
                     thumbnail: {
-                        url: `attachment://${image.name}`
+                        url: createAttachmentUrl(image)
                     },
                     fields: [
                         { 
@@ -546,13 +552,16 @@ const command: SlashCommand = {
                 embeds: [currentEmbed], 
                 files: [image],
                 components 
-            }) as Message;
+            });
             for (const options of followups) {
                 await interaction.followUp(options)
                 .catch(() => void 0);
             }
-            const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-            const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000, componentType: "BUTTON" });
+            const collector = message.createMessageComponentCollector({ 
+                filter: ({ user }) => user.id === interaction.user.id, 
+                idle: 10 * 60 * 1000, 
+                componentType: "BUTTON" 
+            });
             collector.on("collect", async interaction => {
                 if (interaction.customId === "plane") {
                     await interaction.deferReply({ ephemeral: true });
@@ -561,7 +570,7 @@ const command: SlashCommand = {
                         timestamp: plane._id.getTimestamp(),
                         description: `**Plane type:** ${plane.type === "vip" ? plane.type.toUpperCase() : plane.type}`,
                         image: {
-                            url: `attachment://${image.name}`
+                            url: createAttachmentUrl(image)
                         },
                         author: {
                             name: plane.name,

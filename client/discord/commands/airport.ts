@@ -1,4 +1,4 @@
-import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, MessageSelectMenu, Formatters, Constants, type Message, type MessageComponentInteraction, type ApplicationCommandOptionChoice } from 'discord.js';
+import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, MessageSelectMenu, Formatters, Constants, type ApplicationCommandOptionChoice } from 'discord.js';
 import { ObjectId, type Filter, type Document } from 'mongodb';
 import * as Utils from '../../utils';
 import DiscordClientError from '../error';
@@ -24,7 +24,7 @@ interface Airport extends AM4.Airport {
 }
 
 const { createAirportFilter, createTextFilter, createLocationBox, createLocationSphere } = Utils.MongoDB;
-const { formatCode } = Utils.Discord;
+const { formatCode, createAttachmentUrl, isCachedCommandInteraction } = Utils.Discord;
 
 type SphereCoordinates = Parameters<typeof createLocationSphere>;
 type BoxCoordinates = Parameters<typeof createLocationBox>;
@@ -409,6 +409,7 @@ const command: SlashCommand = {
                     break;
                 }
                 case "filter": {
+                    if (!isCachedCommandInteraction(interaction)) throw new DiscordClientError("This command can only be used in servers where the bot is in...");
                     const market = interaction.options.getInteger("market");
                     const runway = interaction.options.getInteger("runway");
                     const country = interaction.options.getString("country")?.trimEnd();
@@ -486,7 +487,7 @@ const command: SlashCommand = {
                     const message = await interaction.editReply({ 
                         embeds: [currentEmbed], 
                         components 
-                    }) as Message;
+                    });
                     if (amount > 1000) {
                         await interaction.followUp({
                             content: `Found ${amount.toLocaleString(locale)} airports with your criteria. Please note that the bot will only display ${limit.toLocaleString(locale)} of them. Change the limit to display more or less.`,
@@ -494,8 +495,11 @@ const command: SlashCommand = {
                         });
                     }
                     if (embeds.length) {
-                        const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                        const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                        const collector = message.createMessageComponentCollector({ 
+                            filter: ({ user }) => user.id === interaction.user.id, 
+                            idle: 10 * 60 * 1000,
+                            componentType: "BUTTON"
+                        });
                         collector.on("collect", async interaction => {
                             const [action, value] = interaction.customId.split(":");
                             currentEmbed = pages.next(action === "prev" ? -Number(value) : Number(value)).value;
@@ -553,7 +557,7 @@ const command: SlashCommand = {
                         color: "BLUE",
                         title: `${airport.city.capitalizeWords({ capitalizeAfterQuote: true })}, ${airport.country_code.toUpperCase()}`,
                         thumbnail: {
-                            url: `attachment://${image.name}`
+                            url: createAttachmentUrl(image)
                         },
                         fields: [
                             { 
@@ -573,6 +577,7 @@ const command: SlashCommand = {
                     break;
                 }
                 case "stopovers": {
+                    if (!isCachedCommandInteraction(interaction)) throw new DiscordClientError("This command can only be used in servers where the bot is in...");
                     const departureCode = interaction.options.getString("departure", true).trim();
                     const arrivalCode = interaction.options.getString("arrival", true).trim();
                     const departure = await airportCollection.findOne(createAirportFilter(departureCode));
@@ -611,8 +616,7 @@ const command: SlashCommand = {
                     if (!stopovers.length) throw new DiscordClientError("No suitable stopovers could be found between these two routes...");
                     const user = await userCollection.findOne({ id: interaction.user.id });
                     const embeds = stopovers.map((stopover, i) => {
-                        const lastIndex = stopover.airports.length - 1;
-                        const stopoverAirports: AM4.Airport[] = stopover.airports.slice(1, lastIndex);
+                        const stopoverAirports: AM4.Airport[] = stopover.airports.slice(1, stopover.airports.lastIndex());
                         return new MessageEmbed({
                             color: "BLUE",
                             title: `${formatCode(departure, user?.options.code)} to ${formatCode(arrival, user?.options.code)}`,
@@ -662,10 +666,13 @@ const command: SlashCommand = {
                             ]
                         })
                     ];
-                    const message = await interaction.editReply({ embeds: [currentEmbed], components }) as Message;
+                    const message = await interaction.editReply({ embeds: [currentEmbed], components });
                     if (embeds.length) {
-                        const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                        const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                        const collector = message.createMessageComponentCollector({ 
+                            filter: ({ user }) => user.id === interaction.user.id, 
+                            idle: 10 * 60 * 1000,
+                            componentType: "BUTTON"
+                        });
                         collector.on("collect", async interaction => {
                             const [action, value] = interaction.customId.split(":");
                             currentEmbed = pages.next(action === "prev" ? -Number(value) : Number(value)).value;
@@ -680,6 +687,7 @@ const command: SlashCommand = {
                     break;
                 }
                 case "geo": {
+                    if (!isCachedCommandInteraction(interaction)) throw new DiscordClientError("This command can only be used in servers where the bot is in...");
                     let airports: AM4.Airport[] = [], amount: number;
                     const limit = interaction.options.getInteger("limit") || 1000;
                     switch(subCommand) {
@@ -801,7 +809,7 @@ const command: SlashCommand = {
                             ]
                         })
                     ];
-                    const message = await interaction.editReply({ embeds: [currentEmbed], components }) as Message;
+                    const message = await interaction.editReply({ embeds: [currentEmbed], components });
                     if (amount > 1000) {
                         await interaction.followUp({
                             content: `Found ${amount.toLocaleString(locale)} airports with your criteria. Please note that the bot will only display ${limit.toLocaleString(locale)} of them. Change the limit to display more or less.`,
@@ -809,8 +817,11 @@ const command: SlashCommand = {
                         });
                     }
                     if (embeds.length) {
-                        const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                        const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                        const collector = message.createMessageComponentCollector({ 
+                            filter: ({ user }) => user.id === interaction.user.id, 
+                            idle: 10 * 60 * 1000,
+                            componentType: "BUTTON" 
+                        });
                         collector.on("collect", async interaction => {
                             const [action, value] = interaction.customId.split(":");
                             currentEmbed = pages.next(action === "prev" ? -Number(value) : Number(value)).value;
@@ -825,6 +836,7 @@ const command: SlashCommand = {
                     break;
                 }
                 case "compare": {
+                    if (!isCachedCommandInteraction(interaction)) throw new DiscordClientError("This command can only be used in servers where the bot is in...");
                     const options = interaction.options.data[0].options;
                     const airports = await Promise.all<Airport>(
                         options.map(async option => {
@@ -1113,25 +1125,26 @@ const command: SlashCommand = {
                     const message = await interaction.editReply({ 
                         embeds: [embed], 
                         components: [row] 
-                    }) as Message;
-                    const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                    const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                    });
+                    const collector = message.createMessageComponentCollector({ 
+                        filter: ({ user }) => user.id === interaction.user.id, 
+                        idle: 10 * 60 * 1000,
+                        componentType: "SELECT_MENU" 
+                    });
                     collector.on("collect", async interaction => {
-                        if (interaction.isSelectMenu()) {
-                            const value = interaction.values[0];
-                            const graph = graphs.find(graph => graph.id.equals(value));
-                            embed.setDescription(graph.description);
-                            const chart = new QuickChart()
-                            .setConfig(graph.data)
-                            .setBackgroundColor("transparent");
-                            const url = await chart.getShortUrl();
-                            for (const option of select.options) option.default = (value === option.value);
-                            row.setComponents(select);
-                            await interaction.update({ 
-                                embeds: [embed.setImage(url)],
-                                components: [row]
-                            });
-                        }
+                        const value = interaction.values[0];
+                        const graph = graphs.find(graph => graph.id.equals(value));
+                        embed.setDescription(graph.description);
+                        const chart = new QuickChart()
+                        .setConfig(graph.data)
+                        .setBackgroundColor("transparent");
+                        const url = await chart.getShortUrl();
+                        for (const option of select.options) option.default = (value === option.value);
+                        row.setComponents(select);
+                        await interaction.update({ 
+                            embeds: [embed.setImage(url)],
+                            components: [row]
+                        });
                     });
                     collector.once("end", async collected => {
                         row.setComponents(select.setDisabled(true));

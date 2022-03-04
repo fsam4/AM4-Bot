@@ -42,7 +42,7 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
                 .then(async webhook => {
                     if (webhook.owner.id !== interaction.client.user.id) throw new DiscordClientError("This command can only be used on notification messages sent by AM4 Bot notification webhooks!");
                     const notification = await notifications.findOne({ 'webhooks.message': interaction.targetId });
-                    if (!notification) throw new DiscordClientError(`${Formatters.hyperlink("This notification message", (<Message>interaction.targetMessage).url)} has expired. Expired notification messages cannot be viewed. Notification messages expire 24 hours after they have been sent.`);
+                    if (!notification) throw new DiscordClientError(`${Formatters.hyperlink("This notification message", interaction.targetMessage.url)} has expired. Expired notification messages cannot be viewed. Notification messages expire 24 hours after they have been sent.`);
                     await interaction.client.users.fetch(notification.user)
                     .then(async user => {
                         const userData = await users.findOne({ id: notification.user });
@@ -54,7 +54,7 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
                             author: {
                                 name: `${user?.username || "unknown"}#${user?.discriminator || "0000"}`,
                                 iconURL: user?.displayAvatarURL() || interaction.client.user.displayAvatarURL(),
-                                url: (<Message>interaction.targetMessage).url
+                                url: interaction.targetMessage.url
                             },
                             footer: {
                                 text: `Notification ID: ${notification._id}`,
@@ -75,12 +75,12 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
                     })
                     .catch(async err => {
                         console.error("Failed to fetch a user:", err);
-                        await interaction.editReply(`Failed to fetch the user of ${Formatters.hyperlink("this", (<Message>interaction.targetMessage).url)} notification...`);
+                        await interaction.editReply(`Failed to fetch the user of ${Formatters.hyperlink("this", interaction.targetMessage.url)} notification...`);
                     });
                 })
                 .catch(async err => {
                     console.error("Failed to fetch webhook:", err);
-                    await interaction.editReply(`Failed to fetch the webhook of ${Formatters.hyperlink("this", (<Message>interaction.targetMessage).url)} notification...`);
+                    await interaction.editReply(`Failed to fetch the webhook of ${Formatters.hyperlink("this", interaction.targetMessage.url)} notification...`);
                 })
             } else {
                 await interaction.editReply("Unable to fetch this message's webhook...");

@@ -1,4 +1,5 @@
-import { MessageEmbed, MessageSelectMenu, Formatters, MessageActionRow, Constants, type Message, type MessageComponentInteraction, type UserContextMenuInteraction } from 'discord.js';
+import { MessageEmbed, MessageSelectMenu, Formatters, MessageActionRow, Constants, type UserContextMenuInteraction } from 'discord.js';
+import { Discord as Utils } from '../../utils';
 import DiscordClientError from '../error';
 import QuickChart from 'quickchart-js';
 import { emojis } from '../../../config.json';
@@ -8,6 +9,8 @@ import differenceInDays from 'date-fns/differenceInDays';
 
 import type { AM4, Discord } from '@typings/database';
 import type { ContextMenu } from '@discord/types';
+
+const { isCachedUserContextMenuInteraction } = Utils;
 
 const command: ContextMenu<UserContextMenuInteraction> = {
     get name() {
@@ -73,7 +76,10 @@ const command: ContextMenu<UserContextMenuInteraction> = {
             });
             const allianceDocument = await allianceCollection.findOne({ name: airline.alliance.name });
             if (allianceDocument) {
-                const memberDocument = await memberCollection.findOne({ name: airline.name, allianceID: allianceDocument._id });
+                const memberDocument = await memberCollection.findOne({ 
+                    name: airline.name, 
+                    allianceID: allianceDocument._id 
+                });
                 if (memberDocument) {
                     if (memberDocument.dailyContribution.length) {
                         const thisWeek = Math.round(memberDocument.dailyContribution.map(o => o.value).reduce((total, value) => total + value));
@@ -290,7 +296,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                 }
             }
             if (member.contribution.season) embed.fields[1].value += `\n**Season:** $${member.contribution.season.toLocaleString(locale)}`;
-            if (charts.length) {
+            if (charts.length && isCachedUserContextMenuInteraction(interaction)) {
                 const options = await Promise.all(
                     charts.map(async (chart, i) => {
                         const graph = new QuickChart()
@@ -314,20 +320,21 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                 const message = await interaction.editReply({
                     embeds: [embed],
                     components: [row]
-                }) as Message;
-                const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                });
+                const collector = message.createMessageComponentCollector({ 
+                    filter: ({ user }) => user.id === interaction.user.id, 
+                    idle: 10 * 60 * 1000,
+                    componentType: "SELECT_MENU"
+                });
                 collector.on("collect", async interaction => {
-                    if (interaction.isSelectMenu()) {
-                        const url = interaction.values[0];
-                        for (const option of select.options) option.default = (url === option.value);
-                        embed.setImage(url);
-                        row.components[0] = select;
-                        await interaction.update({
-                            embeds: [embed],
-                            components: [row]
-                        });
-                    }
+                    const url = interaction.values[0];
+                    for (const option of select.options) option.default = (url === option.value);
+                    embed.setImage(url);
+                    row.components[0] = select;
+                    await interaction.update({
+                        embeds: [embed],
+                        components: [row]
+                    });
                 });
                 collector.on("end", async collected => {
                     select.setDisabled(true);

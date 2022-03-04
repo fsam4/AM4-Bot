@@ -108,10 +108,20 @@ export default class Alliance extends Status {
     }
     public readonly members?: Collection<string, Member>;
     constructor({ alliance: alliances, members, status }: AM4.Alliance, protected client: AM4Client) {
-        super(status);
-        this._members = members;
-        this._alliance = alliances;
-        if (this.status.success) {
+        super(status, client.accessToken);
+        Object.defineProperties(this, {
+            "_members": {
+                value: members,
+                writable: true,
+                configurable: true
+            },
+            "_alliance": {
+                value: alliances,
+                writable: true,
+                configurable: true
+            }
+        });
+        if (this.status.success && alliances?.length) {
             const [alliance] = alliances;
             this.alliance = {
                 name: alliance.name,

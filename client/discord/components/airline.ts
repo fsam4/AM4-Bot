@@ -215,10 +215,12 @@ const component: Component<ButtonInteraction> = {
                 const url = await history.getShortUrl();
                 embed.setImage(url);
             }
-            if (awards.length) embed.addFields({
-                name: Formatters.bold(Formatters.underscore("Awards")),
-                value: Formatters.codeBlock(awards.map(award => `${award.name} • ${format(award.date, 'dd/MM/yyyy')}`).join('\n'))
-            });
+            if (awards.length) {
+                embed.addFields({
+                    name: Formatters.bold(Formatters.underscore("Awards")),
+                    value: Formatters.codeBlock(awards.map(award => `${award.name} • ${format(award.date, 'dd/MM/yyyy')}`).join('\n'))
+                });
+            }
             await interaction.editReply({ embeds: [embed] });
         }
         catch(error) {

@@ -25,18 +25,8 @@ const event: Event = {
                             const isAllianceMember = airline.alliance.name === server.alliance_name;
                             if (isAllianceMember) roles.add(server.roles.member);
                         }
-                        switch(airline.gameMode) {
-                            case "Realism": {
-                                if (!server.roles.realism) break;
-                                roles.add(server.roles.realism);
-                                break;
-                            }
-                            case "Easy": {
-                                if (!server.roles.easy) break;
-                                roles.add(server.roles.easy);
-                                break;
-                            }
-                        }
+                        const gameMode = airline.gameMode.toLowerCase() as Lowercase<typeof airline.gameMode>;
+                        if (gameMode in server.roles) roles.add(server.roles[gameMode]);
                         if (roles.size) {
                             await member.roles.add([...roles], `Logged in as ${airline.name}`)
                             .catch(() => void 0);

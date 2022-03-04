@@ -8,7 +8,6 @@ import pug from 'pug';
 import fs from 'fs';
 
 import addMonths from 'date-fns/addMonths';
-import subHours from 'date-fns/subHours';
 import format from 'date-fns/format';
 
 import type { Message, User, InputMediaPhoto } from 'typegram';
@@ -128,7 +127,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                         const cargoFleet = planes.filter(plane => plane.type === 'cargo');
                         const paxFleet = planes.filter(plane => plane.type === 'pax');
                         const reply = compile({ 
-                            airline, fleet, ipo, awards, format, subHours, locale,
+                            airline, fleet, ipo, awards, format, locale,
                             paxFleetSize: paxFleet.length && cargoFleet.map(plane => plane.amount).reduce((a, b) => a + b),
                             cargoFleetSize: cargoFleet.length && cargoFleet.map(plane => plane.amount).reduce((a, b) => a + b),
                             staff: Airline.calculateStaff(planes),
@@ -295,7 +294,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                                             input: ctx.message.text
                                         },
                                         $set: {
-                                            expireAt: addMonths(Date.now(), 1)
+                                            expireAt: addMonths(ctx.message.date * 1000, 1)
                                         }
                                     }
                                 }

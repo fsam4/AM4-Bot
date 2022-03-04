@@ -1,8 +1,7 @@
-import { Permissions, MessageEmbed, Formatters, MessageButton, MessageActionRow, Role, Constants } from 'discord.js';
+import { Permissions, MessageEmbed, Formatters, MessageButton, MessageActionRow, Role, Constants, type TextChannel, type Webhook } from 'discord.js';
 import DiscordClientError from '../error';
 import CryptoJS from 'crypto-js';
 
-import type { TextChannel, GuildMember, Webhook, Message, MessageComponentInteraction } from 'discord.js';
 import type { SlashCommand } from '@discord/types';
 import type { Settings } from '@typings/database';
 
@@ -735,10 +734,13 @@ const command: SlashCommand = {
                                     ]
                                 })
                             ];
-                            const message = await interaction.editReply({ embeds: [current_page], components }) as Message;
+                            const message = await interaction.editReply({ embeds: [current_page], components });
                             if (embeds.length > 1) {
-                                const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                                const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                                const collector = message.createMessageComponentCollector({ 
+                                    filter: ({ user }) => user.id === interaction.user.id, 
+                                    idle: 10 * 60 * 1000,
+                                    componentType: "BUTTON"
+                                });
                                 collector.on("collect", async interaction => {
                                     current_page = pages.next(interaction.customId === "prev" ? -1 : 1).value;
                                     await interaction.update({ embeds: [current_page] });

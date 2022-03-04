@@ -6,6 +6,8 @@ import isFuture from 'date-fns/isFuture';
 import type { Event, ComponentOptions, CommandOptions, ContextMenu, SlashCommand } from '@discord/types';
 import type { Discord, Settings } from '@typings/database';
 
+const defaultGlobalCooldown = 60;
+
 const event: Event = {
     name: "interactionCreate",
     once: false,
@@ -70,7 +72,9 @@ const event: Event = {
                             if (server && interaction.channel) {
                                 let channelId = interaction.channelId;
                                 if (interaction.channel.isThread()) channelId = interaction.channel.parentId;
-                                options.ephemeral = (server.channels.whitelist.length && !server.channels.blacklist.length) ? !server.channels.whitelist.includes(channelId) : server.channels.blacklist.includes(channelId);
+                                options.ephemeral = (server.channels.whitelist.length && !server.channels.blacklist.length) 
+                                    ? !server.channels.whitelist.includes(channelId) 
+                                    : server.channels.blacklist.includes(channelId);
                             }
                             const permissions = interaction.guild.me.permissionsIn(interaction.channel).missing(command.permissions);
                             if (permissions.length > 0) {
@@ -105,8 +109,8 @@ const event: Event = {
                                 return;
                             } else {
                                 if (userCooldowns.size > 3) {
-                                    const timeout = addSeconds(interaction.createdAt, 60);
-                                    await cooldowns.set(interaction.user.id, timeout, 60 * 1000);
+                                    const timeout = addSeconds(interaction.createdAt, defaultGlobalCooldown);
+                                    await cooldowns.set(interaction.user.id, timeout, defaultGlobalCooldown * 1000);
                                 } else {
                                     const timeout = addSeconds(interaction.createdAt, command.cooldown);
                                     userCooldowns.set(interaction.commandId, timeout);

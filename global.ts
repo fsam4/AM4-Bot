@@ -12,7 +12,8 @@ Map.prototype.toSet = function() {
 
 Array.prototype.split = function(chunks, balanced = true) {
     if (chunks < 2) return [this];
-    let len = this.length, out = [], i = 0, size: number;
+    let i = 0, size: number;
+    const len = this.length, out = [];
     if (len % chunks === 0) {
         size = Math.floor(len / chunks);
         while (i < len) {
@@ -36,13 +37,17 @@ Array.prototype.split = function(chunks, balanced = true) {
 }
 
 Array.prototype.toMap = function(path) {
-    const props = path.split('.');
-    const values: Array<[any, any]> = this.map(value => {
-        let key = value;
-        for (const prop of props) key = key[prop];
-        return [key, value];
-    });
-    return new Map(values);
+    const keyPath = path.split('.');
+    return new Map(
+        this.map(value => {
+            let keyValue = value;
+            for (const key of keyPath) {
+                if (!keyValue) break;
+                keyValue = keyValue[key];
+            }
+            return [keyValue, value];
+        })
+    );
 }
 
 Array.prototype.difference = function() {
@@ -68,9 +73,16 @@ Array.prototype.random = function() {
     return this[index];
 }
 
+Array.prototype.lastIndex = function() {
+    return this.length 
+        ? this.length - 1 
+        : this.length;
+}
+
 Array.prototype.last = function() {
-    const lastIndex = this.length - 1;
-    return this[lastIndex];
+    return this.length 
+        ? this[this.lastIndex()]
+        : undefined;
 }
 
 String.prototype.capitalize = function(options) {
@@ -121,11 +133,11 @@ Number.prototype.abbreviate = function(fractionDigits = 1) {
     type AbbrevationValue = string | number;
     let newValue: AbbrevationValue = this;
     if (this >= 1000) {
-        let suffixNum = Math.floor(this.toString().length / 3);
+        const suffixNum = Math.floor(this.toString().length / 3);
         let shortValue: AbbrevationValue = '';
         for (let precision = 2; precision >= 1; precision--) {
             shortValue = parseFloat((suffixNum != 0 ? (this / Math.pow(1000, suffixNum)) : this).toPrecision(precision));
-            let dotLessShortValue = shortValue.toString().replace(/[^a-zA-Z 0-9]+/g, '');
+            const dotLessShortValue = shortValue.toString().replace(/[^a-zA-Z 0-9]+/g, '');
             if (dotLessShortValue.length <= 2) break;
         }
         if (<number>shortValue % 1 != 0)  shortValue = (<number>shortValue).toFixed(fractionDigits);

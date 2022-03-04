@@ -1,4 +1,4 @@
-import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, MessageSelectMenu, Formatters, Constants, Team, type MessageComponentInteraction, type Message, type ApplicationCommandOptionChoice } from 'discord.js';
+import { MessageEmbed, Permissions, MessageAttachment, MessageActionRow, MessageButton, MessageSelectMenu, Formatters, Constants, Team, type ApplicationCommandOptionChoice } from 'discord.js';
 import { ObjectId, type Filter, type Document } from 'mongodb';
 import DiscordClientError from '../error';
 import QuickChart from 'quickchart-js';
@@ -12,6 +12,7 @@ import type { GameMode } from '@typings/am4-api';
 
 type AircraftWithEngine = AM4.Plane & { engineName: string };
 
+const { createAttachmentUrl, isCachedCommandInteraction } = Utils.Discord;
 const { createTextFilter } = Utils.MongoDB;
 
 const command: SlashCommand = {
@@ -547,7 +548,7 @@ const command: SlashCommand = {
                         timestamp: plane._id.getTimestamp(),
                         description: `**Plane type:** ${plane.type === "vip" ? plane.type.toUpperCase() : plane.type}`,
                         image: {
-                            url: `attachment://${image.name}`
+                            url: createAttachmentUrl(image)
                         },
                         author: {
                             name: plane.name,
@@ -593,61 +594,64 @@ const command: SlashCommand = {
                         const purchaseSV = Plane.estimatedShareValueFromPurchase(plane.price);
                         embed.description += `\n**SV from purchase:** $${purchaseSV.toFixed(2)}`;
                     }
-                    const engineSelect = new MessageSelectMenu({
-                        placeholder: "Select engine...",
-                        customId: "engine",
-                        options: [
-                            {
-                                label: "none",
-                                value: "none",
-                                default: false
-                            },
-                            ...plane.engines.map(engine => ({
-                                label: engine.name,
-                                value: engine.name,
-                                default: engine_name === engine.name
-                            }))
-                        ]
-                    });
-                    const modSelect = new MessageSelectMenu({
-                        placeholder: "Select modifications...",
-                        customId: "modifications",
-                        maxValues: 3,
-                        minValues: 0,
-                        options: [
-                            {
-                                label: "Speed Modification",
-                                value: "speed",
-                                emoji: emojis.status,
-                                default: (modifications.speed && !default_stats)
-                            },
-                            {
-                                label: "Fuel Modification",
-                                value: "fuel",
-                                emoji: emojis.fuel,
-                                default: (modifications.fuel && !default_stats)
-                            },
-                            {
-                                label: "Co2 Modification",
-                                value: "co2",
-                                emoji: emojis.co2,
-                                default: (modifications.co2 && !default_stats)
-                            }
-                        ]
-                    });
-                    const message = await interaction.editReply({
-                        embeds: [embed],
-                        files: [image],
-                        components: [
-                            new MessageActionRow({ components: [engineSelect] }),
-                            new MessageActionRow({ components: [modSelect] })
-                        ]
-                    }) as Message;
-                    const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                    const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
-                    collector.on("collect", async interaction => {
-                        await interaction.deferUpdate();
-                        if (interaction.isSelectMenu()) {
+                    if (isCachedCommandInteraction(interaction)) {
+                        const engineSelect = new MessageSelectMenu({
+                            placeholder: "Select engine...",
+                            customId: "engine",
+                            options: [
+                                {
+                                    label: "none",
+                                    value: "none",
+                                    default: false
+                                },
+                                ...plane.engines.map(engine => ({
+                                    label: engine.name,
+                                    value: engine.name,
+                                    default: engine_name === engine.name
+                                }))
+                            ]
+                        });
+                        const modSelect = new MessageSelectMenu({
+                            placeholder: "Select modifications...",
+                            customId: "modifications",
+                            maxValues: 3,
+                            minValues: 0,
+                            options: [
+                                {
+                                    label: "Speed Modification",
+                                    value: "speed",
+                                    emoji: emojis.status,
+                                    default: (modifications.speed && !default_stats)
+                                },
+                                {
+                                    label: "Fuel Modification",
+                                    value: "fuel",
+                                    emoji: emojis.fuel,
+                                    default: (modifications.fuel && !default_stats)
+                                },
+                                {
+                                    label: "Co2 Modification",
+                                    value: "co2",
+                                    emoji: emojis.co2,
+                                    default: (modifications.co2 && !default_stats)
+                                }
+                            ]
+                        });
+                        const message = await interaction.editReply({
+                            embeds: [embed],
+                            files: [image],
+                            components: [
+                                new MessageActionRow({ components: [engineSelect] }),
+                                new MessageActionRow({ components: [modSelect] })
+                            ]
+                        });
+                        const collector = message.createMessageComponentCollector({ 
+                            filter: ({ user }) => user.id === interaction.user.id, 
+                            idle: 10 * 60 * 1000,
+                            componentType: "SELECT_MENU" 
+                        });
+                        collector.on("collect", async interaction => {
+                            await interaction.deferUpdate();
                             switch(interaction.customId) {
                                 case "engine": {
                                     engine_name = interaction.values[0];
@@ -709,66 +713,72 @@ const command: SlashCommand = {
                                     break;
                                 }
                             }
-                        }
-                        embed.setImage(`attachment://${image.name}`);
-                        embed.setFooter({
-                            text: `engine: ${engine_name}`, 
-                            iconURL: interaction.client.user.displayAvatarURL()
-                        });
-                        embed.setFields([
-                            { 
-                                name: Formatters.bold(Formatters.underscore("General statistics")), 
-                                value: `**Speed:** ${Math.round(gameMode === "Easy" ? plane.speed * 1.5 : plane.speed).toLocaleString(locale)} km/h\n**Fuel usage:** ${plane.fuel.toFixed(2)} lbs/km\n**Co2 usage:** ${plane.co2.toFixed(2)} kg/${plane.type === "cargo" ? "1k": "pax"}/km\n**Runway:** ${plane.runway.toLocaleString(locale)} ft\n**Range:** ${plane.range.toLocaleString(locale)} km\n**Capacity:** ${plane.capacity.toLocaleString(locale)} ${plane.type === "cargo" ? "lbs" : "seats"}`, 
-                                inline: true 
-                            },
-                            { 
-                                name: '\u200B', 
-                                value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round((gameMode === "Easy" || default_stats) ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
-                                inline: true 
-                            },
-                            { 
-                                name: '\u200B', 
-                                value: '\u200B', 
-                                inline: false 
-                            },
-                            { 
-                                name: Formatters.bold(Formatters.underscore("Profit (realism)")), 
-                                value: `**Per hour:** $${Math.round(realism.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${realism.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(realism.profit * 7).toLocaleString(locale)}\n**Share value:** $${realism.sv.toFixed(2)}/day`, 
-                                inline: true 
-                            },
-                            { 
-                                name: Formatters.bold(Formatters.underscore("Profit (easy)")), 
-                                value: `**Per hour:** $${Math.round(easy.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${easy.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(easy.profit * 7).toLocaleString(locale)}\n**Share value:** $${easy.sv.toFixed(2)}/day`, 
-                                inline: true 
+                            embed.setImage(createAttachmentUrl(image));
+                            embed.setFooter({
+                                text: `engine: ${engine_name}`, 
+                                iconURL: interaction.client.user.displayAvatarURL()
+                            });
+                            embed.setFields([
+                                { 
+                                    name: Formatters.bold(Formatters.underscore("General statistics")), 
+                                    value: `**Speed:** ${Math.round(gameMode === "Easy" ? plane.speed * 1.5 : plane.speed).toLocaleString(locale)} km/h\n**Fuel usage:** ${plane.fuel.toFixed(2)} lbs/km\n**Co2 usage:** ${plane.co2.toFixed(2)} kg/${plane.type === "cargo" ? "1k": "pax"}/km\n**Runway:** ${plane.runway.toLocaleString(locale)} ft\n**Range:** ${plane.range.toLocaleString(locale)} km\n**Capacity:** ${plane.capacity.toLocaleString(locale)} ${plane.type === "cargo" ? "lbs" : "seats"}`, 
+                                    inline: true 
+                                },
+                                { 
+                                    name: '\u200B', 
+                                    value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round((gameMode === "Easy" || default_stats) ? plane.A_check.price / 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
+                                    inline: true 
+                                },
+                                { 
+                                    name: '\u200B', 
+                                    value: '\u200B', 
+                                    inline: false 
+                                },
+                                { 
+                                    name: Formatters.bold(Formatters.underscore("Profit (realism)")), 
+                                    value: `**Per hour:** $${Math.round(realism.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${realism.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(realism.profit * 7).toLocaleString(locale)}\n**Share value:** $${realism.sv.toFixed(2)}/day`, 
+                                    inline: true 
+                                },
+                                { 
+                                    name: Formatters.bold(Formatters.underscore("Profit (easy)")), 
+                                    value: `**Per hour:** $${Math.round(easy.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${easy.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(easy.profit * 7).toLocaleString(locale)}\n**Share value:** $${easy.sv.toFixed(2)}/day`, 
+                                    inline: true 
+                                }
+                            ]);
+                            if (plane.price) {
+                                const profitabilityRealism = Math.round(plane.price / realism.profit);
+                                embed.fields[3].value += `\n**Profitability:** ${profitabilityRealism > 0 ? `in ${profitabilityRealism.toLocaleString(locale)} days` : 'never' }`;
+                                const profitabilityEasy = Math.round(plane.price / easy.profit);
+                                embed.fields[4].value += `\n**Profitability:** ${profitabilityEasy > 0 ? `in ${profitabilityEasy.toLocaleString(locale)} days` : 'never' }`;
                             }
-                        ]);
-                        if (plane.price) {
-                            const profitabilityRealism = Math.round(plane.price / realism.profit);
-                            embed.fields[3].value += `\n**Profitability:** ${profitabilityRealism > 0 ? `in ${profitabilityRealism.toLocaleString(locale)} days` : 'never' }`;
-                            const profitabilityEasy = Math.round(plane.price / easy.profit);
-                            embed.fields[4].value += `\n**Profitability:** ${profitabilityEasy > 0 ? `in ${profitabilityEasy.toLocaleString(locale)} days` : 'never' }`;
-                        }
-                        await interaction.editReply({ 
-                            embeds: [embed],
-                            components: [
-                                new MessageActionRow({ components: [engineSelect] }),
-                                new MessageActionRow({ components: [modSelect] })
-                            ]
+                            await interaction.editReply({ 
+                                embeds: [embed],
+                                components: [
+                                    new MessageActionRow({ components: [engineSelect] }),
+                                    new MessageActionRow({ components: [modSelect] })
+                                ]
+                            });
                         });
-                    });
-                    collector.once("end", async collected => {
-                        const reply = collected.last() || interaction;
-                        await reply.editReply({
-                            components: [
-                                new MessageActionRow({ components: [engineSelect.setDisabled(true)] }),
-                                new MessageActionRow({ components: [modSelect.setDisabled(true)] })
-                            ]
-                        })
-                        .catch(() => void 0);
-                    });
+                        collector.once("end", async collected => {
+                            const reply = collected.last() || interaction;
+                            await reply.editReply({
+                                components: [
+                                    new MessageActionRow({ components: [engineSelect.setDisabled(true)] }),
+                                    new MessageActionRow({ components: [modSelect.setDisabled(true)] })
+                                ]
+                            })
+                            .catch(() => void 0);
+                        });
+                    } else {
+                        await interaction.editReply({
+                            embeds: [embed],
+                            files: [image]
+                        });
+                    }
                     break;
                 }
                 case "filter": {
+                    if (!isCachedCommandInteraction(interaction)) throw new DiscordClientError("This command can only be used in servers where the bot is in...");
                     let query: Filter<AM4.Plane> = {};
                     const commandOptions = interaction.options.data[0].options.filter(option => option.name !== "mode");
                     let gameMode = <GameMode>interaction.options.getString("mode")?.trim();
@@ -865,7 +875,7 @@ const command: SlashCommand = {
                             color: "WHITE",
                             timestamp: plane._id.getTimestamp(),
                             image: {
-                                url: `attachment://${image.name}`,
+                                url: createAttachmentUrl(image),
                             },
                             author: {
                                 name: plane.name,
@@ -951,14 +961,17 @@ const command: SlashCommand = {
                         embeds: [currentPage.value],
                         files: [currentPage.attachment], 
                         components 
-                    }) as Message;
+                    });
                     if (embeds.length) {
-                        const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                        const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                        const collector = message.createMessageComponentCollector({ 
+                            filter: ({ user }) => user.id === interaction.user.id, 
+                            idle: 10 * 60 * 1000,
+                            componentType: "BUTTON" 
+                        });
                         collector.on("collect", async interaction => {
                             const [action, value] = interaction.customId.split(":");
                             currentPage = pages.next(action === "prev" ? -Number(value) : Number(value)).value;
-                            await (<Message>interaction.message).removeAttachments();
+                            await interaction.message.removeAttachments();
                             await interaction.update({ 
                                 embeds: [currentPage.value],
                                 files: [currentPage.attachment]
@@ -973,6 +986,7 @@ const command: SlashCommand = {
                     break;
                 }
                 case "compare": {
+                    if (!isCachedCommandInteraction(interaction)) throw new DiscordClientError("This command can only be used in servers where the bot is in...");
                     let gameMode = <GameMode>interaction.options.getString("mode")?.trim();
                     if (!gameMode) {
                         if (!user?.mode) throw new DiscordClientError('You need to either login with `/user login` or define the game mode option!');
@@ -1467,25 +1481,26 @@ const command: SlashCommand = {
                     const message = await interaction.editReply({ 
                         embeds: [embed], 
                         components: [row] 
-                    }) as Message;
-                    const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                    const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                    });
+                    const collector = message.createMessageComponentCollector({ 
+                        filter: ({ user }) => user.id === interaction.user.id, 
+                        idle: 10 * 60 * 1000,
+                        componentType: "SELECT_MENU"
+                    });
                     collector.on("collect", async interaction => {
-                        if (interaction.isSelectMenu()) {
-                            const value = interaction.values[0];
-                            const graph = graphs.find(graph => graph.id.equals(value));
-                            embed.setDescription(graph.description);
-                            const chart = new QuickChart()
-                            .setConfig(graph.data)
-                            .setBackgroundColor("transparent");
-                            const url = await chart.getShortUrl();
-                            for (const option of select.options) option.default = (value === option.value);
-                            row.setComponents(select);
-                            await interaction.update({ 
-                                embeds: [embed.setImage(url)],
-                                components: [row]
-                            });
-                        }
+                        const value = interaction.values[0];
+                        const graph = graphs.find(graph => graph.id.equals(value));
+                        embed.setDescription(graph.description);
+                        const chart = new QuickChart()
+                        .setConfig(graph.data)
+                        .setBackgroundColor("transparent");
+                        const url = await chart.getShortUrl();
+                        for (const option of select.options) option.default = (value === option.value);
+                        row.setComponents(select);
+                        await interaction.update({ 
+                            embeds: [embed.setImage(url)],
+                            components: [row]
+                        });
                     });
                     collector.once("end", async collected => {
                         row.setComponents(select.setDisabled(true));
@@ -1600,7 +1615,7 @@ const command: SlashCommand = {
                                 title: `Settings for ${plane.name}`,
                                 description: `**Fuel modification:** ${currentSettings.modifications.fuel}\n**Speed modification:** ${currentSettings.modifications.speed}\n**Co2 modification:** ${currentSettings.modifications.co2}\n**Engine:** ${currentSettings.engine || "none"}`,
                                 image: {
-                                    url: `attachment://${image.name}`
+                                    url: createAttachmentUrl(image)
                                 },
                                 author: {
                                     name: `${interaction.user.username}#${interaction.user.discriminator}`,

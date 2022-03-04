@@ -17,6 +17,8 @@ import type { APIMessage } from 'discord-api-types/v9';
 
 const { nextPricePeriod } = Utils;
 
+const notificationUpdateCooldown = 5;
+
 const command: SlashCommand = {
     get name() {
         return this.data.name;
@@ -232,7 +234,7 @@ const command: SlashCommand = {
                         if (isPast(notification.expireAt)) throw new DiscordClientError("You can only edit notifications during the price period when they were posted!");
                         if (notification.edited) {
                             const difference = Math.abs(differenceInMinutes(interaction.createdAt, notification.edited));
-                            if (difference < 5) throw new DiscordClientError("You can only edit your notification once in 5 minutes!");
+                            if (difference < notificationUpdateCooldown) throw new DiscordClientError(`You can only edit your notification once in ${notificationUpdateCooldown} minutes!`);
                         }
                     }
                     const fuel = interaction.options.getInteger("fuel") ?? notification.prices.fuel;
@@ -283,12 +285,12 @@ const command: SlashCommand = {
                     const isDeveloper = owner instanceof Team ? owner.members.some(member => member.id === interaction.user.id) : (interaction.user.id === owner.id);
                     if (!isDeveloper && !account?.admin_level) {
                         if (interaction.user.id !== notification.user) throw new DiscordClientError("You can only delete your own notifications!");
-                        const cooldown = addMinutes(interaction.createdAt, 5);
-                        await cooldowns.set(interaction.user.id, cooldown, 5 * 60 * 1000);
+                        const cooldown = addMinutes(interaction.createdAt, notificationUpdateCooldown);
+                        await cooldowns.set(interaction.user.id, cooldown, notificationUpdateCooldown * 60 * 1000);
                         if (isPast(notification.expireAt)) throw new DiscordClientError("You can only delete notifications during the price period when they were posted!");
                         if (notification.edited) {
                             const difference = Math.abs(differenceInMinutes(interaction.createdAt, notification.edited));
-                            if (difference < 5) throw new DiscordClientError("You need to wait 5 minutes after your latest edit to delete your notification!");
+                            if (difference < notificationUpdateCooldown) throw new DiscordClientError(`You need to wait ${notificationUpdateCooldown} minutes after your latest edit to delete your notification!`);
                         }
                     }
                     await notificationCollection.deleteOne({ _id: notification._id });

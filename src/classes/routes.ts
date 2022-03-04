@@ -2,6 +2,7 @@ import Plane from '../lib/plane';
 import Status from './status';
 import Route from './route';
 
+import type AM4Client from '@source/index';
 import type * as AM4 from '@typings/am4-api';
 
 interface FlightTime {
@@ -18,6 +19,7 @@ type SeatType = CargoLoadType | PaxSeatType;
  * Represents a route research result
  * @constructor
  * @param data - The raw API data of the routes
+ * @param client - The AM4 rest client that was used
  */
 
 export default class Routes extends Status {
@@ -62,9 +64,13 @@ export default class Routes extends Status {
             }
         }
     }>;
-    constructor({ status, route }: AM4.Routes) {
-        super(status);
-        this._route = route;
+    constructor({ status, route }: AM4.Routes, protected client: AM4Client) {
+        super(status, client.accessToken);
+        Object.defineProperty(this, "_route", {
+            value: route,
+            writable: true,
+            configurable: true
+        });
         if (this.status.success) {
             this.departure = route.departure
             this.routes = route.data.map(destination => ({

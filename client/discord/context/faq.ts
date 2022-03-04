@@ -1,10 +1,13 @@
-import { Constants, Formatters, Message, MessageSelectMenu, MessageButton, MessageActionRow, type MessageContextMenuInteraction } from 'discord.js';
+import { Constants, Formatters, MessageSelectMenu, MessageButton, MessageActionRow, Message, type MessageContextMenuInteraction } from 'discord.js';
+import { Discord as Utils } from '../../utils';
 import DiscordClientError from '../error';
 import { emojis } from '../../../config.json';
 
 import type { ContextMenu } from '@discord/types';
 import type { Discord } from '@typings/database';
 import type { Filter } from 'mongodb';
+
+const { isCachedMessageContextMenuInteraction } = Utils;
 
 const command: ContextMenu<MessageContextMenuInteraction> = {
     get name() {
@@ -22,11 +25,10 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
         defaultPermission: true
     },
     async execute(interaction, { database }) {
-        const isMessage = interaction.targetMessage instanceof Message;
-        await interaction.deferReply({ ephemeral: isMessage && interaction.inGuild() });
+        await interaction.deferReply({ ephemeral: interaction.inCachedGuild() });
         try {
             const faqCollection = database.discord.collection<Discord.FAQ>("FAQ");
-            if (!interaction.targetMessage.content) throw new DiscordClientError(`${isMessage ? Formatters.hyperlink("This message", interaction.targetMessage.url) : "This message"} has no content to search for...`);
+            if (!interaction.targetMessage.content) throw new DiscordClientError(`${interaction.targetMessage instanceof Message ? Formatters.hyperlink("This message", interaction.targetMessage.url) : "This message"} has no content to search for...`);
             const content = interaction.targetMessage.content.match(/[0-9a-zA-Z'-? ]/g).join("");
             const filter: Filter<Discord.FAQ> = {
                 $text: { $search: content },
@@ -40,7 +42,7 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
                 sort: { score: { $meta: "textScore" } },
                 limit: 25
             });
-            if (isMessage) {
+            if (isCachedMessageContextMenuInteraction(interaction)) {
                 const documents = await cursor.toArray();
                 if (!documents.length) throw new DiscordClientError(`No FAQ results could be found with ${Formatters.hyperlink("this", interaction.targetMessage.url)} message...`);
                 const selectRow = new MessageActionRow({ 
@@ -79,14 +81,14 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
                         selectRow,
                         buttonRow
                     ]
-                }) as Message;
+                });
                 const collector = reply.createMessageComponentCollector({ 
                     idle: 3 * 60 * 1000, 
                     max: 9 * 60 * 1000 
                 });
                 collector.on("collect", async componentInteraction => {
                     if (componentInteraction.isSelectMenu() && componentInteraction.customId === "faqSelect") {
-                        const component = <MessageSelectMenu>componentInteraction.component;
+                        const component = componentInteraction.component;
                         const [value] = componentInteraction.values;
                         component.options.forEach(option => { 
                             option.default = option.value === value;

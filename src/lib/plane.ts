@@ -26,8 +26,8 @@ export default class Plane {
 
     /**
      * Calculates the estimated profit of the plane
-     * @param plane The raw plane data
-     * @param options The profit options
+     * @param plane - The raw plane data
+     * @param options - The profit options
      * @returns The estimated profit, expenses and income
      */
 
@@ -71,9 +71,9 @@ export default class Plane {
 
     /**
      * Calculates the estimated resell price of the plane
-     * @param plane The raw plane data
-     * @param market The market percentage of the airport
-     * @param hours The usage hours of the plane
+     * @param plane - The raw plane data
+     * @param market - The market percentage of the airport
+     * @param hours - The usage hours of the plane
      * @returns The estimated resell price
      */
 
@@ -84,8 +84,8 @@ export default class Plane {
 
     /**
      * Calculates the estimated share value growth per day
-     * @param plane The raw plane data
-     * @param options The options for the calculation
+     * @param plane - The raw plane data
+     * @param options - The options for the calculation
      * @returns The estimated share value growth
      */
 
@@ -98,7 +98,7 @@ export default class Plane {
 
     /**
      * Calculates the estimated share value growth from purchasing the plane
-     * @param price The price of the plane
+     * @param price - The price of the plane
      * @returns The share value from purchase
      */
 
@@ -106,7 +106,7 @@ export default class Plane {
 
     /**
      * Converts the heavy load capacity to large load
-     * @param capacity The capacity in heavy load
+     * @param capacity - The capacity in heavy load
      * @returns The capacity in large load
      */
 
@@ -114,7 +114,7 @@ export default class Plane {
 
     /**
      * Converts the large load capacity to heavy load
-     * @param capacity The capacity in large load
+     * @param capacity - The capacity in large load
      * @returns The capacity in heavy load
      */
 

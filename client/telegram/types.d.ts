@@ -6,6 +6,8 @@ import type { Worker } from 'cluster';
 import type { Db } from 'mongodb';
 import type Keyv from 'keyv';
 
+type Awaitable<T> = T | PromiseLike<T>;
+
 interface BaseOptions {
     discordWorker: Worker;
     timeouts: Map<number, NodeJS.Timeout>;
@@ -24,12 +26,12 @@ type DataCallbackQuery = Extract<CallbackQuery, { data: string }>;
 
 interface Action<ActionContext extends Context = Context> {
     value: string | RegExp;
-    execute: (this: this, ctx: ActionContext & { callbackQuery: DataCallbackQuery }, options: CommandOptions) => Promise<void>;
+    execute: (this: this, ctx: ActionContext & { callbackQuery: DataCallbackQuery }, options: CommandOptions) => Awaitable<void>;
 }
 
 interface Scene<SceneContext extends Context = Context> {
     scene: Scenes.BaseScene<SceneContext>;
-    register: (this: this, options: BaseOptions) => Promise<void>;
+    register: (this: this, options: BaseOptions) => Awaitable<void>;
 }
 
 export interface Command<CommandContext extends Context = Context, ActionContext extends Context = Context, SceneContext extends Context = Context> {
@@ -37,7 +39,7 @@ export interface Command<CommandContext extends Context = Context, ActionContext
     cooldown?: number;
     description: string;
     readonly helpFileContent?: string;
-    execute: (this: this, ctx: CommandContext, options: CommandOptions) => Promise<void>;
+    execute: (this: this, ctx: CommandContext, options: CommandOptions) => Awaitable<void>;
     actions: Action<ActionContext>[];
     scenes: Scene<SceneContext>[];
 }
@@ -49,7 +51,7 @@ type UpdateContext<K extends keyof Types.MountMap> = NarrowedContext<Context, Ty
 
 type EventHandler<E extends Types.UpdateType> = {
     name: E;
-    execute: (this: EventHandler<E>, ctx: UpdateContext<E>, options: BaseOptions) => Promise<void>;
+    execute: (this: EventHandler<E>, ctx: UpdateContext<E>, options: BaseOptions) => Awaitable<void>;
 }
 
 export type Event = { [P in Types.UpdateType]: EventHandler<P> }[Types.UpdateType];

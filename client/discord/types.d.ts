@@ -53,26 +53,26 @@ interface Command {
 export interface SlashCommand extends Command {
     readonly permissions: Discord.Permissions;
     data: Discord.ApplicationCommandData & { type: Extract<Discord.ApplicationCommandType, "CHAT_INPUT"> | typeof Discord.Constants.ApplicationCommandTypes.CHAT_INPUT };
-    execute: (this: this, interaction: Discord.CommandInteraction, options: CommandOptions) => Promise<void>;
-    autocomplete?: (this: this, interaction: Discord.AutocompleteInteraction, options: Omit<CommandOptions, "ephemeral">) => Promise<void>;
+    execute: (this: this, interaction: Discord.CommandInteraction, options: CommandOptions) => Discord.Awaitable<void>;
+    autocomplete?: (this: this, interaction: Discord.AutocompleteInteraction, options: Omit<CommandOptions, "ephemeral">) => Discord.Awaitable<void>;
 }
 
 export interface ContextMenu<I extends Discord.ContextMenuInteraction = Discord.ContextMenuInteraction> extends Command {
     data: Discord.ApplicationCommandData & { type: Exclude<Discord.ApplicationCommandType, "CHAT_INPUT"> | typeof Discord.Constants.ApplicationCommandTypes.MESSAGE | typeof Discord.Constants.ApplicationCommandTypes.USER };
-    execute: (this: this, interaction: I, options: ContextMenuOptions) => Promise<void>;
+    execute: (this: this, interaction: I, options: ContextMenuOptions) => Discord.Awaitable<void>;
 }
 
 export interface Component<I extends Discord.MessageComponentInteraction = Discord.MessageComponentInteraction> {
     name: string;
     readonly cooldown: number;
     readonly customId: RegExp;
-    execute: (this: this, interaction: I, options: ComponentOptions) => Promise<void>;
+    execute: (this: this, interaction: I, options: ComponentOptions) => Discord.Awaitable<void>;
 }
 
 type EventHandler<K extends keyof Discord.ClientEvents> = {
     name: K;
     once: boolean;
-    execute: (this: EventHandler<K>, ...args: [...Discord.ClientEvents[K], EventOptions]) => Promise<void>;
+    execute: (this: EventHandler<K>, ...args: [...Discord.ClientEvents[K], EventOptions]) => Discord.Awaitable<void>;
 }
 
 export type Event = { [P in keyof Discord.ClientEvents]: EventHandler<P> }[keyof Discord.ClientEvents];

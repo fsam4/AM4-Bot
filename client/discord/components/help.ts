@@ -2,6 +2,7 @@ import { MessageEmbed, Formatters, MessageActionRow, type MessageSelectMenu, typ
 import DiscordClientError from '../error';
 import lastDayOfMonth from 'date-fns/lastDayOfMonth';
 import updateEmbed from '../../../documents/json/update.json';
+import setTime from 'date-fns/set';
 import config from '../../../config.json';
 
 import type { Quiz, Settings } from '@typings/database';
@@ -106,7 +107,12 @@ const component: Component<SelectMenuInteraction> = {
                 }
                 case 'quiz': {
                     const users = database.quiz.collection<Quiz.User>("Users");
-                    const nextTounament = lastDayOfMonth(interaction.createdAt).setHours(21, 0, 0, 0);
+                    const nextTounament = setTime(lastDayOfMonth(interaction.createdAt), {
+                        hours: 12,
+                        minutes: 0,
+                        seconds: 0,
+                        milliseconds: 0
+                    });
                     const amount = await users.countDocuments(config.tournament?.enabled && { score: { $exists: true } });
                     embeds[0] = new MessageEmbed({
                         color: "RANDOM",

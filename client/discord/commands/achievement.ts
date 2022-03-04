@@ -1,4 +1,4 @@
-import { MessageEmbed, Permissions, MessageAttachment, Formatters, MessageButton, MessageActionRow, Constants, type Message, type ApplicationCommandOptionChoice } from 'discord.js';
+import { MessageEmbed, Permissions, MessageAttachment, Formatters, MessageButton, MessageActionRow, Constants, type ApplicationCommandOptionChoice } from 'discord.js';
 import DiscordClientError from '../error';
 import * as Utils from '../../utils';
 import { emojis } from '../../../config.json';
@@ -8,8 +8,8 @@ import type { AM4, Settings } from '@typings/database';
 import type { SlashCommand } from '@discord/types';
 import type { Document } from 'mongodb';
 
+const { formatCode, createAttachmentUrl, isCachedCommandInteraction } = Utils.Discord;
 const { createTextFilter } = Utils.MongoDB;
-const { formatCode } = Utils.Discord;
 const spoiler = /\|\|/g;
 
 const command: SlashCommand = {
@@ -58,7 +58,7 @@ const command: SlashCommand = {
                 title: achievement.name,
                 timestamp: achievement._id.getTimestamp(),
                 thumbnail: {
-                    url: `attachment://${icon.name}`
+                    url: createAttachmentUrl(icon)
                 }
             });
             if (achievement.route.length) {
@@ -127,36 +127,44 @@ const command: SlashCommand = {
             if (achievement.image) {
                 const map = new MessageAttachment(achievement.image, "map.jpg");
                 map.setSpoiler(true);
-                embed.setImage(`attachment://${map.name}`);
+                embed.setImage(createAttachmentUrl(map));
                 files.push(map);
             };
-            const row = new MessageActionRow({
-                components: [
-                    new MessageButton({
-                        label: "Remove spoilers",
-                        customId: "removeSpoilers",
-                        style: "PRIMARY",
-                        emoji: "⚠️"
-                    })
-                ]
-            });
-            const message = await interaction.editReply({ embeds: [embed], components: [row], files }) as Message;
-            await message.awaitMessageComponent({ time: 5 * 60 * 1000, componentType: "BUTTON" }) 
-            .then(async button => {
-                if (button.customId === "removeSpoilers") {
+            if (isCachedCommandInteraction(interaction)) {
+                const row = new MessageActionRow({
+                    components: [
+                        new MessageButton({
+                            label: "Remove spoilers",
+                            customId: "removeSpoilers",
+                            style: "PRIMARY",
+                            emoji: "⚠️"
+                        })
+                    ]
+                });
+                const message = await interaction.editReply({ 
+                    embeds: [embed], 
+                    components: [row], 
+                    files 
+                });
+                await message.awaitMessageComponent({ time: 5 * 60 * 1000, componentType: "BUTTON" }) 
+                .then(async button => {
+                    if (button.customId === "removeSpoilers") {
+                        row.components[0].setDisabled(true);
+                        embed.description = embed.description.replace(spoiler, "");
+                        for (const field of embed.fields) field.value = field.value.replace(spoiler, "");
+                        await button.update({ 
+                            embeds: [embed], 
+                            components: [row]
+                        });
+                    }
+                })
+                .catch(async () => {
                     row.components[0].setDisabled(true);
-                    embed.description = embed.description.replace(spoiler, "");
-                    for (const field of embed.fields) field.value = field.value.replace(spoiler, "");
-                    await button.update({ 
-                        embeds: [embed], 
-                        components: [row]
-                    });
-                }
-            })
-            .catch(async () => {
-                row.components[0].setDisabled(true);
-                await interaction.editReply({ components: [row] }).catch(() => void 0);
-            });
+                    await interaction.editReply({ components: [row] }).catch(() => void 0);
+                });
+            } else {
+                await interaction.editReply({ embeds: [embed], files });
+            }
         }
         catch(error) {
             if (error instanceof DiscordClientError) {

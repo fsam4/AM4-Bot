@@ -1,4 +1,5 @@
-import { MessageEmbed, MessageSelectMenu, Formatters, MessageActionRow, Constants, type Message, type MessageComponentInteraction, type UserContextMenuInteraction } from 'discord.js';
+import { MessageEmbed, MessageSelectMenu, Formatters, MessageActionRow, Constants, type UserContextMenuInteraction } from 'discord.js';
+import { Discord as Utils } from '../../utils';
 import DiscordClientError from '../error';
 import QuickChart from 'quickchart-js';
 import { emojis } from '../../../config.json';
@@ -15,6 +16,8 @@ interface AllianceMember extends AM4.AllianceMember {
     thisWeek: number;
     left: Date;
 }
+
+const { isCachedUserContextMenuInteraction } = Utils;
 
 const command: ContextMenu<UserContextMenuInteraction> = {
     get name() {
@@ -73,7 +76,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
             });
             if (alliance.inSeason) embed.fields[0].value += `\n**Season contribution:** $${alliance.contribution.season.toLocaleString(locale)}`;
             const allianceDocument = await allainceCollection.findOne({ name: alliance.name });
-            if (allianceDocument) {
+            if (allianceDocument && isCachedUserContextMenuInteraction(interaction)) {
                 const memberDocuments = await memberCollection.aggregate<AllianceMember>([
                     {
                         $match: {
@@ -438,19 +441,20 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                 const message = await interaction.editReply({
                     embeds: [embed],
                     components: [row]
-                }) as Message;
-                const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-                const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+                });
+                const collector = message.createMessageComponentCollector({ 
+                    filter: ({ user }) => user.id === interaction.user.id, 
+                    idle: 10 * 60 * 1000,
+                    componentType: "SELECT_MENU"
+                });
                 collector.on("collect", async interaction => {
-                    if (interaction.isSelectMenu()) {
-                        const url = interaction.values[0];
-                        for (const option of select.options) option.default = (url === option.value);
-                        row.setComponents(select);
-                        await interaction.update({
-                            embeds: [embed.setImage(url)],
-                            components: [row]
-                        });
-                    }
+                    const url = interaction.values[0];
+                    for (const option of select.options) option.default = (url === option.value);
+                    row.setComponents(select);
+                    await interaction.update({
+                        embeds: [embed.setImage(url)],
+                        components: [row]
+                    });
                 });
                 collector.once("end", async collected => {
                     row.setComponents(select.setDisabled(true));

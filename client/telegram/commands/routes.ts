@@ -306,8 +306,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                                 }
                                 const [stopover] = stopovers;
                                 route.distance = stopover.distance;
-                                const lastIndex = stopover.airports.length - 1;
-                                const [stopoverAirport] = stopover.airports.slice(1, lastIndex);
+                                const [stopoverAirport] = stopover.airports.slice(1, stopover.airports.lastIndex());
                                 route.stopover = stopoverAirport;
                             }
                             const { preference, configuration } = Route.configure(plane, {
@@ -371,7 +370,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                     if (message.message_id !== ctx.scene.session.message.message_id || ctx.from.id !== ctx.scene.session.user.id) return;
                     const option = (<DataCallbackQuery>ctx.callbackQuery).data;
                     const current_page = ctx.scene.session.pages.current;
-                    const max_page = ctx.scene.session.pages.list.length - 1;
+                    const max_page = ctx.scene.session.pages.list.lastIndex();
                     if (current_page === 0 && option === 'prev') return;
                     if (current_page === max_page && option === 'next') return;
                     if (option === 'next') ctx.scene.session.pages.current++;

@@ -1,10 +1,13 @@
-import { MessageEmbed, MessageActionRow, MessageSelectMenu, Formatters, MessageAttachment, Constants, type Message, type MessageComponentInteraction, type UserContextMenuInteraction } from 'discord.js';
+import { MessageEmbed, MessageActionRow, MessageSelectMenu, Formatters, MessageAttachment, Constants, type UserContextMenuInteraction } from 'discord.js';
+import { Discord as Utils } from '../../utils';
 import DiscordClientError from '../error';
 import { emojis } from '../../../config.json';
 import Plane from '../../../src/lib/plane';
 
 import type { AM4, Settings, Discord } from '@typings/database';
 import type { ContextMenu } from '@discord/types';
+
+const { createAttachmentUrl, isCachedUserContextMenuInteraction } = Utils;
 
 const command: ContextMenu<UserContextMenuInteraction> = {
     get name() {
@@ -22,6 +25,13 @@ const command: ContextMenu<UserContextMenuInteraction> = {
         defaultPermission: true
     },
     async execute(interaction, { database, rest, locale }) {
+        if (!isCachedUserContextMenuInteraction(interaction)) {
+            await interaction.reply({
+                content: "This command can only be used in servers where the bot is in...",
+                ephemeral: true
+            });
+            return;
+        }
         await interaction.deferReply();
         try {
             const users = database.discord.collection<Discord.User>("Users");
@@ -120,7 +130,7 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                 timestamp: airline.founded,
                 description: `**Amount:** ${plane.amount} planes\n**Plane type:** ${plane.type === "vip" ? plane.type.toUpperCase() : plane.type}`,
                 image: {
-                    url: `attachment://${image.name}`
+                    url: createAttachmentUrl(image)
                 },
                 author: {
                     name: `${airline.alliance ? `${airline.name} (${airline.alliance.name})` : airline.name} ${airline.online ? '🟢': '🔴'}`,
@@ -159,50 +169,51 @@ const command: ContextMenu<UserContextMenuInteraction> = {
                 embeds: [embed],
                 files: [image],
                 components: [row]
-            }) as Message;
-            const filter = ({ user }: MessageComponentInteraction) => user.id === interaction.user.id;
-            const collector = message.createMessageComponentCollector({ filter, idle: 10 * 60 * 1000 });
+            });
+            const collector = message.createMessageComponentCollector({ 
+                filter: ({ user }) => user.id === interaction.user.id, 
+                idle: 10 * 60 * 1000,
+                componentType: "SELECT_MENU" 
+            });
             collector.on("collect", async interaction => {
-                if (interaction.isSelectMenu()) {
-                    const [plane_id] = interaction.values;
-                    plane = planes.find(plane => plane._id.equals(plane_id));
-                    image = new MessageAttachment(plane.image.buffer, "plane.jpg");
-                    statistics = {
-                        profit: Plane.profit(plane, options).profit,
-                        sv: Plane.estimatedShareValueGrowth(plane, options)
-                    };
-                    embed.setDescription(`**Amount:** ${plane.amount} planes\n**Plane type:** ${plane.type === "vip" ? plane.type.toUpperCase() : plane.type}`);
-                    embed.setImage(`attachment://${image.name}`);
-                    embed.setFields([
-                        { 
-                            name: Formatters.bold(Formatters.underscore("General statistics")), 
-                            value: `**Speed:** ${Math.round(airline.gameMode === "Easy" ? plane.speed * 1.5 : plane.speed).toLocaleString(locale)} km/h\n**Fuel usage:** ${plane.fuel.toFixed(2)} lbs/km\n**Co2 usage:** ${plane.co2.toFixed(2)} kg/${plane.type === "cargo" ? "1k": "pax"}/km\n**Runway:** ${plane.runway.toLocaleString(locale)} ft\n**Range:** ${plane.range.toLocaleString(locale)} km\n**Capacity:** ${plane.capacity.toLocaleString(locale)} ${plane.type === "cargo" ? "lbs" : "seats"}`, 
-                            inline: true 
-                        },
-                        { 
-                            name: '\u200B', 
-                            value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round(airline.gameMode === "Realism" ? plane.A_check.price * 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
-                            inline: true 
-                        },
-                        { 
-                            name: Formatters.bold(Formatters.underscore("Profitability")), 
-                            value: `**Per hour:** $${Math.round(statistics.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${statistics.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(statistics.profit * 7).toLocaleString(locale)}\n**Share value:** $${statistics.sv.toFixed(2)}/day`, 
-                            inline: false 
-                        }
-                    ]);
-                    if (plane.price) {
-                        const profitability = Math.round(plane.price / statistics.profit);
-                        embed.fields.last().value += `\n**Profitability:** ${profitability > 0 ? `in ${profitability.toLocaleString(locale)} days` : 'never' }`;
+                const [plane_id] = interaction.values;
+                plane = planes.find(plane => plane._id.equals(plane_id));
+                image = new MessageAttachment(plane.image.buffer, "plane.jpg");
+                statistics = {
+                    profit: Plane.profit(plane, options).profit,
+                    sv: Plane.estimatedShareValueGrowth(plane, options)
+                };
+                embed.setDescription(`**Amount:** ${plane.amount} planes\n**Plane type:** ${plane.type === "vip" ? plane.type.toUpperCase() : plane.type}`);
+                embed.setImage(createAttachmentUrl(image));
+                embed.setFields([
+                    { 
+                        name: Formatters.bold(Formatters.underscore("General statistics")), 
+                        value: `**Speed:** ${Math.round(airline.gameMode === "Easy" ? plane.speed * 1.5 : plane.speed).toLocaleString(locale)} km/h\n**Fuel usage:** ${plane.fuel.toFixed(2)} lbs/km\n**Co2 usage:** ${plane.co2.toFixed(2)} kg/${plane.type === "cargo" ? "1k": "pax"}/km\n**Runway:** ${plane.runway.toLocaleString(locale)} ft\n**Range:** ${plane.range.toLocaleString(locale)} km\n**Capacity:** ${plane.capacity.toLocaleString(locale)} ${plane.type === "cargo" ? "lbs" : "seats"}`, 
+                        inline: true 
+                    },
+                    { 
+                        name: '\u200B', 
+                        value: `**Price:** ${plane.price ? `$${plane.price.toLocaleString(locale)}` : `${plane.bonus_points.toLocaleString(locale)} ${Formatters.formatEmoji(emojis.points)}`}\n**A-check:** $${Math.round(airline.gameMode === "Realism" ? plane.A_check.price * 2 : plane.A_check.price).toLocaleString(locale)}/${plane.A_check.time.toLocaleString(locale)}h\n**Pilots:** ${plane.staff.pilots.toLocaleString(locale)} persons\n**Crew:** ${plane.staff.crew.toLocaleString(locale)} persons\n**Engineers:** ${plane.staff.engineers.toLocaleString(locale)} persons\n**Tech:** ${plane.staff.tech.toLocaleString(locale)} persons`, 
+                        inline: true 
+                    },
+                    { 
+                        name: Formatters.bold(Formatters.underscore("Profitability")), 
+                        value: `**Per hour:** $${Math.round(statistics.profit / options.activity).toLocaleString(locale)}\n**Per day:** $${statistics.profit.toLocaleString(locale)}\n**Per week:** $${Math.round(statistics.profit * 7).toLocaleString(locale)}\n**Share value:** $${statistics.sv.toFixed(2)}/day`, 
+                        inline: false 
                     }
-                    for (const option of select.options) option.default = plane._id.equals(option.value);
-                    await (<Message>interaction.message).removeAttachments();
-                    row.components[0] = select;
-                    await interaction.update({
-                        embeds: [embed],
-                        files: [image],
-                        components: [row]
-                    });
+                ]);
+                if (plane.price) {
+                    const profitability = Math.round(plane.price / statistics.profit);
+                    embed.fields.last().value += `\n**Profitability:** ${profitability > 0 ? `in ${profitability.toLocaleString(locale)} days` : 'never' }`;
                 }
+                for (const option of select.options) option.default = plane._id.equals(option.value);
+                await interaction.message.removeAttachments();
+                row.components[0] = select;
+                await interaction.update({
+                    embeds: [embed],
+                    files: [image],
+                    components: [row]
+                });
             });
             collector.on("end", async collected => {
                 select.setDisabled(true);
