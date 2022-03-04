@@ -7,7 +7,7 @@
 AM4 Bot was a Discord & Telegram chat bot used in 63 servers and across several Telegram chats between 2020-2022 for the game [Airline Manager 4](https://airline4.net/). The Discord bot was first published in 2020 with the Telegram bot following up in 2021. The bot stopped operating on Discord and Telegram 28th of January 2022 at 15:00 (UTC). The bot was used to search routes, planes, airports and player and alliance statistics, and visualize them in form of graphs. The bot used the [AM4 API](https://airline4.net/api/docs/) along with the [AM4 Tools API](https://api.am4tools.com/) until version 5.0.0. For graphs & charts the bot used the Chart.js based library [quickchart-js](https://quickchart.io/). For storing data the bot used a MongoDB Atlas database. For more information on the dependecies of this bot and what libraries it used check out the [package.json](package.json) file.
 
 ## Source code
-> 📝 _This source code is archived and no longer being maintained as of 4th of May 2022_.
+> 📝 _This source code is **archived** and no longer being maintained as of 4th of May 2022_.
 
 This source code is meant to be a part of my portfolio and be a source of information for other tool developers as well. Some of the functions and classes are documented in the code itself with comments. The source code contains both the Discord & Telegram bots. They can be found under different folders in the [client folder](client) and they are both ran from the [main file](bot.ts) in different clusters. This source code contains some changes that were never released. The latest released version was 4.8.5, this source code and it's commit history only contains versions 4.9.0 and 5.0.0.
 
