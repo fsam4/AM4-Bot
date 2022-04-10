@@ -36,11 +36,11 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
             const notifications = database.discord.collection<Discord.Notification>("Notifications");
             if (interaction.targetMessage instanceof Message) {
                 const systemWebhooks = [log.id, webhook.id];
-                if (!interaction.targetMessage.webhookId) throw new DiscordClientError("This command can only be used on notification messages sent by AM4 Bot notification webhooks!");
-                if (systemWebhooks.includes(interaction.targetMessage.webhookId)) throw new DiscordClientError("This command cannot be used on AM4 Bot system webhooks!");
+                if (!interaction.targetMessage.webhookId) throw new DiscordClientError(`This command can only be used on notification messages sent by ${interaction.client.user.username} notification webhooks!`);
+                if (systemWebhooks.includes(interaction.targetMessage.webhookId)) throw new DiscordClientError(`This command cannot be used on ${interaction.client.user.username} system webhooks!`);
                 await interaction.targetMessage.fetchWebhook()
                 .then(async webhook => {
-                    if (webhook.owner.id !== interaction.client.user.id) throw new DiscordClientError("This command can only be used on notification messages sent by AM4 Bot notification webhooks!");
+                    if (webhook.owner.id !== interaction.client.user.id) throw new DiscordClientError(`This command can only be used on notification messages sent by ${interaction.client.user.username} notification webhooks!`);
                     const notification = await notifications.findOne({ 'webhooks.message': interaction.targetId });
                     if (!notification) throw new DiscordClientError(`${Formatters.hyperlink("This notification message", interaction.targetMessage.url)} has expired. Expired notification messages cannot be viewed. Notification messages expire 24 hours after they have been sent.`);
                     await interaction.client.users.fetch(notification.user)

@@ -78,11 +78,11 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                 });
                 this.scene.on('text', async (ctx) => {
                     if (ctx.scene.session.user.id !== ctx.from.id) return;
-                    const locale = ctx.from.language_code || 'en';
                     await ctx.scene.leave();
                     try {
                         const input = Number(ctx.message.text) || ctx.message.text;
-                        const { status, airline, fleet, ipo, awards } = await rest.fetchAirline(input);
+                        const response = await rest.fetchAirline(input);
+                        const { status, airline, fleet, ipo } = response;
                         if (!status.success) throw new TelegramClientError(status.error);
                         const planes = await planeCollection.aggregate<Aircraft>([
                             {
@@ -126,12 +126,16 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                         });
                         const cargoFleet = planes.filter(plane => plane.type === 'cargo');
                         const paxFleet = planes.filter(plane => plane.type === 'pax');
-                        const reply = compile({ 
-                            airline, fleet, ipo, awards, format, locale,
-                            paxFleetSize: paxFleet.length && cargoFleet.map(plane => plane.amount).reduce((a, b) => a + b),
-                            cargoFleetSize: cargoFleet.length && cargoFleet.map(plane => plane.amount).reduce((a, b) => a + b),
-                            staff: Airline.calculateStaff(planes),
-                            profit: profit.airline.profit
+                        const reply = compile({
+                            ctx, 
+                            date: { format },
+                            data: {
+                                ...response,
+                                paxFleetSize: paxFleet.length && cargoFleet.map(plane => plane.amount).reduce((a, b) => a + b),
+                                cargoFleetSize: cargoFleet.length && cargoFleet.map(plane => plane.amount).reduce((a, b) => a + b),
+                                staff: Airline.calculateStaff(planes),
+                                profit: profit.airline.profit
+                            }
                         });
                         const buttons = [];
                         if (airline.logo) buttons.push(Markup.button.url('Logo', airline.logo));

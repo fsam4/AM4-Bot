@@ -11,7 +11,7 @@ const event: Event = {
     once: false,
     async execute(guild, { database, client, log }) {
         console.log(chalk.red(`Removed from ${guild.name}`));
-        await log.send(`AM4 Bot was removed from ${Formatters.bold(guild.name)}. AM4 Bot is now used in ${Formatters.bold(client.guilds.cache.size.toLocaleString(locale))} servers.`);
+        await log.send(`${client.user.username} was removed from ${Formatters.bold(guild.name)}. ${client.user.username} is now used in ${Formatters.bold(client.guilds.cache.size.toLocaleString(locale))} servers.`);
         const query = { server: guild.id };
         await database.settings.collection<Settings.Server>('Servers').deleteOne({ id: guild.id });
         await database.settings.collection<Settings.Webhook>("Webhooks").deleteMany(query);

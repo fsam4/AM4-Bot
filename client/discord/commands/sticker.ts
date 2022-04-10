@@ -1,4 +1,4 @@
-import { Permissions, Formatters, MessageEmbed, Constants, type TextChannel, type ApplicationCommandOptionChoice } from 'discord.js';
+import { Permissions, Formatters, MessageEmbed, Constants, type ApplicationCommandOptionChoice } from 'discord.js';
 import { MongoDB as Utils } from '../../utils';
 import DiscordClientError from '../error';
 
@@ -150,7 +150,7 @@ const command: SlashCommand = {
                 }
                 case "view": {
                     const stickers = await interaction.guild.stickers.fetch().then(stickers => stickers.filter(emoji => emoji.user.id === interaction.client.user.id));
-                    if (!stickers.size) throw new DiscordClientError("This server does not have any AM4 stickers added via AM4 Bot!");
+                    if (!stickers.size) throw new DiscordClientError(`This server does not have any AM4 stickers added via ${interaction.client.user.username}!`);
                     const embed = new MessageEmbed({
                         color: "YELLOW",
                         description: stickers.map(sticker => `${Formatters.inlineCode(sticker.id)}|${Formatters.time(sticker.createdAt, "d")}|${sticker.name}`).join('\n'),
@@ -178,7 +178,7 @@ const command: SlashCommand = {
                             tags = ":airplane:";
                             const plane = await planes.findOne(createTextFilter<AM4.Plane>(input));
                             if (!plane) throw new DiscordClientError(`No plane could be found with ${Formatters.bold(input)}...`);
-                            description ||= `A sticker representing the plane model ${plane.name}. This sticker has been created via AM4 Bot.`;
+                            description ||= `A sticker representing the plane model ${plane.name}. This sticker has been created via ${interaction.client.user.username}.`;
                             sticker_name ||= plane.name.replace(/(\s|-)/, '_');
                             buffer = plane.image.buffer;
                             break;
@@ -188,7 +188,7 @@ const command: SlashCommand = {
                             const input = interaction.options.getString("name", true).trimEnd();
                             const achievement = await achievements.findOne(createTextFilter<AM4.Achievement>(input));
                             if (!achievement) throw new DiscordClientError(`No achievement could be found with ${Formatters.bold(input)}...`);
-                            description ||= `A sticker representing the achievement ${achievement.name}. This sticker has been created via AM4 Bot.`;
+                            description ||= `A sticker representing the achievement ${achievement.name}. This sticker has been created via ${interaction.client.user.username}.`;
                             sticker_name ||= achievement.name.replace(/(\s|-)/, '_');
                             buffer = achievement.icon.buffer;
                             break;
@@ -202,9 +202,10 @@ const command: SlashCommand = {
                     await interaction.guild.stickers.create(buffer, sticker_name, tags, options)
                     .then(async sticker => {
                         await interaction.editReply(`Added a new ${subCommand} sticker to your server! The ID of this sticker is ${Formatters.bold(sticker.id)}. You can now use the sticker in this server!`);
-                        const channel = <TextChannel>interaction.channel;
-                        const permissions = channel.permissionsFor(interaction.guild.me);
-                        if (permissions.has("SEND_MESSAGES")) await channel.send({ stickers: [sticker] });
+                        if (interaction.channel.isText()) {
+                            const permissions = interaction.channel.permissionsFor(interaction.guild.me);
+                            if (permissions.has("SEND_MESSAGES")) await interaction.channel.send({ stickers: [sticker] });
+                        }
                     })
                     .catch(async err => {
                         console.error("Failed to create a sticker", err);

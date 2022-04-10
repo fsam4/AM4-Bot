@@ -1,12 +1,16 @@
-import { MessageEmbed, Formatters, MessageActionRow, type MessageSelectMenu, type MessageButton, type SelectMenuInteraction, type PermissionResolvable } from 'discord.js';
+import { MessageEmbed, Formatters, MessageActionRow, MessageButton, MessageSelectMenu, type SelectMenuInteraction, type PermissionResolvable } from 'discord.js';
 import DiscordClientError from '../error';
 import lastDayOfMonth from 'date-fns/lastDayOfMonth';
 import updateEmbed from '../../../documents/json/update.json';
 import setTime from 'date-fns/set';
 import config from '../../../config.json';
 
+import type { APISelectMenuComponent, APIButtonComponent } from 'discord-api-types/v9';
 import type { Quiz, Settings } from '@typings/database';
 import type { Component } from '@discord/types';
+
+type SelectMenuComponent = APISelectMenuComponent | MessageSelectMenu;
+type ButtonComponent = APIButtonComponent | MessageButton;
 
 const component: Component<SelectMenuInteraction> = {
     name: "help",
@@ -19,8 +23,8 @@ const component: Component<SelectMenuInteraction> = {
         try {
             const bot = await interaction.client.application.fetch();
             const category = interaction.values[0];
-            const select = <MessageSelectMenu>interaction.message.components[0].components[0];
-            const buttons = <MessageButton[]>interaction.message.components[1].components;
+            const select = interaction.message.components[0].components[0] as SelectMenuComponent;
+            const buttons = interaction.message.components[1].components as ButtonComponent[];
             for (const option of select.options) {
                 if (category === "general") {
                     option.default = false;
@@ -178,15 +182,15 @@ const component: Component<SelectMenuInteraction> = {
                         color: "RANDOM",
                         title: "Privacy Policy",
                         url: inviteURL,
-                        description: "AM4 Bot does not collect any personal information about you or any other information that could be used to identify you or anyone else. AM4 Bot only collects necessary information to connect you to your AM4 airline or Discord user. By using AM4 Bot you agree to our privacy policy.",
+                        description: `${interaction.client.user.username} does not collect any personal information about you or any other information that could be used to identify you or anyone else. ${interaction.client.user.username} only collects necessary information to connect you to your AM4 airline or Discord user. By using ${interaction.client.user.username} you agree to our privacy policy.`,
                         fields: [
                             {
                                 name: "Discord",
-                                value: "AM4 Bot might collect message IDs, channel IDs, server IDs or user IDs.\n• Message and channel IDs are collected to connect your giveaways, reaction roles or role panels to the message and the channel where it is located.\n• Channel IDs are also collected when making channel specific settings like notification webhooks or command whitelists/blacklists.\n• User IDs are used to connect your Discord user to your settings and saved airline. AM4 Bot also keeps a record of your command activity (except when using `/help`), warnings and suspensions to ensure security. User IDs can also be collected to connect you to your created giveaways or role panels."
+                                value: `${interaction.client.user.username} might collect message IDs, channel IDs, server IDs or user IDs.\n• Message and channel IDs are collected to connect your giveaways, reaction roles or role panels to the message and the channel where it is located.\n• Channel IDs are also collected when making channel specific settings like notification webhooks or command whitelists/blacklists.\n• User IDs are used to connect your Discord user to your settings and saved airline. ${interaction.client.user.username} also keeps a record of your command activity (except when using \`/help\`), warnings and suspensions to ensure security. User IDs can also be collected to connect you to your created giveaways or role panels.`
                             },
                             {
                                 name: "Airline Manager 4",
-                                value: "AM4 Bot uses the available AM4 API to get any airline, alliance or route information. Additonally plane, airport, achievement and route data can be obtained from the bot's database and AM4 Tools API. AM4 Bot also keeps a record of top 50 alliances (and alliances that use AM4 Bot or request to be recorded) and their growth and members. This data is collected daily via the available AM4 API and is stored to draw graphs to visualize alliance growth, contribution history and other statistics. The bot automatically cleans useless and expired data after a certain period of time."
+                                value: `${interaction.client.user.username} uses the available AM4 API to get any airline, alliance or route information. Additonally plane, airport, achievement and route data can be obtained from the bot's database and AM4 Tools API. ${interaction.client.user.username} also keeps a record of top 50 alliances (and alliances that use ${interaction.client.user.username} or request to be recorded) and their growth and members. This data is collected daily via the available AM4 API and is stored to draw graphs to visualize alliance growth, contribution history and other statistics. The bot automatically cleans useless and expired data after a certain period of time.`
                             }
                         ],
                         timestamp: bot.createdTimestamp,
@@ -194,7 +198,7 @@ const component: Component<SelectMenuInteraction> = {
                             text: `Used in ${interaction.client.guilds.cache.size} servers`,
                             iconURL: interaction.client.user.displayAvatarURL()
                         }
-                    })
+                    });
                     break;
                 }
                 case 'update': {
@@ -208,6 +212,8 @@ const component: Component<SelectMenuInteraction> = {
                     break;
                 }
                 default: {
+                    const discordInviteUrl = process.env.DISCORD_SERVER_INVITE;
+                    if (discordInviteUrl === undefined) throw new Error("DISCORD_SERVER_INVITE must be provided!");
                     const embed = new MessageEmbed({
                         color: "RANDOM",
                         title: 'AM4 Discord Bot',
@@ -218,16 +224,16 @@ const component: Component<SelectMenuInteraction> = {
                         },
                         fields: [
                             {
-                                name: 'About AM4 Bot...',
+                                name: `About ${interaction.client.user.username}...`,
                                 value: bot.description
                             },
                             {
                                 name: 'Getting Started...',
-                                value: `Most of the AM4 Bot commands are slash commands. Type \`/\` in the chat to see them all or click ${Formatters.formatEmoji(config.emojis.chat)} for a list of commands. You can also use AM4 Bot's context menu commands by right clicking a message or a user. If you require support join ${Formatters.hyperlink("the Air France KLM server", "https://discord.gg/f8WHuRX")}.`
+                                value: `Most of the ${interaction.client.user.username} commands are slash commands. Type \`/\` in the chat to see them all or click ${Formatters.formatEmoji(config.emojis.chat)} for a list of commands. You can also use ${interaction.client.user.username}'s context menu commands by right clicking a message or a user. If you require support join ${Formatters.hyperlink("the Air France KLM server", discordInviteUrl)}.`
                             },
                             {
-                                name: 'Logging in with AM4 Bot...',
-                                value: 'To login with AM4 Bot use `/user login`. This will save your airline so you do not anymore need to fill in the game mode argument. You can also leave all arguments empty in `/airline search` and `/alliance members search` to see your own airline, and in `/alliance search` to see your own alliance. If you change your game mode use `/user sync` to refresh your mode.'
+                                name: `Logging in with ${interaction.client.user.username}...`,
+                                value: `To login with ${interaction.client.user.username} use \`/user login\`. This will save your airline so you do not anymore need to fill in the game mode argument. You can also leave all arguments empty in \`/airline search\` and \`/alliance members search\` to see your own airline, and in \`/alliance search\` to see your own alliance. If you change your game mode use \`/user sync\` to refresh your mode.`
                             }
                         ],
                         timestamp: bot.createdTimestamp,
@@ -237,9 +243,11 @@ const component: Component<SelectMenuInteraction> = {
                         }
                     });
                     if (interaction.client.application.botPublic) {
-                        embed.addFields(                            {
-                            name: 'Inviting AM4 Bot...',
-                            value: `AM4 Bot is on Discord & Telegram. To invite AM4 Bot on Discord click the "${Formatters.hyperlink("Invite AM4 Bot", inviteURL)}" button below. To invite/use it on Telegram search up **@am4_finsky_bot** on Telegram. You can also join ${Formatters.hyperlink("AM4 Bot group", "https://t.me/joinchat/mWoOI4FP6PcxMTRk")} on Telegram for help with AM4 Bot on Telegram.`
+                        const telegramInviteUrl = process.env.TELEGRAM_CHAT_INVITE;
+                        if (telegramInviteUrl === undefined) throw new Error("TELEGRAM_CHAT_INVITE must be provided!");
+                        embed.addFields({
+                            name: `Inviting ${interaction.client.user.username}...`,
+                            value: `${interaction.client.user.username} is on Discord & Telegram. To invite ${interaction.client.user.username} on Discord click the "${Formatters.hyperlink(`Invite ${interaction.client.user.username}`, inviteURL)}" button below. To invite/use it on Telegram search up **@am4_finsky_bot** on Telegram. You can also join ${Formatters.hyperlink(`${interaction.client.user.username} group`, telegramInviteUrl)} on Telegram for help with ${interaction.client.user.username} on Telegram.`
                         });
                     }
                     embeds[0] = embed;
@@ -249,8 +257,21 @@ const component: Component<SelectMenuInteraction> = {
             await interaction.editReply({ 
                 embeds, 
                 components: [
-                    new MessageActionRow({ components: [select] }), 
-                    new MessageActionRow({ components: buttons })
+                    new MessageActionRow({ 
+                        components: [
+                            select instanceof MessageSelectMenu 
+                                ? select 
+                                : new MessageSelectMenu(select)
+                        ] 
+                    }), 
+                    new MessageActionRow({ 
+                        components: 
+                        buttons.map(component => {
+                            return component instanceof MessageButton 
+                                ? component 
+                                : new MessageButton(component);
+                        }) 
+                    })
                 ] 
             });
         }

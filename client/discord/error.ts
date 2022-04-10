@@ -4,8 +4,6 @@ import type { MessageComponentInteraction, CommandInteraction, ContextMenuIntera
 
 type Interaction = MessageComponentInteraction | CommandInteraction | ContextMenuInteraction;
 
-const message = "An unknown error occured. Please report this in https://discord.gg/ZNYXSVNKb9.";
-
 /**
  * A class representing a Discord client error.
  * @constructor
@@ -42,6 +40,9 @@ const message = "An unknown error occured. Please report this in https://discord
      */
 
     static async sendUnknownError(interaction: Interaction) {
+        const inviteUrl = process.env.DISCORD_SERVER_INVITE;
+        if (inviteUrl === undefined) throw new Error("DISCORD_SERVER_INVITE must be provided!");
+        const message = `An unknown error occured. Please report this in ${inviteUrl}.`;
         if (interaction.replied) {
             await interaction.followUp(message)
             .catch(console.error);

@@ -945,7 +945,7 @@ const command: SlashCommand = {
                         {
                             id: new ObjectId(),
                             type: "Bar graph",
-                            description: "Bar graph comparing the total pax and cargo demands of the airports based on AM4 Bot's route data.",
+                            description: `Bar graph comparing the total pax and cargo demands of the airports based on ${interaction.client.user.username}'s route data.`,
                             data: {
                                 type: 'bar',
                                 data: {

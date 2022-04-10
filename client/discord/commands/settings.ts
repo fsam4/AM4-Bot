@@ -276,7 +276,7 @@ const command: SlashCommand = {
                                 name: 'max_fuel',
                                 description: 'The maximum fuel price to send. By default 1000.',
                                 type: Constants.ApplicationCommandOptionTypes.INTEGER,
-                                minValue: 1,
+                                minValue: 0,
                                 maxValue: 3000,
                                 required: false
                             },
@@ -284,7 +284,7 @@ const command: SlashCommand = {
                                 name: 'max_co2',
                                 description: 'The maximum co2 price to send. By default 150.',
                                 type: Constants.ApplicationCommandOptionTypes.INTEGER,
-                                minValue: 1,
+                                minValue: 0,
                                 maxValue: 200,
                                 required: false
                             }
@@ -491,7 +491,9 @@ const command: SlashCommand = {
                             break;
                         }
                     }
-                    await interaction.editReply(ok ? "The role settings of this server have been updated." : "Failed to update the role settings of this server. Please try again or report this in https://discord.gg/ZNYXSVNKb9.");
+                    const inviteUrl = process.env.DISCORD_SERVER_INVITE;
+                    if (inviteUrl === undefined) throw new Error("DISCORD_SERVER_INVITE must be provided!");
+                    await interaction.editReply(ok ? "The role settings of this server have been updated." : `Failed to update the role settings of this server. Please try again or report this in ${inviteUrl}.`);
                     break;
                 }
                 case "permissions": {
@@ -504,7 +506,7 @@ const command: SlashCommand = {
                                 const mentionable = interaction.options.get("mentionable", true);
                                 const permissions = await command.permissions.fetch({ guild: interaction.guildId });
                                 if (permissions.length === 10) throw new DiscordClientError("That command has the maximum amount of permission overwrites. You need to remove some existing permission overwrites to add more.");
-                                const roleOrUser = mentionable.user || <Role>mentionable.role;
+                                const roleOrUser = mentionable.user || mentionable.role;
                                 await command.permissions.add({
                                     guild: interaction.guildId,
                                     permissions: [{
@@ -585,13 +587,13 @@ const command: SlashCommand = {
                             const current = await webhookCollection.countDocuments({ server: interaction.guildId });
                             if (current > 2) throw new DiscordClientError("A server can at most have 2 notification webhooks!");
                             const channel = <TextChannel>interaction.options.getChannel("channel", true);
-                            const role = <Role>interaction.options.getRole("role", true);
+                            const role = interaction.options.getRole("role", true);
                             if (role.position > interaction.guild.me.roles.highest.position) throw new DiscordClientError("The role to mention needs to be lower than the bot's highest role!");
                             const fuel = interaction.options.getBoolean("fuel", true);
                             const co2 = interaction.options.getBoolean("co2", true);
-                            const max_fuel = interaction.options.getInteger("max_fuel") || 1000;
-                            const max_co2 = interaction.options.getInteger("max_co2") || 150;
-                            const webhook = await channel.createWebhook("AM4 Bot Notifications", {
+                            const max_fuel = interaction.options.getInteger("max_fuel") ?? 1000;
+                            const max_co2 = interaction.options.getInteger("max_co2") ?? 150;
+                            const webhook = await channel.createWebhook(`${interaction.client.user.username} Notifications`, {
                                 avatar: interaction.client.user.displayAvatarURL(),
                                 reason: `Notification webhook created by ${interaction.user.username}#${interaction.user.discriminator}`,
                             });
@@ -643,7 +645,7 @@ const command: SlashCommand = {
                                 }
                             );
                             if (!webhook) throw new DiscordClientError("Could not find a notification webhook with that ID...");
-                            const role = <Role>interaction.options.getRole("role");
+                            const role = interaction.options.getRole("role");
                             if (role) {
                                 if (role.position > interaction.guild.me.roles.highest.position) throw new DiscordClientError("The role to mention needs to be lower than the bot's highest role!");
                                 const commands = await interaction.client.application.commands.fetch();
@@ -887,7 +889,9 @@ const command: SlashCommand = {
                             break;
                         }
                     }
-                    await interaction.editReply(ok ? "The login settings of this server have been updated." : "Failed to update the login settings of this server. Please try again or report this in https://discord.gg/ZNYXSVNKb9.");
+                    const inviteUrl = process.env.DISCORD_SERVER_INVITE;
+                    if (inviteUrl === undefined) throw new Error("DISCORD_SERVER_INVITE must be provided!");
+                    await interaction.editReply(ok ? "The login settings of this server have been updated." : `Failed to update the login settings of this server. Please try again or report this in ${inviteUrl}.`);
                     break;
                 }
                 case "view": {

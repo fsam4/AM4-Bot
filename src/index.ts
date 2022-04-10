@@ -28,7 +28,7 @@ export default class AM4RestClient {
     public lastRequest?: Date;
     constructor(public accessToken?: string) {
         if (this.accessToken) {
-            this.requestsRemaining = 800;
+            this.#requestsRemaining = 800;
         }
     }
 

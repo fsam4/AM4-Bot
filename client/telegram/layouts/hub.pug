@@ -1,13 +1,14 @@
 extends airport.pug
 
-| <b>Total pax:</b> #{airport.totalPax.toLocaleString(locale)}
-| <b>Total cargo:</b> #{airport.totalCargo.toLocaleString(locale)} lbs 
+- var locale = ctx.from.language_code || 'en'
+| <b>Total pax:</b> #{data.airport.totalPax.toLocaleString(locale)}
+| <b>Total cargo:</b> #{data.airport.totalCargo.toLocaleString(locale)} lbs 
 |
 |
 b <u>Average demand</u>
 |
-| <b>Economy:</b> #{airport.average_demand.Y.toLocaleString(locale)}
-| <b>Business:</b> #{airport.average_demand.J.toLocaleString(locale)}
-| <b>First:</b> #{airport.average_demand.F.toLocaleString(locale)}
-| <b>Large:</b> #{airport.average_demand.L.toLocaleString(locale)}
-| <b>Heavy:</b> #{airport.average_demand.H.toLocaleString(locale)}
+| <b>Economy:</b> #{data.airport.average_demand.Y.toLocaleString(locale)}
+| <b>Business:</b> #{data.airport.average_demand.J.toLocaleString(locale)}
+| <b>First:</b> #{data.airport.average_demand.F.toLocaleString(locale)}
+| <b>Large:</b> #{data.airport.average_demand.L.toLocaleString(locale)}
+| <b>Heavy:</b> #{data.airport.average_demand.H.toLocaleString(locale)}

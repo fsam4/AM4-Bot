@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb';
+import { MongoClient, type AnyBulkWriteOperation } from 'mongodb';
 import { Formatters } from 'discord.js';
 import chalk from 'chalk';
 
@@ -6,7 +6,6 @@ import differenceInMilliseconds from 'date-fns/differenceInMilliseconds';
 import isFirstDayOfMonth from 'date-fns/isFirstDayOfMonth';
 import addMonths from 'date-fns/addMonths';
 
-import type { AnyBulkWriteOperation } from 'mongodb';
 import type { Event } from '@client/base/types';
 import type { AM4 } from '@typings/database';
 

@@ -174,7 +174,7 @@ const command: SlashCommand = {
                 }
                 case "view": {
                     const emojis = await interaction.guild.emojis.fetch().then(emojis => emojis.filter(emoji => emoji.author.id === interaction.client.user.id));
-                    if (!emojis.size) throw new DiscordClientError("This server does not have any AM4 emojis added via AM4 Bot...");
+                    if (!emojis.size) throw new DiscordClientError(`This server does not have any AM4 emojis added via ${interaction.client.user.username}...`);
                     const embed = new MessageEmbed({
                         color: "YELLOW",
                         description: emojis.map(emoji => `${Formatters.inlineCode(emoji.id)}|${Formatters.time(emoji.createdAt, "d")}|${Formatters.formatEmoji(emoji.id)}`).join('\n'),

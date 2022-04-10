@@ -14,7 +14,7 @@ Array.prototype.split = function(chunks, balanced = true) {
     if (chunks < 2) return [this];
     let i = 0, size: number;
     const len = this.length, out = [];
-    if (len % chunks === 0) {
+    if ((len % chunks) === 0) {
         size = Math.floor(len / chunks);
         while (i < len) {
             out.push(this.slice(i, i += size));
@@ -27,7 +27,7 @@ Array.prototype.split = function(chunks, balanced = true) {
     } else {
         chunks--;
         size = Math.floor(len / chunks);
-        if (len % size === 0) size--;
+        if ((len % size) === 0) size--;
         while (i < size * chunks) {
             out.push(this.slice(i, i += size));
         }
@@ -140,7 +140,7 @@ Number.prototype.abbreviate = function(fractionDigits = 1) {
             const dotLessShortValue = shortValue.toString().replace(/[^a-zA-Z 0-9]+/g, '');
             if (dotLessShortValue.length <= 2) break;
         }
-        if (<number>shortValue % 1 != 0)  shortValue = (<number>shortValue).toFixed(fractionDigits);
+        if ((<number>shortValue % 1) != 0)  shortValue = (<number>shortValue).toFixed(fractionDigits);
         newValue = shortValue + suffixes[suffixNum];
     }
     return newValue as string;

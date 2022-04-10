@@ -19,10 +19,82 @@ interface ProfitOptions {
 }
 
 /**
- * A class containing static methods for planes
+ * A namespace containing methods for planes
  */
 
-export default class Plane {
+namespace Plane {
+
+        /**
+     * Calculates the estimated share value growth from purchasing the plane
+     * @param price - The price of the plane
+     * @returns The share value from purchase
+     */
+
+    export const estimatedShareValueFromPurchase = (price: number) => price / 66666666;
+
+    /**
+     * Converts the heavy load capacity to large load
+     * @param capacity - The capacity in heavy load
+     * @returns The capacity in large load
+     */
+
+    export const heavyToLarge = (capacity: number) => Math.trunc(capacity * (7 / 10));
+
+    /**
+     * Converts the large load capacity to heavy load
+     * @param capacity - The capacity in large load
+     * @returns The capacity in heavy load
+     */
+
+    export const largeToHeavy = (capacity: number) => Math.trunc(capacity * (10 / 7));
+
+    /**
+     * Converts the economy class seats to business class seats
+     * @param capacity - The capacity in economy class
+     * @returns The capacity in business class
+     */
+
+    export const economyToBusiness = (capacity: number) => Math.trunc(capacity * 2);
+    
+    /**
+     * Converts the economy class seats to first class seats
+     * @param capacity - The capacity in economy class
+     * @returns The capacity in first class
+     */
+
+    export const economyToFirst = (capacity: number) => Math.trunc(capacity * 3);
+
+    /**
+     * Converts the business class seats to economy class seats
+     * @param capacity - The capacity in business class
+     * @returns The capacity in economy class
+     */
+
+    export const businessToEconomy = (capacity: number) => Math.trunc(capacity / 2);
+
+    /**
+     * Converts the business class seats to first class seats
+     * @param capacity - The capacity in business class
+     * @returns The capacity in first class
+     */
+
+    export const businessToFirst = (capacity: number) => Math.trunc(capacity / 2 * 3);
+
+    /**
+     * Converts the first class seats to economy class seats
+     * @param capacity - The capacity in first class
+     * @returns The capacity in economy class
+     */
+
+    export const firstToEconomy = (capacity: number) => Math.trunc(capacity / 3);
+
+    /**
+     * Converts the first class seats to business class seats
+     * @param capacity - The capacity in first class
+     * @returns The capacity in business class
+     */
+
+    export const firstToBusiness = (capacity: number) => Math.trunc(capacity / 3 * 2);
 
     /**
      * Calculates the estimated profit of the plane
@@ -31,7 +103,7 @@ export default class Plane {
      * @returns The estimated profit, expenses and income
      */
 
-    static profit(plane: AM4.Plane, { gameMode, fuelPrice, co2Price, reputation, activity, salaries }: ProfitOptions) {
+    export function profit(plane: AM4.Plane, { gameMode, fuelPrice, co2Price, reputation, activity, salaries }: ProfitOptions) {
         fuelPrice ??= defaultSettings.fuelPrice;
         co2Price ??= defaultSettings.co2Price;
         activity ??= defaultSettings.activity;
@@ -73,13 +145,14 @@ export default class Plane {
      * Calculates the estimated resell price of the plane
      * @param plane - The raw plane data
      * @param market - The market percentage of the airport
-     * @param hours - The usage hours of the plane
+     * @param hours - The usage hours of the plane, by default 0
      * @returns The estimated resell price
      */
 
-    static resellPrice(plane: AM4.Plane, market: number, hours = 0) {
-        const price = Math.round((plane.price - (2500 * hours)) * market / 100)
-        return (price < plane.price * 0.10 ? Math.round(plane.price * 0.10) : price)
+    export function resellPrice(plane: AM4.Plane, market: number, hours = 0) {
+        const price = Math.round((plane.price - 2500 * hours) * market / 100);
+        const minPrice = Math.round(plane.price * 0.10);
+        return price < minPrice ? minPrice : price;
     }
 
     /**
@@ -89,35 +162,13 @@ export default class Plane {
      * @returns The estimated share value growth
      */
 
-    static estimatedShareValueGrowth(plane: AM4.Plane, options: ProfitOptions) {
+    export function estimatedShareValueGrowth(plane: AM4.Plane, options: ProfitOptions) {
         const { income, expenses } = Plane.profit(plane, options);
         const decrease = expenses / 40000000;
         const growth = income / 40000000;
         return growth - decrease;
     }
-
-    /**
-     * Calculates the estimated share value growth from purchasing the plane
-     * @param price - The price of the plane
-     * @returns The share value from purchase
-     */
-
-    static estimatedShareValueFromPurchase = (price: number) => price / 66666666;
-
-    /**
-     * Converts the heavy load capacity to large load
-     * @param capacity - The capacity in heavy load
-     * @returns The capacity in large load
-     */
-
-    static heavyToLarge = (capacity: number) => Math.round(capacity * (7 / 10));
-
-    /**
-     * Converts the large load capacity to heavy load
-     * @param capacity - The capacity in large load
-     * @returns The capacity in heavy load
-     */
-
-    static largeToHeavy = (capacity: number) => Math.round(capacity * (10 / 7));
     
 }
+
+export default Plane;

@@ -11,9 +11,9 @@ interface ApplicationCommandOption {
     channel_types?: number[];
     autocomplete?: boolean;
     choices?: Array<{
-		name: string;
-		value: string | number;
-	}>;
+        name: string;
+        value: string | number;
+    }>;
 }
 
 type Constructable<T> = void | T;

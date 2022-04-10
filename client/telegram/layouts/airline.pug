@@ -1,65 +1,63 @@
 b <u>Airline Information</u>
 |
-| <b>Airline:</b> #{airline.name}
-- var has_alliance = airline.alliance
+| <b>Airline:</b> #{data.airline.name}
+- var has_alliance = data.airline.alliance
    if has_alliance
         |
-        | <b>Alliance:</b> #{airline.alliance.name}
+        | <b>Alliance:</b> #{data.airline.alliance.name}
 
-- var founded = format(airline.founded.getTime() + airline.founded.getTimezoneOffset() * 60000, 'dd/MM/yyyy • kk:mm')
+- var founded = date.format(data.airline.founded.getTime() + data.airline.founded.getTimezoneOffset() * 60000, 'dd/MM/yyyy • kk:mm')
 |
 | <b>Founded:</b> #{founded} (UTC)
 |
-- var has_cargo = cargo_size > 0
-   if has_cargo  
-        | <b>Pax reputation:</b> #{airline.reputation.pax}%
-        | <b>Cargo reputation:</b> #{airline.reputation.cargo}%
+- var locale = ctx.from.language_code || 'en'
+   if data.cargoFleetSize > 0  
+        | <b>Pax reputation:</b> #{data.airline.reputation.pax}%
+        | <b>Cargo reputation:</b> #{data.airline.reputation.cargo}%
    else 
-        | <b>Pax reputation:</b> #{airline.reputation.pax}%     
+        | <b>Pax reputation:</b> #{data.airline.reputation.pax}%     
 
 |
-| <b>Rank:</b> #{airline.rank.toLocaleString(locale)} in #{airline.gameMode}
+| <b>Rank:</b> #{data.airline.rank.toLocaleString(locale)} in #{data.airline.gameMode}
+| <b>Achievements:</b> #{data.airline.achievements} completed
 |
-- var per = Math.round(airline.achievements / 77 * 100)
-| <b>Achievements:</b> #{airline.achievements} completed (#{per}%)
-|
-- var has_ipo = ipo.has
+- var has_ipo = data.ipo.has
     if has_ipo
-        | <b>Share Value:</b> $#{ipo.current.toLocaleString(locale)}
-        | <b>Shares available:</b> #{ipo.shares.available.toLocaleString(locale)}/#{ipo.shares.total.toLocaleString(locale)}
-        | <b>Level:</b> #{airline.level} 
+        | <b>Share Value:</b> $#{data.ipo.current.toLocaleString(locale)}
+        | <b>Shares available:</b> #{data.ipo.shares.available.toLocaleString(locale)}/#{data.ipo.shares.total.toLocaleString(locale)}
+        | <b>Level:</b> #{data.airline.level} 
     else 
-        | <b>Level:</b> #{airline.level}   
+        | <b>Level:</b> #{data.airline.level}   
 
 |
 |
 |
 b <u>Fleet info</u>
 |
-| <b>Total size:</b> #{fleet.size} planes 
-| <b>Pax fleet:</b> #{paxFleetSize} planes
-| <b>Cargo fleet:</b> #{cargoFleetSize} planes
-| <b>Routes:</b> #{fleet.routes}
+| <b>Total size:</b> #{data.fleet.size} planes 
+| <b>Pax fleet:</b> #{data.paxFleetSize} planes
+| <b>Cargo fleet:</b> #{data.cargoFleetSize} planes
+| <b>Routes:</b> #{data.fleet.routes}
 |
 |
 b <u>Airline Staff</u>
 |
-| <b>Pilots:</b> #{staff.pilots.toLocaleString(locale)}
-| <b>Crew:</b> #{staff.crew.toLocaleString(locale)}
-| <b>Engineers:</b> #{staff.engineers.toLocaleString(locale)}
-| <b>Tech:</b> #{staff.tech.toLocaleString(locale)}
+| <b>Pilots:</b> #{data.staff.pilots.toLocaleString(locale)}
+| <b>Crew:</b> #{data.staff.crew.toLocaleString(locale)}
+| <b>Engineers:</b> #{data.staff.engineers.toLocaleString(locale)}
+| <b>Tech:</b> #{data.staff.tech.toLocaleString(locale)}
 |
 |
 b <u>Profitability</u>
 |
-| <b>Per hour:</b> $#{Math.round(profit / 18).toLocaleString(locale)}
-| <b>Per day:</b> $#{Math.round(profit).toLocaleString(locale)}
-| <b>Per week:</b> $#{Math.round(profit * 7).toLocaleString(locale)}
+| <b>Per hour:</b> $#{Math.round(data.profit / 18).toLocaleString(locale)}
+| <b>Per day:</b> $#{Math.round(data.profit).toLocaleString(locale)}
+| <b>Per week:</b> $#{Math.round(data.profit * 7).toLocaleString(locale)}
 |
 |
-- var has_awards = awards.length > 0
+- var has_awards = Boolean(data.awards.length)
     if has_awards 
         |
         b <u>Awards</u>
         |
-        | <code>#{awards.map(award => `${award.name} • ${format(award.date, 'dd/MM/yyyy')}`).join('\n')}</code>
+        | <code>#{data.awards.map(award => `${award.name} • ${date.format(award.date, 'dd/MM/yyyy')}`).join('\n')}</code>

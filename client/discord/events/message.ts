@@ -45,7 +45,7 @@ const event: Event = {
                 const account = await users.findOne({ id: message.author.id });
                 const owner = client.application.owner;
                 const isDeveloper = owner instanceof User ? (message.author.id === owner.id) : owner.members.some(member => member.id === message.author.id);
-                if (!isDeveloper && (!account?.admin_level || (account?.mute && isFuture(account.mute)) || requiredLevel[command] > account?.admin_level)) return;
+                if (!isDeveloper && (!account?.admin_level || (account?.suspension && isFuture(account.suspension)) || requiredLevel[command] > account?.admin_level)) return;
                 const globalCooldown = await cooldowns.get(message.author.id);
                 if (globalCooldown) {
                     await message.reply(`You currently have a global cooldown. The cooldown ends ${formatDistanceToNowStrict(new Date(globalCooldown), { addSuffix: true })}`);
@@ -63,7 +63,7 @@ const event: Event = {
                         const [guild_id] = args;
                         if (client.guilds.cache.has(guild_id)) throw new DiscordClientError("Invalid guild ID...");
                         const guild = client.guilds.cache.get(guild_id);
-                        await message.reply(`AM4 Bot has been removed from ${Formatters.bold(guild.name)}!`);
+                        await message.reply(`${message.client.user.username} has been removed from ${Formatters.bold(guild.name)}!`);
                         await guild.leave();
                         break;
                     }
@@ -150,14 +150,14 @@ const event: Event = {
                             const date = addDays(message.createdAt, 7);
                             await users.updateOne({ id: user.id }, {
                                 $set: {
-                                    mute: date,
+                                    suspension: date,
                                     warnings: []
                                 }
                             });
-                            await user.send(`You have been warned by an AM4 Bot admin for "${reason}". You have received 5 warnings which will result in an one week command mute. You have been suspended from using commands until ${Formatters.time(date, "F")}!`);
-                            await message.reply(`${Formatters.bold(`${user.username}#${user.discriminator}`)} has been warned and muted until ${Formatters.time(date, "F")} for reaching 5 warnings!`);
+                            await user.send(`You have been warned by an ${message.client.user.username} admin for "${reason}". You have received 5 warnings which will result in an one week suspension from using ${message.client.user.username}. You have been suspended from using commands until ${Formatters.time(date, "F")}!`);
+                            await message.reply(`${Formatters.bold(`${user.username}#${user.discriminator}`)} has been warned and suspended until ${Formatters.time(date, "F")} for reaching 5 warnings!`);
                         } else {
-                            await user.send(`You have been warned by an AM4 Bot admin for "${reason}". You currently have ${Formatters.bold(res.value.warnings.length.toString())} warnings. Please note that 5 warnings will result in an one week command mute!`);
+                            await user.send(`You have been warned by an ${message.client.user.username} admin for "${reason}". You currently have ${Formatters.bold(res.value.warnings.length.toString())} warnings. Please note that 5 warnings will result in an one week suspension from using ${message.client.user.username}!`);
                             await message.reply(`${Formatters.bold(`${user.username}#${user.discriminator}`)} has been warned! This user currently has ${Formatters.bold(res.value.warnings.length.toString())} warnings.`);
                         }
                         await log.send(`${Formatters.bold(res?.value?.name || `${user.username}#${user.discriminator}`)} has been warned for "${reason}"`);
@@ -198,7 +198,7 @@ const event: Event = {
                                     warnings: []
                                 },
                                 $set: {
-                                    mute: date
+                                    suspension: date
                                 }
                             },
                             {
@@ -207,7 +207,7 @@ const event: Event = {
                             }
                         );
                         if (!res.ok) throw new DiscordClientError("Failed to suspend this user...");
-                        await user.send(`You have been suspended from using command until ${Formatters.time(date, "F")} for "${reason}".`);
+                        await user.send(`You have been suspended from using ${message.client.user.username} until ${Formatters.time(date, "F")} for "${reason}".`);
                         await message.reply(`${Formatters.bold(`${user.username}#${user.discriminator}`)} has been suspended until ${Formatters.time(date, "F")}!`);
                         await log.send(`${Formatters.bold(res?.value?.name || `${user.username}#${user.discriminator}`)} has been suspended until ${Formatters.time(date, "F")} for "${reason}"`);
                         break;

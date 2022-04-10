@@ -87,7 +87,7 @@ const command: Command<Scenes.SceneContext, never, SceneContext> = {
                             achievement.route = airports.map(airport => `${airport.city} (${airport.icao}/${airport.iata})`);
                         }
                         const compile = pug.compileFile('client/telegram/layouts/achievement.pug');
-                        const reply = compile({ achievement });
+                        const reply = compile({ ctx, data: { achievement } });
                         if (achievement.image) {
                             await ctx.replyWithPhoto({ url: achievement.image }, {
                                 caption: reply,

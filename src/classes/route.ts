@@ -136,7 +136,7 @@ export default class Route extends Status {
     /**
      * Calculates the flights per day of a route
      * @param distance - The distance of the route
-     * @param plane - The speed of the plane
+     * @param speed - The speed of the plane
      * @param activity - The activity time in hours
      * @returns The flights per day
      */
@@ -299,7 +299,7 @@ export default class Route extends Status {
         options.activity ??= defaultSettings.activity;
         options.reputation ??= defaultSettings.reputation;
         const change = (100 + (100 - options.reputation)) / 100;
-        let capacity = plane.capacity, configuration = { Y: 0, J: 0, F: 0, H: 0, L: 0 };
+        let remaining = plane.capacity, configuration = { Y: 0, J: 0, F: 0, H: 0, L: 0 };
         const maxDemand =  { 
             F: Math.round((route.demand.F * change / options.flights) * 3),
             J: Math.round((route.demand.J * change / options.flights) * 2),
@@ -310,20 +310,19 @@ export default class Route extends Status {
         if (plane.type === "cargo") {
             options.preference ||= [ 'L', 'H' ];
             for (const type of options.preference) {
-                if (capacity <= 0) break;
-                if (capacity > maxDemand[type] && type !== options.preference[1]) {
+                if (remaining <= 0) break;
+                if (remaining > maxDemand[type] && type !== options.preference[1]) {
                     configuration[type] = maxDemand[type];
-                    capacity -= maxDemand[type]
+                    remaining -= maxDemand[type]
                     continue;
                 } else {
-                    configuration[type] = capacity
+                    configuration[type] = remaining
                     break;
                 }
             }
             configuration.L = Plane.heavyToLarge(configuration.L);
         } else {
             if (!options.preference) {
-                options.preference = [ 'F', 'J', 'Y' ];
                 switch(options.gameMode) {
                     case "Realism":
                         if (route.distance > 13889) options.preference = [ 'J', 'F', 'Y' ];
@@ -336,28 +335,32 @@ export default class Route extends Status {
                         if (route.distance > 15200) options.preference = [ 'Y', 'J', 'F' ];
                         break;
                 }
+                options.preference ||= [ 'F', 'J', 'Y' ];
             }
             for (const type of options.preference) {
-                if (capacity <= 0) break;
-                if (capacity > maxDemand[type] && type !== options.preference[2]) {
+                if (remaining <= 0) break;
+                if (remaining > maxDemand[type] && type !== options.preference[2]) {
                     configuration[type] = maxDemand[type];
-                    capacity -= maxDemand[type];
+                    remaining -= maxDemand[type];
                     continue;
                 } else {
-                    configuration[type] = capacity;
+                    configuration[type] = remaining;
                     break;
                 }
             }
-            configuration.J = Math.trunc(configuration.J / 2);
-            configuration.F = Math.trunc(configuration.F / 3);
-            const seatsLeft = plane.capacity - (configuration.Y + configuration.J * 2 + configuration.F * 3);
+            configuration.J = Plane.economyToBusiness(configuration.J);
+            configuration.F = Plane.economyToFirst(configuration.F);
+            let seatsLeft = plane.capacity - (configuration.Y + Plane.businessToEconomy(configuration.J) + Plane.firstToEconomy(configuration.F));
             if (seatsLeft) {
-                if (seatsLeft % 3 === 0) {
-                    configuration.F += seatsLeft / 3;
-                } else if (seatsLeft % 2 === 0) {
-                    configuration.J += seatsLeft / 2;
-                } else {
-                    configuration.Y += seatsLeft;
+                // Reverse the preference as the least preferenced seats most likely won't affect the planes capability to operate on the route
+                const reversedPreference = options.preference.reverse() as typeof options.preference;
+                for (const type of reversedPreference) {
+                    const divider = (type === "F" ? 3 : (type === "J" ? 2 : 1));
+                    while (seatsLeft >= divider) {
+                        configuration[type]++;
+                        seatsLeft -= divider;
+                    }
+                    if (!seatsLeft) break;
                 }
             }
         }

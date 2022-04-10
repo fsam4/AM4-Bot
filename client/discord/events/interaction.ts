@@ -33,7 +33,7 @@ const event: Event = {
         switch(interaction.type) {
             case "APPLICATION_COMMAND_AUTOCOMPLETE": {
                 if (interaction.isAutocomplete()) {
-                    if (user.mute && isFuture(user.mute)) {
+                    if (user?.suspension && isFuture(user.suspension)) {
                         await interaction.respond([])
                         .catch(() => void 0);
                         return;
@@ -51,15 +51,19 @@ const event: Event = {
             }
             case "APPLICATION_COMMAND": {
                 if (interaction.isApplicationCommand()) {
-                    if (user?.mute) {
-                        if (isFuture(user.mute)) {
+                    if (user?.suspension) {
+                        if (isFuture(user.suspension)) {
                             await interaction.reply({
-                                content: `You have been suspended from using commands until ${Formatters.time(user.mute, "F")}!`,
+                                content: `You have been suspended from using commands until ${Formatters.time(user.suspension, "F")}!`,
                                 ephemeral: true
                             });
                             return;
                         } else {
-                            await users.updateOne({ _id: user._id }, { $unset: { mute: "" } });
+                            await users.updateOne({ _id: user._id }, { 
+                                $unset: { 
+                                    suspension: "" 
+                                } 
+                            });
                         }
                     }
                     let command: ContextMenu | SlashCommand;
@@ -155,15 +159,19 @@ const event: Event = {
             }
             case "MESSAGE_COMPONENT": {
                 if (interaction.isMessageComponent()) {
-                    if (user?.mute) {
-                        if (isFuture(user.mute)) {
+                    if (user?.suspension) {
+                        if (isFuture(user.suspension)) {
                             await interaction.reply({
-                                content: `You have been suspended from using components until ${Formatters.time(user.mute, "F")}!`,
+                                content: `You have been suspended from using components until ${Formatters.time(user.suspension, "F")}!`,
                                 ephemeral: true
                             });
                             return;
                         } else {
-                            await users.updateOne({ _id: user._id }, { $unset: { mute: "" } });
+                            await users.updateOne({ _id: user._id }, { 
+                                $unset: { 
+                                    suspension: "" 
+                                } 
+                            });
                         }
                     }
                     options.parsedCustomId = interaction.customId.split(":");

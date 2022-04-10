@@ -27,10 +27,10 @@ const command: ContextMenu<MessageContextMenuInteraction> = {
         await interaction.deferReply({ ephemeral: true });
         try {
             const giveaways = database.discord.collection<Discord.Giveaway>("Giveaways");
-            if (interaction.targetMessage.author.id !== interaction.client.user.id) throw new DiscordClientError("This command can only be used on giveaways created by AM4 Bot...");
+            if (interaction.targetMessage.author.id !== interaction.client.user.id) throw new DiscordClientError(`This command can only be used on giveaways created by ${interaction.client.user.username}...`);
             const isCachedMessage = interaction.targetMessage instanceof Message;
             const giveaway = await giveaways.findOne({ message: interaction.targetId });
-            if (!giveaway) throw new DiscordClientError(`${isCachedMessage ? Formatters.hyperlink("This message", interaction.targetMessage.url) : "This message"} does not seem to be an _active_ giveaway created by AM4 Bot...`);
+            if (!giveaway) throw new DiscordClientError(`${isCachedMessage ? Formatters.hyperlink("This message", interaction.targetMessage.url) : "This message"} does not seem to be an _active_ giveaway created by ${interaction.client.user.username}...`);
             const embed = new MessageEmbed({
                 color: "FUCHSIA",
                 description: `**Giveaway ends:** ${Formatters.time(giveaway.expireAt, "R")}\n**Total participants:** ${giveaway.users.length.toLocaleString(locale)}\n**Message ID:** ${interaction.targetMessage.id}`,

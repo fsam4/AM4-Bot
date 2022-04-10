@@ -1,4 +1,4 @@
-import { Permissions, MessageEmbed, Formatters, Constants, MessageActionRow, MessageButton, type GuildMember, type RoleResolvable, type TextChannel } from 'discord.js';
+import { Permissions, MessageEmbed, Formatters, Constants, MessageActionRow, MessageButton, type RoleResolvable, type TextChannel } from 'discord.js';
 import { Discord as Utils } from '../../utils';
 import DiscordClientError from '../error';
 import defaultSettings from '../../../src/settings.json';
@@ -409,7 +409,7 @@ const command: SlashCommand = {
                         ]
                     });
                     if (interaction.inCachedGuild()) embed.setColor(interaction.member.displayColor);
-                    if (userData.mute) embed.author.name += " (suspended)";
+                    if (userData.suspension) embed.author.name += " (suspended)";
                     if (userData.warnings.length) embed.addFields({
                         name: Formatters.bold(Formatters.underscore(`Warnings (${userData.warnings.length}/5)`)),
                         value: Formatters.codeBlock(userData.warnings.map(warning => `${format(warning.date, 'dd/MM/yyyy')} ► ${warning.reason}`).join("\n")),
@@ -422,7 +422,7 @@ const command: SlashCommand = {
                     if (account?.airlineID) throw new DiscordClientError('You have already logged in. If you want to change your airline use `/user logout` and then login again.');
                     const airlineID = interaction.options.getInteger("id", true);
                     const loggedIn = await users.countDocuments({ airline_id: airlineID });
-                    if (loggedIn) throw new DiscordClientError('Someone has already logged in with this airline ID. If you are sure that this is your airline contact us! Impersonating another airline may result in suspension from using AM4 Bot!');
+                    if (loggedIn) throw new DiscordClientError(`Someone has already logged in with this airline ID. If you are sure that this is your airline contact us! Impersonating another airline may result in suspension from using ${interaction.client.user.username}!`);
                     const { status, airline } = await rest.fetchAirline(airlineID);
                     if (!status.success) throw new DiscordClientError(status.error);
                     const res = await users.updateOne({ id: interaction.user.id }, {
@@ -478,11 +478,10 @@ const command: SlashCommand = {
                             upsert: true 
                         }
                     );
-                    if (interaction.guild) {
+                    if (interaction.inCachedGuild()) {
                         const server = await servers.findOne({ id: interaction.guildId });
-                        const member = <GuildMember>interaction.member;
                         if (server) {
-                            if (server.update_nickname && member.manageable) await member.setNickname(airline.name, `Logged in as ${airline.name}`);
+                            if (server.update_nickname && interaction.member.manageable) await interaction.member.setNickname(airline.name, `Logged in as ${airline.name}`);
                             if (server.update_roles) {
                                 const roles = new Set<RoleResolvable>();
                                 if (server.roles.default) roles.add(server.roles.default);
@@ -490,13 +489,13 @@ const command: SlashCommand = {
                                     const isAllianceMember = airline.alliance.name === server.alliance_name;
                                     if (isAllianceMember) {
                                         roles.add(server.roles.member);
-                                    } else if (member.roles.cache.has(server.roles.member)) {
-                                        await member.roles.remove(server.roles.member, "Not an alliance member");
+                                    } else if (interaction.member.roles.cache.has(server.roles.member)) {
+                                        await interaction.member.roles.remove(server.roles.member, "Not an alliance member");
                                     }
                                 }
                                 const gameMode = airline.gameMode.toLowerCase() as Lowercase<typeof airline.gameMode>;
                                 if (gameMode in server.roles) roles.add(server.roles[gameMode]);
-                                if (roles.size) await member.roles.add([...roles], `Logged in as ${airline.name}`).catch(() => void 0);
+                                if (roles.size) await interaction.member.roles.add([...roles], `Logged in as ${airline.name}`).catch(() => void 0);
                             }
                             if (server.log_channel) {
                                 await interaction.guild.channels.fetch(server.log_channel)
@@ -552,18 +551,17 @@ const command: SlashCommand = {
                             mode: ""
                         }
                     });
-                    if (interaction.guild) {
+                    if (interaction.inCachedGuild()) {
                         const server = await servers.findOne({ id: interaction.guild.id });
-                        const member = <GuildMember>interaction.member;
                         if (server) {
-                            if (server.update_nickname && member.manageable) await member.setNickname(null, `Logged out from ${account.name}`);
+                            if (server.update_nickname && interaction.member.manageable) await interaction.member.setNickname(null, `Logged out from ${account.name}`);
                             if (server.update_roles) {
                                 const roles = new Set<RoleResolvable>();
                                 for (const role in server.roles) {
                                     const roleId = server.roles[role];
                                     if (roleId) roles.add(roleId);
                                 }
-                                if (roles.size) await member.roles.remove([...roles], `Logged out from ${account.name}`).catch(() => void 0);
+                                if (roles.size) await interaction.member.roles.remove([...roles], `Logged out from ${account.name}`).catch(() => void 0);
                             }
                             if (server.log_channel) {
                                 await interaction.guild.channels.fetch(server.log_channel)
@@ -620,17 +618,16 @@ const command: SlashCommand = {
                             name: airline.name
                         }
                     });
-                    if (interaction.guild) {
-                        const member = <GuildMember>interaction.member;
+                    if (interaction.inCachedGuild()) {
                         const server = await servers.findOne({ id: interaction.guild.id });
                         if (server && (server.update_nickname || server.update_roles)) {
-                            if (server.update_nickname) await member.setNickname(airline.name, `Updating the nickname of ${airline.name}`);
+                            if (server.update_nickname) await interaction.member.setNickname(airline.name, `Updating the nickname of ${airline.name}`);
                             if (server.update_roles) {
                                 const addRoles = new Set<RoleResolvable>();
                                 const removeRoles = new Set<RoleResolvable>();
-                                if (server.roles.default && !member.roles.cache.has(server.roles.default)) addRoles.add(server.roles.default);
+                                if (server.roles.default && !interaction.member.roles.cache.has(server.roles.default)) addRoles.add(server.roles.default);
                                 if (server.roles.member && server.alliance_name) {
-                                    if (member.roles.cache.has(server.roles.member)) {
+                                    if (interaction.member.roles.cache.has(server.roles.member)) {
                                         if (airline.alliance) {
                                             const isAllianceMember = airline.alliance.name === server.alliance_name;
                                             if (!isAllianceMember) removeRoles.add(server.roles.member);
@@ -642,21 +639,14 @@ const command: SlashCommand = {
                                         if (isAllianceMember) addRoles.add(server.roles.member);
                                     }
                                 }
-                                switch(airline.gameMode) {
-                                    case "Realism": {
-                                        if (!server.roles.realism) break;
-                                        if (!member.roles.cache.has(server.roles.realism)) addRoles.add(server.roles.realism);
-                                        break;
-                                    }
-                                    case "Easy": {
-                                        if (!server.roles.easy) break;
-                                        if (server.roles.realism && member.roles.cache.has(server.roles.realism)) removeRoles.add(server.roles.realism);
-                                        if (!member.roles.cache.has(server.roles.easy)) addRoles.add(server.roles.easy);
-                                        break;
-                                    }
+                                const currentMode = airline.gameMode.toLowerCase() as Lowercase<typeof airline.gameMode>;
+                                if (server.roles[currentMode]) {
+                                    const oppositeMode = airline.gameMode === "Easy" ? "realism" : "easy";
+                                    if (server.roles[oppositeMode] && interaction.member.roles.cache.has(server.roles[oppositeMode])) removeRoles.add(server.roles[oppositeMode]);
+                                    if (!interaction.member.roles.cache.has(server.roles[currentMode])) addRoles.add(server.roles[currentMode]);
                                 }
-                                if (addRoles.size) await member.roles.add([...addRoles], `Updating the roles of ${airline.name}`).catch(() => void 0);
-                                if (removeRoles.size) await member.roles.remove([...removeRoles], `Updating the roles of ${airline.name}`).catch(() => void 0);
+                                if (addRoles.size) await interaction.member.roles.add([...addRoles], `Updating the roles of ${airline.name}`).catch(() => void 0);
+                                if (removeRoles.size) await interaction.member.roles.remove([...removeRoles], `Updating the roles of ${airline.name}`).catch(() => void 0);
                             }
                         }
                     }

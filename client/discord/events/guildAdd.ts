@@ -10,7 +10,7 @@ const event: Event = {
     once: false,
     async execute(guild, { log, client }) {
         console.log(chalk.green(`Joined ${guild.name}`));
-        await log.send(`Welcome ${Formatters.bold(guild.name)} to AM4 Bot user servers! AM4 Bot is now used in ${Formatters.bold(client.guilds.cache.size.toLocaleString(locale))} servers!`);
+        await log.send(`Welcome ${Formatters.bold(guild.name)} to ${client.user.username} user servers! ${client.user.username} is now used in ${Formatters.bold(client.guilds.cache.size.toLocaleString(locale))} servers!`);
         let commands = await client.application.commands.fetch().then(commands => {
             const admin_commands = client.chatCommands.filter(command => command.isAdministrator);
             return commands.filter(command => admin_commands.has(command.name));

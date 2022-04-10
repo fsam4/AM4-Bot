@@ -95,7 +95,7 @@ const command: Command<Context, Scenes.SceneContext, SceneContext> = {
                         }).limit(100).toArray();
                         if (!airports.length) throw new TelegramClientError('No airports were found with that criteria...');
                         const compile = pug.compileFile('client/telegram/layouts/airport.pug');
-                        const pages = airports.map(airport => compile({ airport, locale }));
+                        const pages = airports.map(airport => compile({ ctx, data: { airport } }));
                         const content: Parameters<typeof ctx.replyWithHTML> = [pages[0]];
                         const markup = Markup.inlineKeyboard([
                             Markup.button.callback('▶️', 'next'),

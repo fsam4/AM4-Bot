@@ -15,8 +15,9 @@ interface LocationDocument {
     };
 }
 
-type Project<T extends Record<keyof P, any>, P> = {
-    [Property in keyof P as P[Property] extends false ? never : Property]: T[Property];
+type ProjectValue = boolean | 1 | 0 | { [key: string]: any };
+type Project<T extends { [K in keyof P]: T[K] }, P extends Record<keyof T, ProjectValue>> = {
+    [K in keyof P as P[K] extends (false | 0) ? never : K]: T[K];
 };
 
 type GeoNear<T> = T & {
@@ -32,7 +33,7 @@ type LogValue = {
 
 export namespace AM4 {
     
-    interface Achievement extends BaseDocument {
+    export interface Achievement extends BaseDocument {
         name: string;
         description?: string;
         bonus_points: number;
@@ -42,7 +43,7 @@ export namespace AM4 {
         image?: string;
     }
 
-    interface Airport extends BaseDocument, LocationDocument {
+    export interface Airport extends BaseDocument, LocationDocument {
         city: string;
         country: string;
         country_code: string;
@@ -52,13 +53,13 @@ export namespace AM4 {
         iata: string;
     }
 
-    interface Alliance extends BaseDocument {
+    export interface Alliance extends BaseDocument {
         name: string;
         archived?: true;
         values: LogValue[];
     }
 
-    interface AllianceMember extends BaseDocument {
+    export interface AllianceMember extends BaseDocument {
         name: string;
         allianceID: ObjectId;
         joined: Date;
@@ -70,7 +71,7 @@ export namespace AM4 {
         expireAt: Date;
     }
 
-    interface Plane extends BaseDocument {
+    export interface Plane extends BaseDocument {
         name: string;
         price?: number;
         bonus_points?: number;
@@ -103,15 +104,9 @@ export namespace AM4 {
         }>;
     }
 
-    interface Route extends BaseDocument {
+    export interface Route extends BaseDocument {
         airports: [ObjectId, ObjectId];
-        demand: {
-            Y: number,
-            J: number,
-            F: number,
-            L: number,
-            H: number
-        };
+        demand: Record<PaxSeat | CargoLoad, number>;
     }
 
 }
@@ -120,13 +115,13 @@ type AdminLevel = 0 | 1 | 2 | 3 | 4 | 5;
 
 export namespace Discord {
 
-    interface User extends BaseDocument {
+    export interface User extends BaseDocument {
         id: string;
         name?: string;
         airlineID?: number;
         admin_level: AdminLevel;
         notifications_made: number;
-        mute?: Date;
+        suspension?: Date;
         commands: Array<{
             command: string;
             uses: number;
@@ -137,7 +132,7 @@ export namespace Discord {
         }>;
     }
 
-    interface Notification extends BaseDocument {
+    export interface Notification extends BaseDocument {
         date: Date;
         user: string;
         server: string;
@@ -155,7 +150,7 @@ export namespace Discord {
         }>;
     }
 
-    interface Panel extends BaseDocument {
+    export interface Panel extends BaseDocument {
         type: "message" | "panel";
         author: string;
         server: string;
@@ -170,7 +165,7 @@ export namespace Discord {
         }>;
     }
 
-    interface Giveaway extends BaseDocument {
+    export interface Giveaway extends BaseDocument {
         finished: boolean;
         author: string;
         server: string;
@@ -182,7 +177,7 @@ export namespace Discord {
         users: string[];
     }
 
-    interface FAQ extends BaseDocument {
+    export interface FAQ extends BaseDocument {
         author?: string;
         server?: string;
         question: string;
@@ -194,14 +189,14 @@ export namespace Discord {
 
 export namespace Telegram {
 
-    interface Keyboard extends BaseDocument {
+    export interface Keyboard extends BaseDocument {
         id: number;
         command: string;
         input: string[];
         expireAt: Date;
     }
 
-    interface User extends BaseDocument {
+    export interface User extends BaseDocument {
         id: number;
         admin_level: AdminLevel;
         commands: Array<{
@@ -217,13 +212,13 @@ type UserIdentifier = string | number;
 
 export namespace Quiz {
 
-    interface User extends BaseDocument {
+    export interface User extends BaseDocument {
         id: UserIdentifier;
         points: number;
         score?: number;
     }
 
-    interface Game extends BaseDocument {
+    export interface Game extends BaseDocument {
         base_question?: string;
         author: string;
         name: string;
@@ -232,7 +227,7 @@ export namespace Quiz {
         reward: number;
     }
 
-    interface Question extends BaseDocument {
+    export interface Question extends BaseDocument {
         type: "text" | "image";
         tags: GameTag[];
         difficulty: "hard" | "easy";
@@ -244,7 +239,7 @@ export namespace Quiz {
 
 export namespace Settings {
 
-    interface User extends BaseDocument {
+    export interface User extends BaseDocument {
         id: UserIdentifier;
         mode?: GameMode;
         training: {
@@ -274,7 +269,7 @@ export namespace Settings {
         };
     }
 
-    interface Webhook extends BaseDocument {
+    export interface Webhook extends BaseDocument {
         id: string;
         token: string;
         server: string;
@@ -290,7 +285,7 @@ export namespace Settings {
         };
     }
 
-    interface Server extends BaseDocument {
+    export interface Server extends BaseDocument {
         id: string;
         alliance_name?: string;
         log_channel?: string;
@@ -308,7 +303,7 @@ export namespace Settings {
         };
     }
 
-    interface Plane extends BaseDocument {
+    export interface Plane extends BaseDocument {
         id: UserIdentifier;
         planeID: ObjectId;
         engine?: string;

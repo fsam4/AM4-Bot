@@ -3,6 +3,7 @@ import type { CallbackQuery } from 'typegram';
 import type AM4RestClient from '@source/index';
 import type { Telegram } from '@typings/database';
 import type { Worker } from 'cluster';
+import type dateFNS from 'date-fns';
 import type { Db } from 'mongodb';
 import type Keyv from 'keyv';
 
@@ -42,6 +43,20 @@ export interface Command<CommandContext extends Context = Context, ActionContext
     execute: (this: this, ctx: CommandContext, options: CommandOptions) => Awaitable<void>;
     actions: Action<ActionContext>[];
     scenes: Scene<SceneContext>[];
+}
+
+type DateMethods = typeof dateFNS;
+
+declare module "pug" {
+    interface LocalsObject {
+        ctx?: Context;
+        data?: { 
+            [key: string]: any; 
+        };
+        date?: {
+            [K in keyof DateMethods]+?: DateMethods[K];
+        };
+    }
 }
 
 // These types are unused as I never got around to adding event listeners to the Telegram client.

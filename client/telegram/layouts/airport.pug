@@ -1,12 +1,12 @@
 b <u>Information</u>
 |
-| <b>City:</b> #{airport.city.capitalizeWords({ capitalizeAfterQuote: true })}
-| <b>Country:</b> #{airport.country.capitalizeWords({ capitalizeAfterQuote: true })}, #{airport.country_code.toUpperCase()}
-| <b>ICAO:</b> #{airport.icao.toUpperCase()}
-| <b>IATA:</b> #{airport.iata.toUpperCase()}
+| <b>City:</b> #{data.airport.city.capitalizeWords({ capitalizeAfterQuote: true })}
+| <b>Country:</b> #{data.airport.country.capitalizeWords({ capitalizeAfterQuote: true })}, #{data.airport.country_code.toUpperCase()}
+| <b>ICAO:</b> #{data.airport.icao.toUpperCase()}
+| <b>IATA:</b> #{data.airport.iata.toUpperCase()}
 |
 |
 b <u>Statistics</u>
 |
-| <b>Runway:</b> #{airport.runway.toLocaleString(locale)} ft
-| <b>Market:</b> #{airport.market}%
+| <b>Runway:</b> #{data.airport.runway.toLocaleString(ctx.from.language_code || 'en')} ft
+| <b>Market:</b> #{data.airport.market}%

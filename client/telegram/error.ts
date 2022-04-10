@@ -3,7 +3,7 @@ import ClientError from '../error';
 import type { ParseMode } from 'typegram';
 import type { Context } from 'telegraf';
 
-const message = "An unknown error occured. Please report this in [AM4 Bot Telegram group chat](https://t.me/joinchat/mWoOI4FP6PcxMTRk) or in [the Air France KLM Discord server](https://discord.gg/ZNYXSVNKb9)."
+const hyperlink = (label: string, url: string) => `[${label}](${url})`;
 
 /**
  * A class representing a Telegram client error.
@@ -44,7 +44,11 @@ export default class TelegramClientError extends ClientError {
      */
 
     static async sendUnknownError(ctx: Context) {
-        await ctx.replyWithMarkdown(message)
+        const discordInviteUrl = process.env.DISCORD_SERVER_INVITE;
+        if (discordInviteUrl === undefined) throw new Error("DISCORD_SERVER_INVITE must be provided!");
+        const telegramInviteUrl = process.env.TELEGRAM_CHAT_INVITE;
+        if (telegramInviteUrl === undefined) throw new Error("TELEGRAM_CHAT_INVITE must be provided!");
+        await ctx.replyWithMarkdown(`An unknown error occured. Please report this in ${hyperlink(`${ctx.botInfo.username} Telegram group chat`, telegramInviteUrl)} or in ${hyperlink("the Air France KLM Discord server", discordInviteUrl)}.`)
         .catch(console.error)
     }
 

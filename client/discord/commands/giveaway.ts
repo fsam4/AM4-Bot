@@ -31,12 +31,12 @@ const command: SlashCommand = {
     data: {
         name: 'giveaway',
         type: Constants.ApplicationCommandTypes.CHAT_INPUT,
-        description: 'Manage AM4 Bot giveaways',
+        description: "Create and manage giveaways",
         defaultPermission: false,
         options: [
             {
                 name: "create",
-                description: "Create a new giveaway with AM4 Bot",
+                description: "Create a new giveaway",
                 type: Constants.ApplicationCommandOptionTypes.SUB_COMMAND,
                 options: [
                     {
@@ -95,7 +95,7 @@ const command: SlashCommand = {
             },
             {
                 name: "close",
-                description: "Close an existing giveaway with AM4 Bot. This will disable the join button.",
+                description: "Close an existing giveaway. This will disable the join button.",
                 type: Constants.ApplicationCommandOptionTypes.SUB_COMMAND,
                 options: [
                     {
@@ -108,7 +108,7 @@ const command: SlashCommand = {
             },
             {
                 name: "delete",
-                description: "Delete an existing giveaway with AM4 Bot. This will delete the whole giveaway.",
+                description: "Delete an existing giveaway. This will delete the whole giveaway.",
                 type: Constants.ApplicationCommandOptionTypes.SUB_COMMAND,
                 options: [
                     {
@@ -289,7 +289,7 @@ const command: SlashCommand = {
                     if (bonus_code) {
                         if (bonus_code.length > 500) throw new DiscordClientError("The bonus code message cannot be longer than 500 characters...");
                         const message = await interaction.editReply({
-                            content: "You have entered a bonus code which will mean that AM4 Bot will automate the giveaway and automatically DM the winner the bonus code when the giveaway ends. Your code will be encrypted and stored safely in a non human readable way. By creating this giveaway you agree to allow the bot handle the giveaway. We are not responsible for any invalid codes submitted by you.",
+                            content: `You have entered a bonus code which will mean that ${interaction.client.user.username} will automate the giveaway and automatically DM the winner the bonus code when the giveaway ends. Your code will be encrypted and stored safely in a non human readable way. By creating this giveaway you agree to allow the bot handle the giveaway. We are not responsible for any invalid codes submitted by you.`,
                             components: [
                                 new MessageActionRow({
                                     components: [

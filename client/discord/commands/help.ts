@@ -25,7 +25,7 @@ const command: SlashCommand = {
     data: {
         name: 'help',
         type: Constants.ApplicationCommandTypes.CHAT_INPUT,
-        description: 'Get help with AM4 Bot or invite AM4 Bot to your server',
+        description: 'Get help with using the bot or invite the bot to your server.',
         defaultPermission: true,
         options: [
             {
@@ -92,14 +92,14 @@ const command: SlashCommand = {
                     },
                     {
                         label: "Webhooks",
-                        description: "Help with AM4 Bot webhooks",
+                        description: `Help with ${interaction.client.user.username} webhooks`,
                         emoji: config.emojis.fuel,
                         value: "webhooks",
                         default: category === "webhooks"
                     },
                     {
                         label: "Quiz Games",
-                        description: "Help with AM4 Bot quiz games & tournaments",
+                        description: `Help with ${interaction.client.user.username} quiz games & tournaments`,
                         emoji: config.emojis.points,
                         value: "quiz",
                         default: category === "quiz"
@@ -113,14 +113,14 @@ const command: SlashCommand = {
                     },
                     {
                         label: "Privacy Policy",
-                        description: "About AM4 Bot's privacy policy",
+                        description: `About ${interaction.client.user.username}'s privacy policy`,
                         emoji: "👮",
                         value: "privacy",
                         default: category === "privacy"
                     },
                     {
                         label: "Latest Update",
-                        description: "The latest update of AM4 Bot",
+                        description: `The latest update of ${interaction.client.user.username}`,
                         emoji: "📰",
                         value: "update",
                         default: category === "update"
@@ -131,19 +131,21 @@ const command: SlashCommand = {
                 scopes: ["applications.commands", "bot"], 
                 permissions: <PermissionResolvable>config.permissions
             });
+            const discordInviteUrl = process.env.DISCORD_SERVER_INVITE;
+            if (discordInviteUrl === undefined) throw new Error("DISCORD_SERVER_INVITE must be provided!");
             const components = [
                 new MessageActionRow({ components: [select] }),
                 new MessageActionRow({
                     components: [
                         new MessageButton({
-                            label: "Invite AM4 Bot",
+                            label: `Invite ${interaction.client.user.username}`,
                             disabled: !interaction.client.application.botPublic,
                             url: inviteURL,
                             style: "LINK"
                         }),
                         new MessageButton({
                             label: "Support Server",
-                            url: 'https://discord.gg/f8WHuRX',
+                            url: discordInviteUrl,
                             style: "LINK"
                         })
                     ]
@@ -295,15 +297,15 @@ const command: SlashCommand = {
                         color: "RANDOM",
                         title: "Privacy Policy",
                         url: inviteURL,
-                        description: "AM4 Bot does not collect any personal information about you or any other information that could be used to identify you or anyone else. AM4 Bot only collects necessary information to connect you to your AM4 airline or Discord user. By using AM4 Bot you agree to our privacy policy.",
+                        description: `${interaction.client.user.username} does not collect any personal information about you or any other information that could be used to identify you or anyone else. ${interaction.client.user.username} only collects necessary information to connect you to your AM4 airline or Discord user. By using ${interaction.client.user.username} you agree to our privacy policy.`,
                         fields: [
                             {
                                 name: "Discord",
-                                value: "AM4 Bot might collect message IDs, channel IDs, server IDs or user IDs.\n• Message and channel IDs are collected to connect your giveaways, reaction roles or role panels to the message and the channel where it is located.\n• Channel IDs are also collected when making channel specific settings like notification webhooks or command whitelists/blacklists.\n• User IDs are used to connect your Discord user to your settings and saved airline. AM4 Bot also keeps a record of your command activity (except when using `/help`), warnings and suspensions to ensure security. User IDs can also be collected to connect you to your created giveaways or role panels."
+                                value: `${interaction.client.user.username} might collect message IDs, channel IDs, server IDs or user IDs.\n• Message and channel IDs are collected to connect your giveaways, reaction roles or role panels to the message and the channel where it is located.\n• Channel IDs are also collected when making channel specific settings like notification webhooks or command whitelists/blacklists.\n• User IDs are used to connect your Discord user to your settings and saved airline. ${interaction.client.user.username} also keeps a record of your command activity (except when using \`/help\`), warnings and suspensions to ensure security. User IDs can also be collected to connect you to your created giveaways or role panels.`
                             },
                             {
                                 name: "Airline Manager 4",
-                                value: "AM4 Bot uses the available AM4 API to get any airline, alliance or route information. Additonally plane, airport, achievement and route data can be obtained from the bot's database and AM4 Tools API. AM4 Bot also keeps a record of top 50 alliances (and alliances that use AM4 Bot or request to be recorded) and their growth and members. This data is collected daily via the available AM4 API and is stored to draw graphs to visualize alliance growth, contribution history and other statistics. The bot automatically cleans useless and expired data after a certain period of time."
+                                value: `${interaction.client.user.username} uses the available AM4 API to get any airline, alliance or route information. Additonally plane, airport, achievement and route data can be obtained from the bot's database and AM4 Tools API. ${interaction.client.user.username} also keeps a record of top 50 alliances (and alliances that use ${interaction.client.user.username} or request to be recorded) and their growth and members. This data is collected daily via the available AM4 API and is stored to draw graphs to visualize alliance growth, contribution history and other statistics. The bot automatically cleans useless and expired data after a certain period of time.`
                             }
                         ],
                         timestamp: bot.createdTimestamp,
@@ -311,7 +313,7 @@ const command: SlashCommand = {
                             text: `Used in ${interaction.client.guilds.cache.size} servers`,
                             iconURL: interaction.client.user.displayAvatarURL()
                         }
-                    })
+                    });
                     break;
                 }
                 case 'update': {
@@ -335,16 +337,16 @@ const command: SlashCommand = {
                         },
                         fields: [
                             {
-                                name: 'About AM4 Bot...',
+                                name: `About ${interaction.client.user.username}...`,
                                 value: bot.description
                             },
                             {
                                 name: 'Getting Started...',
-                                value: `Most of the AM4 Bot commands are slash commands. Type \`/\` in the chat to see them all or click ${Formatters.formatEmoji(config.emojis.chat)} for a list of commands. You can also use AM4 Bot's context menu commands by right clicking a message or a user. If you require support join ${Formatters.hyperlink("the Air France KLM server", "https://discord.gg/f8WHuRX")}.`
+                                value: `Most of the ${interaction.client.user.username} commands are slash commands. Type \`/\` in the chat to see them all or click ${Formatters.formatEmoji(config.emojis.chat)} for a list of commands. You can also use ${interaction.client.user.username}'s context menu commands by right clicking a message or a user. If you require support join ${Formatters.hyperlink("the Air France KLM server", discordInviteUrl)}.`
                             },
                             {
-                                name: 'Logging in with AM4 Bot...',
-                                value: 'To login with AM4 Bot use `/user login`. This will save your airline so you do not anymore need to fill in the game mode argument. You can also leave all arguments empty in `/airline search` and `/alliance members search` to see your own airline, and in `/alliance search` to see your own alliance. If you change your game mode use `/user sync` to refresh your mode.'
+                                name: `Logging in with ${interaction.client.user.username}...`,
+                                value: `To login with ${interaction.client.user.username} use \`/user login\`. This will save your airline so you do not anymore need to fill in the game mode argument. You can also leave all arguments empty in \`/airline search\` and \`/alliance members search\` to see your own airline, and in \`/alliance search\` to see your own alliance. If you change your game mode use \`/user sync\` to refresh your mode.`
                             }
                         ],
                         timestamp: bot.createdTimestamp,
@@ -354,9 +356,11 @@ const command: SlashCommand = {
                         }
                     });
                     if (interaction.client.application.botPublic) {
-                        embed.addFields(                            {
-                            name: 'Inviting AM4 Bot...',
-                            value: `AM4 Bot is on Discord & Telegram. To invite AM4 Bot on Discord click the "${Formatters.hyperlink("Invite AM4 Bot", inviteURL)}" button below. To invite/use it on Telegram search up **@am4_finsky_bot** on Telegram. You can also join ${Formatters.hyperlink("AM4 Bot group", "https://t.me/joinchat/mWoOI4FP6PcxMTRk")} on Telegram for help with AM4 Bot on Telegram.`
+                        const telegramInviteUrl = process.env.TELEGRAM_CHAT_INVITE;
+                        if (telegramInviteUrl === undefined) throw new Error("TELEGRAM_CHAT_INVITE must be provided!");
+                        embed.addFields({
+                            name: `Inviting ${interaction.client.user.username}...`,
+                            value: `${interaction.client.user.username} is on Discord & Telegram. To invite ${interaction.client.user.username} on Discord click the "${Formatters.hyperlink(`Invite ${interaction.client.user.username}`, inviteURL)}" button below. To invite/use it on Telegram search up **@am4_finsky_bot** on Telegram. You can also join ${Formatters.hyperlink(`${interaction.client.user.username} group`, telegramInviteUrl)} on Telegram for help with ${interaction.client.user.username} on Telegram.`
                         });
                     }
                     embeds[0] = embed;

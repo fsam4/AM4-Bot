@@ -1,24 +1,24 @@
 b <u>Achievement info</u>
 |
-| <b>Name:</b> #{achievement.name}
-| <b>Hint:</b> #{achievement.hint}
-| <b>Reward:</b> #{achievement.bonus_points} bonus points
+| <b>Name:</b> #{data.achievement.name}
+| <b>Hint:</b> #{data.achievement.hint}
+| <b>Reward:</b> #{data.achievement.bonus_points.toLocaleString(ctx.from.language_code || 'en')} bonus points
 |
 |
-- var airports = achievement.route.length
+- var airports = Boolean(data.achievement.route.length)
 case airports
     when 2
         b <u>Achievement route</u>
         |
-        | <b>Departure:</b> #{achievement.route[0]}
-        | <b>Arrival:</b> #{achievement.route[1]}
+        | <b>Departure:</b> #{data.achievement.route[0]}
+        | <b>Arrival:</b> #{data.achievement.route[1]}
     when 3
         b <u>Achievement route</u>
         |
-        | <b>Departure:</b> #{achievement.route[0]}
-        | <b>Stopover:</b> #{achievement.route[1]}
-        | <b>Arrival:</b> #{achievement.route[2]}
+        | <b>Departure:</b> #{data.achievement.route[0]}
+        | <b>Stopover:</b> #{data.achievement.route[1]}
+        | <b>Arrival:</b> #{data.achievement.route[2]}
     default 
         b <u>Achievement description</u>
         |
-        | #{achievement.description}
+        | #{data.achievement.description}
