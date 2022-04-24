@@ -17,7 +17,7 @@ You can use this source code and/or parts of it as you want for your own tools, 
 _**For more information on permissions, limitations and conditions with using this source code, please check out the [license](LICENSE)**_. 
 
 ### Unfinished features
-The source code for v4.9.0 contains some new features along with minor changes. Some of these may not have been finished, debugged or released. The source code for version `5.x` can contain some breaking changes on the other hand, but most of these have been debugged to some extent. If you wish to browse the source code for the final version of `4.9.x`, you can do it [here](https://github.com/fsam4/AM4-Bot/tree/12d7383dc0e3260c935102045c33c46a3c8fd221). Below is a list of some new features that were never released to AM4 Bot, and might not be finished or debugged:
+The source code for version `4.9.x` contains some new features along with minor changes. Some of these may not have been finished, debugged or released. The source code for version `5.x` can contain some breaking changes on the other hand, but most of these have been debugged to some extent. If you wish to browse the source code for the final version of `4.9.x`, you can do it [here](https://github.com/fsam4/AM4-Bot/tree/12d7383dc0e3260c935102045c33c46a3c8fd221). Below is a list of some new features that were never released to AM4 Bot, and might not be finished or debugged:
 - FAQ searching: [Slash Command](client/discord/commands/faq.ts) & [Message Context Menu](client/discord/context/faq.ts)
 - Alliance member comparing: [User Context Menu](client/discord/context/compareMember.ts)
 - Alliance comparing: [User Context Menu](client/discord/context/compareAlliance.ts)
